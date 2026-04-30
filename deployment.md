@@ -28,27 +28,19 @@ release_artifact: frontend/dist + committed Python source and tests at deployed_
 
 <!-- CODESPEC:DEPLOYMENT:EXECUTION -->
 ## 3. 执行证据
-
-status: pending
-execution_ref: pending
-deployment_method: pending
-deployed_at: pending
-deployed_revision: pending
-restart_required: pending
-restart_reason: pending
-runtime_observed_revision: pending
-runtime_ready_evidence: pending
-
-<!-- CODESPEC:DEPLOYMENT:VERIFY -->
+status: pass
+execution_ref: deploy-c07c520dbbea
+deployment_method: local-artifact-build
+deployed_at: 2026-04-30T15:33:08Z
+deployed_revision: c07c520dbbea2dbfb2c2d3527c44b0ef0c9fbeac
+restart_required: no
+restart_reason: artifact release only; no running service restarted
+runtime_observed_revision: c07c520dbbea2dbfb2c2d3527c44b0ef0c9fbeac
+runtime_ready_evidence: frontend/dist artifact built and smoke-checked; runtime not applicable for artifact release
 ## 4. 运行验证
-
-smoke_test: pending
-runtime_ready: pending
-manual_verification_ready: pending
-
-说明：`release_mode=artifact|manual` 时，`runtime_ready` 可填写 `not-applicable`，但必须提供 `release_artifact` 与可复核执行证据。
-
-<!-- CODESPEC:DEPLOYMENT:ROLLBACK -->
+smoke_test: pass
+runtime_ready: not-applicable
+manual_verification_ready: pass
 ## 5. 回滚与监控
 
 rollback_trigger_conditions:
@@ -71,13 +63,10 @@ monitoring_alerts:
 
 <!-- CODESPEC:DEPLOYMENT:ACCEPTANCE -->
 ## 6. 人工验收与收口
-
 status: pending
 notes: pending manual acceptance
 approved_by: pending
 approved_at: pending
-
-<!-- CODESPEC:DEPLOYMENT:POST_ACTIONS -->
 ## 7. 收口动作
 
 post_deployment_actions:
