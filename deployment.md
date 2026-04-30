@@ -29,13 +29,13 @@ release_artifact: frontend/dist + committed Python source and tests at deployed_
 <!-- CODESPEC:DEPLOYMENT:EXECUTION -->
 ## 3. 执行证据
 status: pass
-execution_ref: deploy-c07c520dbbea
+execution_ref: deploy-7be35c9c383f
 deployment_method: local-artifact-build
-deployed_at: 2026-04-30T15:33:08Z
-deployed_revision: c07c520dbbea2dbfb2c2d3527c44b0ef0c9fbeac
+deployed_at: 2026-04-30T16:15:16Z
+deployed_revision: 7be35c9c383f964d312a447f72cfaf775d407d46
 restart_required: no
 restart_reason: artifact release only; no running service restarted
-runtime_observed_revision: c07c520dbbea2dbfb2c2d3527c44b0ef0c9fbeac
+runtime_observed_revision: 7be35c9c383f964d312a447f72cfaf775d407d46
 runtime_ready_evidence: frontend/dist artifact built and smoke-checked; runtime not applicable for artifact release
 ## 4. 运行验证
 smoke_test: pass
