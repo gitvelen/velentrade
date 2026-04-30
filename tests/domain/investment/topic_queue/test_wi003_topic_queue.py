@@ -1,0 +1,49 @@
+from velentrade.domain.investment.intake.registry import TopicProposal
+from velentrade.domain.investment.topic_queue.queue import TopicQueue, TopicScore
+
+
+def _proposal(topic_id: str, priority: str | None = None, symbol: str = "600000.SH") -> TopicProposal:
+    return TopicProposal(
+        topic_proposal_id=topic_id,
+        source_type="owner",
+        symbol=symbol,
+        raw_trigger_ref=f"raw-{topic_id}",
+        supporting_evidence_refs=[f"evidence-{topic_id}"],
+        requested_priority=priority,
+        research_package_ref=f"research-{topic_id}",
+        created_by="owner",
+    )
+
+
+def test_hard_gates_weighted_scoring_concurrency_and_p0_preemption():
+    queue = TopicQueue(max_active_ic=3, max_global_workflows=5)
+    high = TopicScore(5, 5, 4, 4)
+    medium = TopicScore(3, 4, 2, 2)
+
+    first = queue.submit(_proposal("topic-1", "P1"), high, request_brief_complete=True, decision_core_available=True)
+    second = queue.submit(_proposal("topic-2", "P2"), medium, request_brief_complete=True, decision_core_available=True)
+    third = queue.submit(_proposal("topic-3", "P1"), medium, request_brief_complete=True, decision_core_available=True)
+
+    assert first.formal_ic_status == "active"
+    assert round(first.priority_scores["weighted_total"], 2) == 4.60
+    assert len(queue.active_entries()) == 3
+
+    rejected = queue.submit(_proposal("topic-non-a", "P1", symbol="AAPL"), high, request_brief_complete=True, decision_core_available=True)
+    assert rejected.formal_ic_status == "rejected"
+    assert rejected.rejected_reason == "non_a_share_scope"
+
+    p0 = queue.submit(
+        _proposal("topic-p0", "P0"),
+        high,
+        request_brief_complete=True,
+        decision_core_available=True,
+        p0_trigger="holding_risk",
+    )
+
+    assert p0.formal_ic_status == "active"
+    assert len(queue.active_entries()) == 3
+    assert queue.preemption_events[0]["preempted_topic_id"] in {second.topic_id, third.topic_id}
+    preempted_id = queue.preemption_events[0]["preempted_topic_id"]
+    assert queue.entries[preempted_id].formal_ic_status == "deferred"
+    assert queue.entries[preempted_id].rejected_reason == "preempted_waiting"
+    assert queue.global_workflow_count <= 5
