@@ -15,3 +15,23 @@ def test_frontend_reports_reference_design_previews_and_guard_denials():
     assert "execution_core_blocked_no_trade" in source
     assert "non_a_asset_no_trade" in source
     assert "agent_capability_hot_patch_denied" in source
+
+
+def test_frontend_has_page_route_manifest_for_each_menu_and_drilldown():
+    source = Path("frontend/src/workbench.ts").read_text(encoding="utf-8")
+    app_source = Path("frontend/src/main.tsx").read_text(encoding="utf-8")
+
+    for route in [
+        '"/investment/:workflowId"',
+        '"/investment/:workflowId/trace"',
+        '"/finance"',
+        '"/knowledge"',
+        '"/governance/team"',
+        '"/governance/team/:agentId"',
+        '"/governance/team/:agentId/config"',
+        '"/governance/approvals/:approvalId"',
+    ]:
+        assert route in source
+
+    assert "resolveWorkbenchRoute" in app_source
+    assert "renderWorkbenchPage" in app_source

@@ -132,6 +132,7 @@ input {
   display: grid;
   gap: 7px;
   min-height: 150px;
+  text-decoration: none;
 }
 
 .icon-box {
@@ -160,7 +161,12 @@ input {
 
 .command-preview,
 .knowledge-grid,
-.governance-grid {
+.governance-grid,
+.finance-grid,
+.trace-grid,
+.profile-grid,
+.approval-grid,
+.queue-grid {
   grid-template-columns: repeat(3, minmax(0, 1fr));
 }
 
@@ -226,7 +232,7 @@ dd {
 
 .matrix-row,
 .guard-row,
-.agent-card div {
+.agent-card > div:first-child {
   align-items: center;
   border-bottom: 1px solid #eee7da;
   display: grid;
@@ -263,6 +269,59 @@ dd {
   grid-template-columns: 1fr auto;
 }
 
+.with-actions {
+  align-items: end;
+  display: flex;
+  justify-content: space-between;
+}
+
+.inline-action,
+.agent-actions a,
+.module-tabs a {
+  align-items: center;
+  background: #12372f;
+  border: 0;
+  border-radius: 8px;
+  color: #fff;
+  display: inline-flex;
+  gap: 6px;
+  justify-content: center;
+  padding: 8px 11px;
+  text-decoration: none;
+}
+
+.module-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.module-tabs a {
+  background: #e8efe9;
+  color: #0f6b56;
+}
+
+.list-panel {
+  grid-column: span 2;
+}
+
+.list-row {
+  align-items: center;
+  border-top: 1px solid #eee7da;
+  color: #1f2a27;
+  display: grid;
+  gap: 12px;
+  grid-template-columns: 1fr 70px auto;
+  min-height: 48px;
+  text-decoration: none;
+}
+
+.link-row:hover,
+.metric-card:hover {
+  border-color: #8fc5af;
+}
+
 code {
   background: #eee7da;
   border-radius: 5px;
@@ -289,7 +348,7 @@ li {
   min-height: 134px;
 }
 
-.agent-card div {
+.agent-card > div:first-child {
   border-bottom: 0;
   grid-template-columns: 1fr auto;
 }
@@ -299,16 +358,10 @@ li {
   font-size: 12px;
 }
 
-.agent-card button {
-  align-items: center;
-  background: #12372f;
-  border: 0;
-  border-radius: 8px;
-  color: #fff;
-  display: inline-flex;
+.agent-actions {
+  display: flex;
   gap: 6px;
   margin-top: 14px;
-  padding: 8px 11px;
 }
 
 @media (max-width: 900px) {
@@ -322,8 +375,17 @@ li {
   .dossier-grid,
   .knowledge-grid,
   .governance-grid,
-  .team-grid {
+  .team-grid,
+  .finance-grid,
+  .trace-grid,
+  .profile-grid,
+  .approval-grid,
+  .queue-grid {
     grid-template-columns: 1fr;
+  }
+
+  .list-panel {
+    grid-column: auto;
   }
 
   .side-nav {

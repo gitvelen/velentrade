@@ -2,9 +2,11 @@ import { describe, expect, it } from "vitest";
 
 import {
   buildGovernanceReadModel,
+  buildRouteManifest,
   buildShellReadModel,
   buildTeamReadModel,
   buildWorkbenchReports,
+  resolveWorkbenchRoute,
   routeOwnerCommand,
 } from "./workbench";
 
@@ -15,6 +17,29 @@ describe("WI-004 workbench contracts", () => {
     expect(shell.navItems.map((item) => item.label)).toEqual(["全景", "投资", "财务", "知识", "治理"]);
     expect(shell.navItems.map((item) => item.label)).not.toContain("团队");
     expect(shell.governanceModules).toContain("Agent 团队");
+  });
+
+  it("maps every approved navigation and drill-down route to a distinct workbench page", () => {
+    const manifest = buildRouteManifest();
+
+    expect(manifest.map((route) => route.path)).toEqual([
+      "/",
+      "/investment",
+      "/investment/:workflowId",
+      "/investment/:workflowId/trace",
+      "/finance",
+      "/knowledge",
+      "/governance",
+      "/governance/team",
+      "/governance/team/:agentId",
+      "/governance/team/:agentId/config",
+      "/governance/approvals/:approvalId",
+    ]);
+    expect(resolveWorkbenchRoute("/investment/wf-001").page).toBe("investment-dossier");
+    expect(resolveWorkbenchRoute("/investment/wf-001/trace").page).toBe("trace-debug");
+    expect(resolveWorkbenchRoute("/governance/team/quant_analyst/config").page).toBe("agent-config");
+    expect(resolveWorkbenchRoute("/governance/approvals/ap-001").page).toBe("approval-detail");
+    expect(resolveWorkbenchRoute("/unknown").page).toBe("not-found");
   });
 
   it("routes owner commands through request brief previews instead of direct actions", () => {

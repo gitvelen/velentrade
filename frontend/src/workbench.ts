@@ -4,6 +4,32 @@ export type NavItem = {
   route: string;
 };
 
+export type WorkbenchPage =
+  | "overview"
+  | "investment-queue"
+  | "investment-dossier"
+  | "trace-debug"
+  | "finance"
+  | "knowledge"
+  | "governance"
+  | "agent-team"
+  | "agent-profile"
+  | "agent-config"
+  | "approval-detail"
+  | "not-found";
+
+export type WorkbenchRoute = {
+  path: string;
+  page: WorkbenchPage;
+  topNavId: string;
+  label: string;
+};
+
+export type ResolvedWorkbenchRoute = WorkbenchRoute & {
+  pathname: string;
+  params: Record<string, string>;
+};
+
 export type RequestBriefPreview = {
   status: "preview" | "draft" | "blocked_draft";
   taskType: string;
@@ -56,6 +82,65 @@ const agentNames: Record<string, string> = {
   investment_researcher: "Investment Researcher",
   devops_engineer: "DevOps Engineer",
 };
+
+export function buildRouteManifest(): WorkbenchRoute[] {
+  return [
+    { path: "/", page: "overview", topNavId: "overview", label: "全景" },
+    { path: "/investment", page: "investment-queue", topNavId: "investment", label: "投资队列" },
+    { path: "/investment/:workflowId", page: "investment-dossier", topNavId: "investment", label: "Investment Dossier" },
+    { path: "/investment/:workflowId/trace", page: "trace-debug", topNavId: "investment", label: "Workflow Trace" },
+    { path: "/finance", page: "finance", topNavId: "finance", label: "财务" },
+    { path: "/knowledge", page: "knowledge", topNavId: "knowledge", label: "知识" },
+    { path: "/governance", page: "governance", topNavId: "governance", label: "治理" },
+    { path: "/governance/team", page: "agent-team", topNavId: "governance", label: "Agent 团队" },
+    { path: "/governance/team/:agentId", page: "agent-profile", topNavId: "governance", label: "Agent 画像" },
+    { path: "/governance/team/:agentId/config", page: "agent-config", topNavId: "governance", label: "能力配置草案" },
+    { path: "/governance/approvals/:approvalId", page: "approval-detail", topNavId: "governance", label: "审批包" },
+  ];
+}
+
+export function resolveWorkbenchRoute(pathname: string): ResolvedWorkbenchRoute {
+  const cleanPath = normalizePath(pathname);
+  const matchers: Array<[RegExp, WorkbenchPage, string, string, string[], string]> = [
+    [/^\/$/, "overview", "overview", "/", [], "全景"],
+    [/^\/investment$/, "investment-queue", "investment", "/investment", [], "投资队列"],
+    [/^\/investment\/([^/]+)\/trace$/, "trace-debug", "investment", "/investment/:workflowId/trace", ["workflowId"], "Workflow Trace"],
+    [/^\/investment\/([^/]+)$/, "investment-dossier", "investment", "/investment/:workflowId", ["workflowId"], "Investment Dossier"],
+    [/^\/finance$/, "finance", "finance", "/finance", [], "财务"],
+    [/^\/knowledge$/, "knowledge", "knowledge", "/knowledge", [], "知识"],
+    [/^\/governance$/, "governance", "governance", "/governance", [], "治理"],
+    [/^\/governance\/team$/, "agent-team", "governance", "/governance/team", [], "Agent 团队"],
+    [/^\/governance\/team\/([^/]+)\/config$/, "agent-config", "governance", "/governance/team/:agentId/config", ["agentId"], "能力配置草案"],
+    [/^\/governance\/team\/([^/]+)$/, "agent-profile", "governance", "/governance/team/:agentId", ["agentId"], "Agent 画像"],
+    [/^\/governance\/approvals\/([^/]+)$/, "approval-detail", "governance", "/governance/approvals/:approvalId", ["approvalId"], "审批包"],
+  ];
+  for (const [pattern, page, topNavId, path, paramNames, label] of matchers) {
+    const match = cleanPath.match(pattern);
+    if (!match) continue;
+    return {
+      path,
+      page,
+      topNavId,
+      label,
+      pathname: cleanPath,
+      params: Object.fromEntries(paramNames.map((name, index) => [name, match[index + 1]])),
+    };
+  }
+  return {
+    path: cleanPath,
+    page: "not-found",
+    topNavId: "overview",
+    label: "未找到",
+    pathname: cleanPath,
+    params: {},
+  };
+}
+
+function normalizePath(pathname: string): string {
+  const withoutHash = pathname.split("#")[0] || "/";
+  const withoutQuery = withoutHash.split("?")[0] || "/";
+  return withoutQuery.length > 1 ? withoutQuery.replace(/\/+$/, "") : "/";
+}
 
 export function buildShellReadModel() {
   return {
@@ -137,6 +222,21 @@ export function buildOwnerDecisionReadModel() {
   };
 }
 
+export function buildInvestmentQueueReadModel() {
+  return {
+    queues: [
+      { workflowId: "wf-001", title: "浦发银行 A 股研究", state: "blocked", stage: "S3", priority: "P0", route: "/investment/wf-001" },
+      { workflowId: "wf-002", title: "半导体链候选议题", state: "researching", stage: "S1", priority: "P1", route: "/investment/wf-002" },
+      { workflowId: "wf-003", title: "黄金配置复盘", state: "manual_only", stage: "manual_todo", priority: "P2", route: "/governance?task=manual" },
+    ],
+    guardSummary: [
+      { label: "Risk blocked", count: 1, reasonCode: "retained_hard_dissent_risk_review" },
+      { label: "execution_core blocked", count: 1, reasonCode: "execution_core_blocked_no_trade" },
+      { label: "非 A 股 manual_todo", count: 1, reasonCode: "non_a_asset_manual_only" },
+    ],
+  };
+}
+
 export function buildInvestmentDossierReadModel() {
   return {
     workflow: { workflowId: "wf-001", title: "浦发银行 A 股研究", currentStage: "S3", state: "blocked" },
@@ -164,6 +264,31 @@ export function buildInvestmentDossierReadModel() {
       low_action_no_execution: { actionVisible: false, reasonCode: "low_action_no_execution" },
     },
     traceRoute: "/investment/wf-001/trace",
+  };
+}
+
+export function buildTraceDebugReadModel() {
+  return {
+    workflowId: "wf-001",
+    agentRunTree: [
+      { runId: "run-cio-001", parentRunId: null, stage: "S3", profileVersion: "cio@1.0.0", contextSlice: "ctx-s3-cio" },
+      { runId: "run-event-001", parentRunId: "run-cio-001", stage: "S3", profileVersion: "event@1.0.0", contextSlice: "ctx-s3-event" },
+    ],
+    commands: [
+      { commandType: "request_evidence", admission: "accepted", receiver: "Event Analyst", reasonCode: "hard_dissent_requires_evidence" },
+      { commandType: "direct_write", admission: "rejected", receiver: "Authority Gateway", reasonCode: "DIRECT_WRITE_DENIED" },
+    ],
+    events: [
+      { eventType: "tool_progress", summary: "Event Analyst 补证中" },
+      { eventType: "handoff_created", summary: "hard dissent 交接 Risk" },
+      { eventType: "guard_failed", summary: "Risk conditional path blocked Owner bypass" },
+    ],
+    handoffs: [{ from: "CIO", to: "Risk Officer", blockers: ["hard dissent retained"], openQuestions: ["事件冲击是否可修复"] }],
+    contextInjectionRecords: [
+      { contextSnapshotId: "ctx-v1", whyIncluded: "Researcher digest", redactionStatus: "applied" },
+      { contextSnapshotId: "ctx-v1", whyIncluded: "finance raw field", redactionStatus: "denied" },
+    ],
+    rawTranscriptDefaultCollapsed: true,
   };
 }
 
@@ -195,6 +320,22 @@ export function buildGovernanceReadModel() {
     },
     inFlightSnapshotUnchanged: true,
     financeSensitiveRedactionUi: { dossier: "redacted_summary", trace: "redacted_summary", financeOwnerView: "cleartext_owner_only" },
+  };
+}
+
+export function buildApprovalRecordReadModel() {
+  return {
+    approvalId: "ap-001",
+    subject: "Quant Analyst 能力配置草案",
+    triggerReason: "high_impact_agent_capability_change",
+    recommendation: "request_changes",
+    alternatives: ["approved", "rejected", "request_changes"],
+    impactScope: "new_task",
+    timeoutDisposition: "不生效",
+    rollbackRef: "gov-change-001",
+    evidenceRefs: ["team_capability_config_report.json", "cfo-attribution-001"],
+    traceRoute: "/investment/wf-001/trace",
+    allowedActions: ["approved", "rejected", "request_changes"],
   };
 }
 
@@ -244,6 +385,21 @@ export function buildTeamReadModel() {
   };
 }
 
+export function buildFinanceOverviewReadModel() {
+  return {
+    assets: [
+      { label: "现金", value: "1,000,000 CNY", status: "可用" },
+      { label: "A 股纸面账户", value: "0 CNY", status: "空仓" },
+      { label: "基金", value: "仅规划", status: "manual_todo" },
+      { label: "黄金", value: "仅估值", status: "manual_todo" },
+      { label: "房产", value: "手工估值", status: "manual_todo" },
+    ],
+    health: { liquidity: "充足", debtRatio: "低", riskBudget: "12%", stress: "可承受" },
+    reminders: ["税务提醒待确认", "重大支出影响已脱敏进入投资约束"],
+    nonAAssetBoundary: { actionVisible: false, reasonCode: "non_a_asset_manual_only" },
+  };
+}
+
 export function buildKnowledgeReadModel() {
   return {
     memoryCollections: [{ collectionId: "collection-1", title: "半导体资料", resultCount: 12 }],
@@ -264,6 +420,7 @@ export function buildWorkbenchReports(): Record<string, Report> {
   return {
     "web_command_routing_report.json": envelope("web_command_routing_report.json", "TC-ACC-006-01", "ACC-006", {
       nav_scan: { top_level_labels: shell.navItems.map((item) => item.label), top_level_team_present: false },
+      route_manifest: buildRouteManifest(),
       chinese_ui_scan: { language: "zh-CN", forbidden_english_titles: [] },
       premium_light_theme_assertions: { warm_porcelain: true, ink_text: true, jade_accent: true, indigo_gold_crimson_support: true },
       request_brief_preview_flow: command,
