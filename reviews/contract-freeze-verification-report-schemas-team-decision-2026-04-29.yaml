@@ -1,0 +1,17 @@
+contract_ref: CONTRACT-VERIFICATION-REPORT-SCHEMAS
+action: freeze
+verdict: approved
+reviewed_by: Codex
+reviewed_at: 2026-04-29
+supersedes:
+  - reviews/contract-freeze-verification-report-schemas-memory-2026-04-29.yaml
+scope:
+  - contracts/verification-report-schemas.md
+reason:
+  - "Superseded: earlier refreeze after verification obligations expanded to Agent team card UI, Agent capability draft governance and Decision Service runbook."
+checks:
+  - "decision_service_report.json verifies packet assembly, S4 guards, deviation guards, failure paths and no service overreach."
+  - "team_capability_config_report.json verifies Team read models, draft-to-governance flow, low/medium auto validation, high Owner approval and in-flight snapshot immutability."
+  - "Superseded on 2026-04-30 because web_command_routing_report.json still asserted obsolete Agent-team placement evidence and obsolete visual-theme evidence after the Owner-approved frontend direction changed to five top-level menus and premium light cards."
+  - "governance_task_report.json now covers Agent capability draft states and hot patch denial."
+  - "Fixture bindings include FX-AGENT-CAPABILITY-DRAFT and route happy-path investment through Decision Service evidence."

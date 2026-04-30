@@ -1,0 +1,19 @@
+contract_ref: CONTRACT-API-READ-MODELS
+action: freeze
+verdict: approved
+reviewed_by: Codex
+reviewed_at: 2026-04-29
+scope:
+  - contracts/api-read-models.md
+reason:
+  - "R8 Design repair refroze API/read-model contract after adding concrete OwnerDecision, InvestmentDossier, TraceDebug, Governance, FinanceOverview, KnowledgeSearch and DevOpsHealth read model shapes."
+  - "The contract now binds UI/review surfaces to runbook outputs: blocked actions, collaboration command/event/handoff lineage, routine checks, finance sensitive redaction and governance effective scope."
+  - "The contract remains derived from spec.md/testing.md/design.md and does not introduce new REQ/ACC/VO obligations."
+checks:
+  - "Consumers are existing work items."
+  - "Requirement refs include frontend and investment read model surfaces."
+  - "UI guard responses continue to block Risk rejected, non-A assets and execution_core failures with stable reason codes."
+  - "Owner Decision View, Investment Dossier View and Trace/Debug View are contractually separated; raw transcript is not a primary Owner fact source."
+  - "DevOps, Finance, Knowledge and Governance read model sections expose the R8 runbook evidence required by TC-ACC-006/007/023/027/028/029."
+  - "Gateway artifact/event/handoff writes are append-only and retain stage, snapshot, schema and idempotency guards."
+  - "List endpoints have bounded pagination and common error envelopes."

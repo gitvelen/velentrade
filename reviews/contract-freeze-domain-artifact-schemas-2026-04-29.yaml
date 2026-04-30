@@ -1,0 +1,18 @@
+contract_ref: CONTRACT-DOMAIN-ARTIFACT-SCHEMAS
+action: freeze
+verdict: approved
+reviewed_by: Codex
+reviewed_at: 2026-04-29
+scope:
+  - contracts/domain-artifact-schemas.md
+reason:
+  - "R8 Design repair refroze domain schemas after adding executable collaboration objects: CollaborationSession, AgentRun, CollaborationCommand, CollaborationEvent, HandoffPacket and ViewUpdate."
+  - "The contract now covers runbook artifacts for finance/reflection and DevOps, including CFOInterpretation, ReflectionAssignment, IncidentReport severity, DegradationPlan, RecoveryPlan and RiskNotification."
+  - "Consumers now include all implementation slices while preserving the shared artifact envelope, append-only lineage and stage guard boundary."
+checks:
+  - "Consumers are existing work items."
+  - "Stage guard errors map to stable API error codes and include R8 runbook blockers such as risk_rejected_no_override, execution_core_blocked and retained_hard_dissent_risk_review."
+  - "Collaboration schemas distinguish process state from business outcome; sessions and handoffs do not replace formal artifacts."
+  - "Investment, finance, knowledge and DevOps artifact schemas remain derived from spec.md contracts and design appendices."
+  - "Schema catalog records schema_version and JSONB/Pydantic validation expectations."
+  - "ContextSnapshot is immutable and scoped to new task/new attempt/test fixture only."

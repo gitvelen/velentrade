@@ -1,0 +1,370 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Velentrade Frontend Workbench Preview</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <aside class="sidebar">
+      <div class="brand">
+        <span class="brand-mark">V</span>
+        <div>
+          <strong>Velentrade</strong>
+        </div>
+      </div>
+      <nav class="main-nav" aria-label="主导航">
+        <a href="#overview" class="active">全景</a>
+        <a href="#investment">投资</a>
+        <a href="#finance">财务</a>
+        <a href="#knowledge">知识</a>
+        <a href="#governance">治理</a>
+      </nav>
+    </aside>
+
+    <main class="workspace">
+      <header class="topbar">
+        <div class="command">
+          <span>自然语言请求</span>
+          <strong>学习光模块出口管制影响，生成研究任务</strong>
+          <button>生成请求简报</button>
+        </div>
+        <div class="status-strip">
+          <span class="badge danger">风控阻断 2</span>
+          <span class="badge warn">数据降级 1</span>
+          <span class="badge info">Agent 草案 5</span>
+        </div>
+      </header>
+
+      <section id="overview" class="screen">
+        <div class="screen-title">
+          <div>
+            <span class="eyebrow">主菜单 / 全景</span>
+            <h1>今天需要处理什么</h1>
+          </div>
+          <span class="generated">生成时间 2026-04-30 10:42</span>
+        </div>
+
+        <div class="attention-grid">
+          <article class="attention-card danger">
+            <span>风控阻断</span>
+            <strong>宁德时代风控未通过</strong>
+            <p>硬异议仍未消除，建议回到辩论阶段补证。</p>
+          </article>
+          <article class="attention-card warn">
+            <span>待审批</span>
+            <strong>CIO 组合偏离例外</strong>
+            <p>到期 18:00，影响当前投资任务。</p>
+          </article>
+          <article class="attention-card info">
+            <span>团队草案</span>
+            <strong>量化分析能力改进</strong>
+            <p>中等影响，正在自动验证。</p>
+          </article>
+          <article class="attention-card">
+            <span>人工待办</span>
+            <strong>房产估值更新</strong>
+            <p>仅需补充资料，不进入审批或交易链。</p>
+          </article>
+        </div>
+
+        <div class="section-band">
+          <span class="section-label">优先处理</span>
+          <div class="dashboard-grid">
+            <article class="card wide">
+              <div class="card-head"><strong>审批摘要</strong><button>查看审批包</button></div>
+              <table>
+                <tr><th>对象</th><th>推荐</th><th>影响范围</th><th>状态</th></tr>
+                <tr><td>Agent 能力高影响草案</td><td>要求修改</td><td>后续任务</td><td><span class="badge warn">待处理</span></td></tr>
+                <tr><td>风控条件通过例外</td><td>建议通过</td><td>当前任务</td><td><span class="badge warn">待处理</span></td></tr>
+              </table>
+            </article>
+            <article class="card">
+              <div class="card-head"><strong>系统健康</strong><span class="badge warn">降级</span></div>
+              <p>主行情源不稳定，已切到备用源，影响 2 个投资任务。</p>
+            </article>
+            <article class="card">
+              <div class="card-head"><strong>团队改进</strong><span class="badge info">5 项</span></div>
+              <p>能力改进进入验证队列，只影响后续任务。</p>
+            </article>
+          </div>
+        </div>
+
+        <div class="section-band">
+          <span class="section-label">核心状态</span>
+          <div class="dashboard-grid">
+            <article class="card metric-card">
+              <span>纸面账户</span>
+              <strong>1,047,820 CNY</strong>
+              <div class="metric-row"><span>现金 642,300</span><span class="positive">+4.78%</span></div>
+              <div class="bar"><i style="width:42%"></i></div>
+              <small>风险预算使用 42%</small>
+            </article>
+            <article class="card">
+              <div class="card-head"><strong>风险摘要</strong><span class="badge danger">2 项阻断</span></div>
+              <ul class="compact-list">
+                <li><span>集中度</span><strong>22%</strong></li>
+                <li><span>回撤</span><strong class="warn-text">-3.4%</strong></li>
+                <li><span>条件通过</span><strong>1</strong></li>
+              </ul>
+            </article>
+            <article class="card wide">
+              <div class="card-head"><strong>每日简报</strong><span>P0</span></div>
+              <p class="headline">出口管制扰动光模块链，研究员已生成资料包。</p>
+              <small>仅作为研究线索，不跳过正式投研门槛。</small>
+            </article>
+          </div>
+        </div>
+      </section>
+
+      <section id="investment" class="screen">
+        <div class="screen-title">
+          <div>
+            <span class="eyebrow">主菜单 / 投资</span>
+            <h1>投资队列与投资档案</h1>
+          </div>
+          <span class="breadcrumb">投资 -> 投资队列 -> 投资档案 -> 流程审计</span>
+        </div>
+
+        <div class="split-layout">
+          <article class="card queue-card">
+            <div class="card-head"><strong>投研队列</strong><span class="badge info">正式任务 3/5</span></div>
+            <table>
+              <tr><th>优先级</th><th>标的</th><th>阶段</th><th>状态</th></tr>
+              <tr><td>P0</td><td>300750 宁德时代</td><td>S5 风控</td><td><span class="badge danger">未通过</span></td></tr>
+              <tr><td>P1</td><td>002475 立讯精密</td><td>S3 辩论</td><td><span class="badge warn">存在硬异议</span></td></tr>
+              <tr><td>P1</td><td>603986 兆易创新</td><td>S2 分析</td><td><span class="badge info">分析中</span></td></tr>
+            </table>
+            <small>人工补资料事项不混入投资队列，统一在治理任务中处理。</small>
+          </article>
+
+          <article class="card dossier-card">
+            <div class="card-head"><strong>投资档案 / WF-IC-240</strong><button>打开审计</button></div>
+            <div class="stage-rail">
+              <span class="done">S0</span><span class="done">S1</span><span class="done">S2</span><span class="warn">S3</span><span>S4</span><span class="danger">S5</span><span>S6</span><span>S7</span>
+            </div>
+            <div class="dossier-grid">
+              <div>
+                <h3>CIO 决策摘要</h3>
+                <p>本次问题：估值下修后是否仍具备 6 个月持有价值。</p>
+                <div class="stance">
+                  <span>Macro +2 / 0.72</span>
+                  <span>Fundamental +3 / 0.78</span>
+                  <span>Quant -1 / 0.61</span>
+                  <span class="danger-text">事件分析保留硬异议</span>
+                </div>
+              </div>
+              <div class="guard-panel">
+                <h3>风控关口</h3>
+                <strong class="danger-text">未通过</strong>
+                <p>保留硬异议，建议 reopen S3，Owner 不可绕过。</p>
+              </div>
+            </div>
+            <div class="timeline">
+              <span>辩论第 1 轮补证公告来源</span>
+              <span>辩论第 2 轮异议保留</span>
+              <span>交给风控复核</span>
+            </div>
+          </article>
+        </div>
+      </section>
+
+      <section id="finance" class="screen">
+        <div class="screen-title">
+          <div>
+            <span class="eyebrow">主菜单 / 财务</span>
+            <h1>全资产与风险预算</h1>
+          </div>
+          <span class="breadcrumb">财务 -> 资产档案 -> 人工待办</span>
+        </div>
+
+        <div class="dashboard-grid">
+          <article class="card metric-card"><span>净资产</span><strong>3,842,000 CNY</strong><small>含房产手工估值</small></article>
+          <article class="card metric-card"><span>流动性覆盖</span><strong>14.2 月</strong><small>重大支出 90 天内 1 项</small></article>
+          <article class="card metric-card"><span>负债率</span><strong>18%</strong><small>低风险</small></article>
+          <article class="card metric-card"><span>风险预算</span><strong>58% 可用</strong><small>可继续支持 A 股纸面投资</small></article>
+          <article class="card wide">
+            <div class="card-head"><strong>全资产概览</strong><span class="badge info">已更新</span></div>
+            <table>
+              <tr><th>资产</th><th>估值</th><th>变化</th><th>提醒</th></tr>
+              <tr><td>A 股纸面账户</td><td>1,047,820</td><td class="positive">+4.78%</td><td>风险预算使用 42%</td></tr>
+              <tr><td>黄金 ETF</td><td>183,200</td><td class="positive">+1.2%</td><td>避险资产占比正常</td></tr>
+              <tr><td>房产</td><td>2,400,000</td><td>待更新</td><td>本周需补估值</td></tr>
+            </table>
+          </article>
+          <article class="card">
+            <div class="card-head"><strong>近期现金流</strong><span class="badge warn">需关注</span></div>
+            <p>90 天内有 1 笔大额支出，建议保留 14 个月流动性覆盖。</p>
+          </article>
+        </div>
+      </section>
+
+      <section id="knowledge" class="screen">
+        <div class="screen-title">
+          <div>
+            <span class="eyebrow">主菜单 / 知识</span>
+            <h1>研究、记忆与反思资产</h1>
+          </div>
+          <span class="breadcrumb">知识 -> 研究资料包 -> 改进提案</span>
+        </div>
+        <div class="dashboard-grid">
+          <article class="card wide">
+            <div class="card-head"><strong>每日简报</strong><span class="badge info">研究线索</span></div>
+            <table>
+              <tr><th>优先级</th><th>标题</th><th>处理方式</th><th>来源</th></tr>
+              <tr><td>P0</td><td>光模块供应链扰动</td><td>形成候选议题</td><td>研究员</td></tr>
+              <tr><td>P1</td><td>AI 服务器资本开支变化</td><td>继续研究</td><td>公告/研报</td></tr>
+            </table>
+          </article>
+          <article class="card">
+            <div class="card-head"><strong>高价值经验</strong><span>128 条</span></div>
+            <p>近期重点沉淀：因子失效、事件误判、财务归因和系统异常经验。</p>
+          </article>
+          <article class="card">
+            <div class="card-head"><strong>敏感信息保护</strong><span class="badge warn">已拦截</span></div>
+            <p>本次研究中有 2 条财务敏感信息未进入投研上下文。</p>
+          </article>
+          <article class="card wide">
+            <div class="card-head"><strong>改进提案</strong><button>查看治理</button></div>
+            <table>
+              <tr><th>类型</th><th>影响</th><th>验证</th><th>适用范围</th></tr>
+              <tr><td>投研提示优化</td><td>中</td><td>已通过</td><td>后续尝试</td></tr>
+              <tr><td>知识晋升</td><td>低</td><td>排队中</td><td>后续任务</td></tr>
+            </table>
+          </article>
+        </div>
+      </section>
+
+      <section id="governance" class="screen">
+        <div class="screen-title">
+          <div>
+            <span class="eyebrow">主菜单 / 治理</span>
+            <h1>任务、审批、变更、健康与审计</h1>
+          </div>
+          <span class="breadcrumb">治理 -> 审批中心 -> 审批详情</span>
+        </div>
+
+        <nav class="module-tabs" aria-label="治理二级模块">
+          <a href="#governance" class="active">任务</a>
+          <a href="#governance-approvals">审批</a>
+          <a href="#governance-team">Agent 团队</a>
+          <a href="#governance-changes">变更</a>
+          <a href="#governance-health">健康</a>
+          <a href="#governance-audit">审计</a>
+        </nav>
+
+        <div class="summary-grid">
+          <article class="summary-card"><span>待处理任务</span><strong>14</strong><small>4 项阻断</small></article>
+          <article class="summary-card"><span>真正审批</span><strong>3</strong><small>不含 confirmation</small></article>
+          <article class="summary-card"><span>Agent 草案</span><strong>5</strong><small>2 个待验证</small></article>
+          <article class="summary-card"><span>服务健康</span><strong>降级</strong><small>影响 2 个任务</small></article>
+        </div>
+
+        <div class="governance-grid">
+          <article class="card wide">
+            <div class="card-head"><strong>任务中心</strong><span class="badge danger">4 项阻断</span></div>
+            <table>
+              <tr><th>类型</th><th>对象</th><th>状态</th><th>下一步</th></tr>
+              <tr><td>投资</td><td>WF-IC-240</td><td>阻断</td><td>打开投资档案 S5</td></tr>
+              <tr><td>人工待办</td><td>房产估值</td><td>等待</td><td>补资料</td></tr>
+              <tr><td>Agent 能力</td><td>量化分析改进</td><td>验证中</td><td>查看验证</td></tr>
+            </table>
+          </article>
+          <article id="governance-approvals" class="card">
+            <div class="card-head"><strong>审批中心</strong><span class="badge warn">3 项待处理</span></div>
+            <p>只展示需要老板拍板的事项，不混入确认或补资料。</p>
+            <button>打开审批包</button>
+          </article>
+          <article id="governance-changes" class="card">
+            <div class="card-head"><strong>变更管理</strong><span>后续生效</span></div>
+            <p>能力、风险预算和数据源策略统一排队验证，避免影响在途任务。</p>
+          </article>
+          <article class="card">
+            <div class="card-head"><strong>Agent 团队</strong><span class="badge info">二级工作区</span></div>
+            <p>九个 Agent 的胜任度、CFO 归因、能力短板和草案编辑归入治理域。</p>
+            <a class="button-link" href="#governance-team">查看 Agent 团队</a>
+          </article>
+          <article id="governance-health" class="card">
+            <div class="card-head"><strong>系统健康</strong><span class="badge warn">降级</span></div>
+            <p>技术恢复后仍需风控确认，投资任务不会自动恢复。</p>
+          </article>
+          <article id="governance-audit" class="card">
+            <div class="card-head"><strong>审计记录</strong><span>可追溯</span></div>
+            <p>投资任务可进入流程审计；系统事件在治理内展示摘要和恢复记录。</p>
+          </article>
+        </div>
+      </section>
+
+      <section id="governance-team" class="screen">
+        <div class="screen-title">
+          <div>
+            <span class="eyebrow">治理 / Agent 团队</span>
+            <h1>Agent 胜任度、短板与能力草案</h1>
+          </div>
+          <span class="breadcrumb">治理 -> Agent 团队 -> Agent 画像 -> 能力改进</span>
+        </div>
+
+        <nav class="module-tabs" aria-label="治理二级模块">
+          <a href="#governance">任务</a>
+          <a href="#governance-approvals">审批</a>
+          <a href="#governance-team" class="active">Agent 团队</a>
+          <a href="#governance-changes">变更</a>
+          <a href="#governance-health">健康</a>
+          <a href="#governance-audit">审计</a>
+        </nav>
+
+        <div class="summary-grid">
+          <article class="summary-card"><span>团队胜任度中位数</span><strong>78</strong><small>样本不足不下结论</small></article>
+          <article class="summary-card"><span>待治理短板</span><strong>6</strong><small>2 个高影响</small></article>
+          <article class="summary-card"><span>CFO 归因引用</span><strong>11</strong><small>近 20 次任务</small></article>
+          <article class="summary-card"><span>越权/拒绝</span><strong>3</strong><small>已被网关拦截</small></article>
+        </div>
+
+        <div class="team-layout">
+          <article class="card roster">
+            <div class="card-head"><strong>九个 Agent</strong><span class="badge warn">2 待治理</span></div>
+            <div class="agent-card selected"><strong>CIO</strong><span>胜任度 82</span><small>短板：重大偏离解释偏慢</small></div>
+            <div class="agent-card"><strong>CFO</strong><span>胜任度 88</span><small>归因解释准确</small></div>
+            <div class="agent-card danger"><strong>量化分析师</strong><span>胜任度 64</span><small>方法论过期 / 连续低分</small></div>
+            <div class="agent-card"><strong>事件分析师</strong><span>胜任度 76</span><small>来源验证需补强</small></div>
+          </article>
+          <article class="card profile-card">
+            <div class="card-head"><strong>CIO 画像</strong><button>编辑能力草案</button></div>
+            <div class="score-panel">
+              <strong>82</strong>
+              <div>
+                <span class="badge info">胜任</span>
+                <p>样本窗口 20 次，趋势 +4。不是收益排名，区分市场、决策、执行、数据贡献。</p>
+              </div>
+            </div>
+            <div class="capability-grid">
+              <span>证据完整性 0.86</span><span>结构通过率 98%</span><span>协作响应 0.79</span><span>角色边界 100%</span>
+            </div>
+            <h3>能力短板</h3>
+            <div class="shortfall-list">
+              <span>重大偏离解释偏慢</span>
+              <span>硬异议综合质量波动</span>
+              <span>新任务上下文复用需验证</span>
+            </div>
+          </article>
+          <article class="card">
+            <div class="card-head"><strong>CFO 归因引用</strong><span class="badge warn">待反思</span></div>
+            <p>CFO 解释：本轮异常主要来自决策质量滚动下滑，责任角色为 CIO。</p>
+            <ul class="compact-list">
+              <li><span>问题分类</span><strong>方法论衰减</strong></li>
+              <li><span>需回答问题</span><strong>3</strong></li>
+              <li><span>截止时间</span><strong>2026-05-03</strong></li>
+            </ul>
+          </article>
+          <article class="card">
+            <div class="card-head"><strong>改进进度</strong><span>验证中</span></div>
+            <p>本次改进聚焦重大偏离解释和硬异议综合，只影响后续新任务。</p>
+            <button>提交改进草案</button>
+            <small>当前在途任务继续使用原配置。</small>
+          </article>
+        </div>
+      </section>
+    </main>
+  </body>
+</html>

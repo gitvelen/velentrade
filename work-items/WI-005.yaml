@@ -1,0 +1,136 @@
+wi_id: WI-005
+phase_scope: Implementation
+
+goal: "交付财务档案、归因评价、CFO 治理、研究知识、Memory capture/organize、Prompt/Skill 提案和反思学习闭环。"
+derived_from: design.md#7
+design_refs:
+  - design-appendices/finance-knowledge-reflection-design.md
+  - design-appendices/agent-capability-profiles.md
+  - contracts/api-read-models.md
+  - contracts/domain-artifact-schemas.md
+  - contracts/verification-report-schemas.md
+
+requirement_refs:
+  - REQ-023
+  - REQ-024
+  - REQ-025
+  - REQ-026
+  - REQ-027
+  - REQ-028
+acceptance_refs:
+  - ACC-023
+  - ACC-024
+  - ACC-025
+  - ACC-026
+  - ACC-027
+  - ACC-028
+verification_refs:
+  - VO-023
+  - VO-024
+  - VO-025
+  - VO-026
+  - VO-027
+  - VO-028
+test_case_refs:
+  - TC-ACC-023-01
+  - TC-ACC-024-01
+  - TC-ACC-025-01
+  - TC-ACC-026-01
+  - TC-ACC-027-01
+  - TC-ACC-028-01
+
+r8_runbook_scope:
+  owns:
+    - "Finance profile and non-A asset runbooks from Owner input to planning/risk/manual_todo projection."
+    - "Performance attribution and CFO interpretation runbooks, including anomaly/cycle triggers, GovernanceProposal, ReflectionAssignment, and report publication."
+    - "Researcher MemoryCapture/MemoryOrganizeSuggestion, Knowledge, Prompt, SkillPackage, factor research, and reflection promotion runbooks with impact triage, validation, rollback, and new task/new attempt effective scope."
+  must_prove:
+    - "Non-A assets cannot enter approval, execution, or trade chains and only project planning/risk/manual_todo outputs."
+    - "Routine attribution is service-published; CFO LLM work is triggered only by anomaly, cycle, governance proposal, or reflection assignment rules."
+    - "Researcher can capture, review, digest, organize and propose promotion for memory, but cannot treat Memory as business fact source."
+    - "Researcher and responsible Agent proposals cannot hot-edit in-flight ContextSnapshot, Prompt, SkillPackage, DefaultContext, risk budget, factor weight, or execution parameter."
+  does_not_own:
+    - "A-share IC decision, Risk Review, paper execution, production frontend rendering, DevOps recovery, or base Authority Gateway implementation."
+
+execution_slices:
+  - slice_id: finance_boundary
+    dependency_refs:
+      - WI-001
+      - WI-002
+    scope: "先交付 FinanceProfile、财务敏感字段例外、非 A 股交易隔离、planning/risk/manual_todo projection 和 finance_asset_boundary_report。"
+    test_case_refs:
+      - TC-ACC-023-01
+  - slice_id: researcher_knowledge_proposals
+    dependency_refs:
+      - WI-001
+      - WI-002
+    scope: "先交付 Researcher daily brief/research package/topic proposal fixture、MemoryCapture、MemoryOrganizeSuggestion、Knowledge/Prompt/Skill proposal 和 researcher_workflow_report；TopicProposal 与 IC Context 连接可先使用 contract fixture，待 WI-003 完成后接真实 read model。"
+    test_case_refs:
+      - TC-ACC-027-01
+  - slice_id: attribution_cfo_reflection
+    dependency_refs:
+      - WI-003
+      - WI-007
+      - WI-008
+      - WI-009
+    scope: "后置接入完整投资链 artifact，交付 Performance Attribution、CFO Interpretation/Governance/ReflectionAssignment、Factor Research Governance、Reflection Workflow 和对应报告。"
+    test_case_refs:
+      - TC-ACC-024-01
+      - TC-ACC-025-01
+      - TC-ACC-026-01
+      - TC-ACC-028-01
+    note: "本切片可先用 frozen contract fixture 开发算法和 report writer；真实跨 WI 集成在下游投资链完成后收口。"
+
+scope:
+  - "实现 Finance Profile、财务敏感字段例外、非 A 股交易隔离、Performance Attribution & Evaluation、CFO Interpretation、Governance Proposal、Reflection Assignment、Factor Research Governance、Researcher Workflow、MemoryCapture、MemoryOrganizeSuggestion、Knowledge/Prompt/Skill Proposal 和 Reflection Workflow。"
+  - "覆盖财务规划、基金黄金行情边界、房产手工估值、自动归因、CFO 高影响治理、记忆 capture/review/digest/organize、知识状态机、Prompt/Skill 低中影响自动验证和高影响 Owner 审批后的新任务/新 attempt 生效。"
+  - "实施顺序按 execution_slices 推进：finance_boundary 与 researcher_knowledge_proposals 可在 WI-001/WI-002 后启动；attribution_cfo_reflection 的真实跨域集成等待 WI-003/WI-007/WI-008/WI-009，但算法、schema guard 和 report writer 可先使用 contract fixture。"
+  - "固化 FinanceProfile、AttributionReport、CFOInterpretation、GovernanceProposal、MemoryCapture、MemoryOrganizeSuggestion、Knowledge/Prompt/SkillProposal 和 ReflectionRecord 的 schema/guard。"
+  - "生成 finance_asset_boundary_report、performance_attribution_report、cfo_governance_report、factor_research_report、researcher_workflow_report、reflection_learning_report。"
+out_of_scope:
+  - "不把非 A 股资产接入审批、执行或交易链，不直接热改 Prompt、风险预算、因子权重或执行参数。"
+  - "不实现 Performance Analyst Agent。"
+
+allowed_paths:
+  - src/velentrade/domain/finance/**
+  - src/velentrade/domain/attribution/**
+  - src/velentrade/domain/knowledge/**
+  - tests/domain/finance/**
+  - tests/domain/attribution/**
+  - tests/domain/knowledge/**
+forbidden_paths:
+  - versions/**
+  - spec.md
+  - design.md
+  - work-items/**
+  - contracts/**
+  - deployment.md
+  - src/velentrade/domain/investment/**
+  - src/velentrade/domain/decision/**
+  - src/velentrade/domain/devops/**
+  - src/velentrade/domain/observability/**
+  - frontend/**
+  - Dockerfile
+
+dependency_refs:
+  - WI-001
+  - WI-002
+dependency_type: strong
+contract_refs:
+  - contracts/api-read-models.md
+  - contracts/domain-artifact-schemas.md
+  - contracts/verification-report-schemas.md
+
+required_verification:
+  - "pytest tests/domain/finance tests/domain/attribution tests/domain/knowledge -q"
+  - "python -m compileall src/velentrade"
+
+stop_conditions:
+  - "目标、边界、验收或测试用例不清楚"
+  - "需要修改 forbidden_paths 或超出 allowed_paths"
+  - "实现需要改变 spec.md / design.md 的产品或架构口径"
+  - "需要非 A 股交易、Performance Analyst Agent 或反思直接热改运行参数"
+  - "早期 finance/researcher 切片无法用 contract fixture 与基础 workflow/context 运行，必须等待完整投资执行链"
+reopen_triggers:
+  - "财务边界、财务敏感字段例外、归因维度、CFO 治理职责、研究员边界、Memory capture/organize、知识/Prompt/Skill 生效规则或反思链路变化"
+  - "高影响变更不再需要 Owner 审批或需要影响在途任务"

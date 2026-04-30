@@ -1,0 +1,19 @@
+contract_ref: CONTRACT-API-READ-MODELS
+action: freeze
+verdict: approved
+reviewed_by: Codex
+reviewed_at: 2026-04-29
+supersedes:
+  - reviews/contract-freeze-api-read-models-2026-04-29.yaml
+scope:
+  - contracts/api-read-models.md
+reason:
+  - "Design memory repair refroze API/read-model contract after adding controlled Memory capture/read/relation endpoints and Gateway memory writes."
+  - "KnowledgeSearchReadModel now exposes MemoryCollection, memory results, relation graph, organize suggestions and context injection preview without making them directly effective."
+  - "TraceDebugReadModel now exposes ContextSlice memory injection and denial records for audit."
+checks:
+  - "All memory writes are routed through domain commands or Authority Gateway; read endpoints remain read-only where marked."
+  - "Memory/Knowledge used as formal artifact source is rejected with memory_not_fact_source."
+  - "Finance-sensitive raw memory access maps to SENSITIVE_DATA_RESTRICTED."
+  - "Verification mapping ties TC-ACC-004/027/028/030 to memory read models and guard responses."
+  - "The API contract does not add new public collaboration command types beyond the existing closed command family."

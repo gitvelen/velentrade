@@ -1,0 +1,100 @@
+wi_id: WI-003
+phase_scope: Implementation
+
+goal: "交付 A 股投资准入链，从机会注册、Topic Queue 到 IC Context Package 和 CIO IC Chair Brief。"
+derived_from: design.md#7
+design_refs:
+  - design-appendices/investment-chain-design.md
+  - contracts/domain-artifact-schemas.md
+  - contracts/verification-report-schemas.md
+
+requirement_refs:
+  - REQ-012
+  - REQ-013
+  - REQ-014
+acceptance_refs:
+  - ACC-012
+  - ACC-013
+  - ACC-014
+verification_refs:
+  - VO-012
+  - VO-013
+  - VO-014
+test_case_refs:
+  - TC-ACC-012-01
+  - TC-ACC-013-01
+  - TC-ACC-014-01
+
+r8_runbook_scope:
+  owns:
+    - "Investment intake runbook from Opportunity/TopicProposal through Topic Queue and IC Context Package."
+    - "P0 preemption, hard gate rejection, supporting-evidence-only boundary, and CIO Chair Brief creation."
+  must_prove:
+    - "Registered opportunity is not automatically formal IC."
+    - "P0 preemption preserves artifacts and does not skip S1-S7."
+    - "Chair Brief defines decision focus without preset buy/sell/hold conclusion."
+  does_not_own:
+    - "S2 Analyst Memo, S3 debate, CIO Decision, Risk Review, Owner exception, paper execution, or frontend rendering."
+
+scope:
+  - "实现 Opportunity Registry、Topic Queue、四维加权评分、P0 抢占、正式 IC 准入、IC Context Package 和 CIO IC Chair Brief。"
+  - "覆盖 Topic hard gate、四维评分权重、IC 并发 3、全局并发 5、P0 抢占最低 P1/P2 active slot 且保留 waiting audit、supporting evidence 不直入正式 IC、Chair Brief 不预设结论。"
+  - "固化 TopicQueueEntry、ICContextPackage 和 CIO IC Chair Brief 产物 schema/guard。"
+  - "生成 topic_registration_report、topic_queue_report 和 ic_context_package_report。"
+out_of_scope:
+  - "不实现 Analyst Memo、共识/行动强度、S3 辩论、CIO Decision、Risk Review、Owner exception、纸面账户、纸面执行或持仓处置。"
+  - "不接真实券商、不真实下单、不实现非 A 股交易、不做回测、不做前端页面。"
+  - "不改变 WI-002 的 workflow/data/service 基础语义。"
+
+allowed_paths:
+  - src/velentrade/domain/investment/__init__.py
+  - src/velentrade/domain/investment/intake/**
+  - src/velentrade/domain/investment/topic_queue/**
+  - src/velentrade/domain/investment/context/**
+  - tests/domain/investment/__init__.py
+  - tests/domain/investment/intake/**
+  - tests/domain/investment/topic_queue/**
+  - tests/domain/investment/context/**
+forbidden_paths:
+  - versions/**
+  - spec.md
+  - design.md
+  - work-items/**
+  - contracts/**
+  - deployment.md
+  - src/velentrade/domain/investment/analysis/**
+  - src/velentrade/domain/investment/debate/**
+  - src/velentrade/domain/decision/**
+  - src/velentrade/domain/investment/risk/**
+  - src/velentrade/domain/investment/owner_exception/**
+  - src/velentrade/domain/investment/paper_account/**
+  - src/velentrade/domain/investment/execution/**
+  - src/velentrade/domain/investment/position/**
+  - src/velentrade/domain/finance/**
+  - src/velentrade/domain/attribution/**
+  - src/velentrade/domain/knowledge/**
+  - src/velentrade/domain/devops/**
+  - src/velentrade/domain/observability/**
+  - frontend/**
+  - Dockerfile
+
+dependency_refs:
+  - WI-001
+  - WI-002
+dependency_type: strong
+contract_refs:
+  - contracts/domain-artifact-schemas.md
+  - contracts/verification-report-schemas.md
+
+required_verification:
+  - "pytest tests/domain/investment/intake tests/domain/investment/topic_queue tests/domain/investment/context -q"
+  - "python -m compileall src/velentrade"
+
+stop_conditions:
+  - "目标、边界、验收或测试用例不清楚"
+  - "需要修改 forbidden_paths 或超出 allowed_paths"
+  - "实现需要改变 spec.md / design.md 的产品或架构口径"
+  - "需要进入 Analyst Memo、共识辩论、CIO/Risk/Owner 决策或纸面执行范围"
+reopen_triggers:
+  - "机会准入、Topic Queue 权重/P0 抢占、IC Context Package、IC Chair Brief 或 supporting evidence 边界变化"
+  - "任何真实交易、真实券商或回测能力被要求进入本 WI"
