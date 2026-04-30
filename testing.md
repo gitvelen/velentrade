@@ -983,6 +983,30 @@ Design approved 前，`reviews/design-review.yaml` 必须记录 R8 cold-start dr
   residual_risk: none
   reopen_required: false
 
+- acceptance_ref: ACC-018
+  run_id: RUN-WI008-ACC018-20260430
+  test_case_ref: TC-ACC-018-01
+  verification_type: automated
+  test_type: integration
+  test_scope: branch-local
+  executed_at: 2026-04-30
+  artifact_ref: tests/domain/decision/test_wi008_decision_service.py
+  result: pass
+  residual_risk: none
+  reopen_required: false
+
+- acceptance_ref: ACC-019
+  run_id: RUN-WI008-ACC019-20260430
+  test_case_ref: TC-ACC-019-01
+  verification_type: automated
+  test_type: integration
+  test_scope: branch-local
+  executed_at: 2026-04-30
+  artifact_ref: tests/domain/investment/risk/test_wi008_risk_owner.py
+  result: pass
+  residual_risk: none
+  reopen_required: false
+
 <!-- CODESPEC:TESTING:RISKS -->
 ## 4. 残留风险与返工判断
 
