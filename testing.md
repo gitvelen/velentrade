@@ -1331,6 +1331,30 @@ Design approved 前，`reviews/design-review.yaml` 必须记录 R8 cold-start dr
   residual_risk: none
   reopen_required: false
 
+- acceptance_ref: ACC-006
+  run_id: RUN-FULL-ACC006-ROUTE-20260501
+  test_case_ref: TC-ACC-006-01
+  verification_type: automated
+  test_type: e2e
+  test_scope: full-integration
+  executed_at: 2026-05-01
+  artifact_ref: python -m pytest tests/core tests/domain tests/security tests/requirements tests/agent_runner tests/model_gateway tests/worker tests/e2e -q && npm --prefix frontend test && npm --prefix frontend run build && route smoke on http://127.0.0.1:8443 for all WI-004 menu and drill-down routes
+  result: pass
+  residual_risk: none
+  reopen_required: false
+
+- acceptance_ref: ACC-007
+  run_id: RUN-FULL-ACC007-ROUTE-20260501
+  test_case_ref: TC-ACC-007-01
+  verification_type: automated
+  test_type: e2e
+  test_scope: full-integration
+  executed_at: 2026-05-01
+  artifact_ref: python -m pytest tests/core tests/domain tests/security tests/requirements tests/agent_runner tests/model_gateway tests/worker tests/e2e -q && npm --prefix frontend test && npm --prefix frontend run build && route smoke on http://127.0.0.1:8443 for governance team, approval, task/manual separation routes
+  result: pass
+  residual_risk: none
+  reopen_required: false
+
 - acceptance_ref: ACC-023
   run_id: RUN-FULL-ACC023-20260430
   test_case_ref: TC-ACC-023-01
