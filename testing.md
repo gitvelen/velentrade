@@ -1043,6 +1043,390 @@ Design approved 前，`reviews/design-review.yaml` 必须记录 R8 cold-start dr
   residual_risk: none
   reopen_required: false
 
+- acceptance_ref: ACC-001
+  run_id: RUN-FULL-ACC001-20260430
+  test_case_ref: TC-ACC-001-01
+  verification_type: automated
+  test_type: static
+  test_scope: full-integration
+  executed_at: 2026-04-30
+  artifact_ref: python -m pytest tests/core tests/domain tests/security tests/requirements tests/agent_runner tests/model_gateway tests/worker tests/e2e -q
+  result: pass
+  residual_risk: none
+  reopen_required: false
+
+- acceptance_ref: ACC-002
+  run_id: RUN-FULL-ACC002-20260430
+  test_case_ref: TC-ACC-002-01
+  verification_type: automated
+  test_type: static
+  test_scope: full-integration
+  executed_at: 2026-04-30
+  artifact_ref: python -m pytest tests/core tests/domain tests/security tests/requirements tests/agent_runner tests/model_gateway tests/worker tests/e2e -q
+  result: pass
+  residual_risk: none
+  reopen_required: false
+
+- acceptance_ref: ACC-003
+  run_id: RUN-FULL-ACC003-20260430
+  test_case_ref: TC-ACC-003-01
+  verification_type: automated
+  test_type: contract
+  test_scope: full-integration
+  executed_at: 2026-04-30
+  artifact_ref: python -m pytest tests/core tests/domain tests/security tests/requirements tests/agent_runner tests/model_gateway tests/worker tests/e2e -q
+  result: pass
+  residual_risk: none
+  reopen_required: false
+
+- acceptance_ref: ACC-004
+  run_id: RUN-FULL-ACC004-20260430
+  test_case_ref: TC-ACC-004-01
+  verification_type: automated
+  test_type: security_contract
+  test_scope: full-integration
+  executed_at: 2026-04-30
+  artifact_ref: python -m pytest tests/core tests/domain tests/security tests/requirements tests/agent_runner tests/model_gateway tests/worker tests/e2e -q
+  result: pass
+  residual_risk: none
+  reopen_required: false
+
+- acceptance_ref: ACC-005
+  run_id: RUN-FULL-ACC005-20260430
+  test_case_ref: TC-ACC-005-01
+  verification_type: automated
+  test_type: integration
+  test_scope: full-integration
+  executed_at: 2026-04-30
+  artifact_ref: python -m pytest tests/core tests/domain tests/security tests/requirements tests/agent_runner tests/model_gateway tests/worker tests/e2e -q
+  result: pass
+  residual_risk: none
+  reopen_required: false
+
+- acceptance_ref: ACC-006
+  run_id: RUN-FULL-ACC006-20260430
+  test_case_ref: TC-ACC-006-01
+  verification_type: automated
+  test_type: e2e
+  test_scope: full-integration
+  executed_at: 2026-04-30
+  artifact_ref: npm --prefix frontend test && npm --prefix frontend run build && python -m pytest tests/e2e -q
+  result: pass
+  residual_risk: none
+  reopen_required: false
+
+- acceptance_ref: ACC-007
+  run_id: RUN-FULL-ACC007-20260430
+  test_case_ref: TC-ACC-007-01
+  verification_type: automated
+  test_type: e2e
+  test_scope: full-integration
+  executed_at: 2026-04-30
+  artifact_ref: npm --prefix frontend test && npm --prefix frontend run build && python -m pytest tests/e2e -q
+  result: pass
+  residual_risk: none
+  reopen_required: false
+
+- acceptance_ref: ACC-008
+  run_id: RUN-FULL-ACC008-20260430
+  test_case_ref: TC-ACC-008-01
+  verification_type: automated
+  test_type: integration
+  test_scope: full-integration
+  executed_at: 2026-04-30
+  artifact_ref: python -m pytest tests/core tests/domain tests/security tests/requirements tests/agent_runner tests/model_gateway tests/worker tests/e2e -q
+  result: pass
+  residual_risk: none
+  reopen_required: false
+
+- acceptance_ref: ACC-009
+  run_id: RUN-FULL-ACC009-20260430
+  test_case_ref: TC-ACC-009-01
+  verification_type: automated
+  test_type: integration
+  test_scope: full-integration
+  executed_at: 2026-04-30
+  artifact_ref: python -m pytest tests/core tests/domain tests/security tests/requirements tests/agent_runner tests/model_gateway tests/worker tests/e2e -q
+  result: pass
+  residual_risk: none
+  reopen_required: false
+
+- acceptance_ref: ACC-010
+  run_id: RUN-FULL-ACC010-20260430
+  test_case_ref: TC-ACC-010-01
+  verification_type: automated
+  test_type: contract
+  test_scope: full-integration
+  executed_at: 2026-04-30
+  artifact_ref: python -m pytest tests/core tests/domain tests/security tests/requirements tests/agent_runner tests/model_gateway tests/worker tests/e2e -q
+  result: pass
+  residual_risk: none
+  reopen_required: false
+
+- acceptance_ref: ACC-011
+  run_id: RUN-FULL-ACC011-20260430
+  test_case_ref: TC-ACC-011-01
+  verification_type: automated
+  test_type: integration
+  test_scope: full-integration
+  executed_at: 2026-04-30
+  artifact_ref: python -m pytest tests/core tests/domain tests/security tests/requirements tests/agent_runner tests/model_gateway tests/worker tests/e2e -q
+  result: pass
+  residual_risk: none
+  reopen_required: false
+
+- acceptance_ref: ACC-012
+  run_id: RUN-FULL-ACC012-20260430
+  test_case_ref: TC-ACC-012-01
+  verification_type: automated
+  test_type: integration
+  test_scope: full-integration
+  executed_at: 2026-04-30
+  artifact_ref: python -m pytest tests/core tests/domain tests/security tests/requirements tests/agent_runner tests/model_gateway tests/worker tests/e2e -q
+  result: pass
+  residual_risk: none
+  reopen_required: false
+
+- acceptance_ref: ACC-013
+  run_id: RUN-FULL-ACC013-20260430
+  test_case_ref: TC-ACC-013-01
+  verification_type: automated
+  test_type: integration
+  test_scope: full-integration
+  executed_at: 2026-04-30
+  artifact_ref: python -m pytest tests/core tests/domain tests/security tests/requirements tests/agent_runner tests/model_gateway tests/worker tests/e2e -q
+  result: pass
+  residual_risk: none
+  reopen_required: false
+
+- acceptance_ref: ACC-014
+  run_id: RUN-FULL-ACC014-20260430
+  test_case_ref: TC-ACC-014-01
+  verification_type: automated
+  test_type: contract
+  test_scope: full-integration
+  executed_at: 2026-04-30
+  artifact_ref: python -m pytest tests/core tests/domain tests/security tests/requirements tests/agent_runner tests/model_gateway tests/worker tests/e2e -q
+  result: pass
+  residual_risk: none
+  reopen_required: false
+
+- acceptance_ref: ACC-015
+  run_id: RUN-FULL-ACC015-20260430
+  test_case_ref: TC-ACC-015-01
+  verification_type: automated
+  test_type: contract
+  test_scope: full-integration
+  executed_at: 2026-04-30
+  artifact_ref: python -m pytest tests/core tests/domain tests/security tests/requirements tests/agent_runner tests/model_gateway tests/worker tests/e2e -q
+  result: pass
+  residual_risk: none
+  reopen_required: false
+
+- acceptance_ref: ACC-016
+  run_id: RUN-FULL-ACC016-20260430
+  test_case_ref: TC-ACC-016-01
+  verification_type: automated
+  test_type: unit_and_integration
+  test_scope: full-integration
+  executed_at: 2026-04-30
+  artifact_ref: python -m pytest tests/core tests/domain tests/security tests/requirements tests/agent_runner tests/model_gateway tests/worker tests/e2e -q
+  result: pass
+  residual_risk: none
+  reopen_required: false
+
+- acceptance_ref: ACC-017
+  run_id: RUN-FULL-ACC017-20260430
+  test_case_ref: TC-ACC-017-01
+  verification_type: automated
+  test_type: integration
+  test_scope: full-integration
+  executed_at: 2026-04-30
+  artifact_ref: python -m pytest tests/core tests/domain tests/security tests/requirements tests/agent_runner tests/model_gateway tests/worker tests/e2e -q
+  result: pass
+  residual_risk: none
+  reopen_required: false
+
+- acceptance_ref: ACC-018
+  run_id: RUN-FULL-ACC018-20260430
+  test_case_ref: TC-ACC-018-01
+  verification_type: automated
+  test_type: integration
+  test_scope: full-integration
+  executed_at: 2026-04-30
+  artifact_ref: python -m pytest tests/core tests/domain tests/security tests/requirements tests/agent_runner tests/model_gateway tests/worker tests/e2e -q
+  result: pass
+  residual_risk: none
+  reopen_required: false
+
+- acceptance_ref: ACC-019
+  run_id: RUN-FULL-ACC019-20260430
+  test_case_ref: TC-ACC-019-01
+  verification_type: automated
+  test_type: integration
+  test_scope: full-integration
+  executed_at: 2026-04-30
+  artifact_ref: python -m pytest tests/core tests/domain tests/security tests/requirements tests/agent_runner tests/model_gateway tests/worker tests/e2e -q
+  result: pass
+  residual_risk: none
+  reopen_required: false
+
+- acceptance_ref: ACC-020
+  run_id: RUN-FULL-ACC020-20260430
+  test_case_ref: TC-ACC-020-01
+  verification_type: automated
+  test_type: integration
+  test_scope: full-integration
+  executed_at: 2026-04-30
+  artifact_ref: python -m pytest tests/core tests/domain tests/security tests/requirements tests/agent_runner tests/model_gateway tests/worker tests/e2e -q
+  result: pass
+  residual_risk: none
+  reopen_required: false
+
+- acceptance_ref: ACC-021
+  run_id: RUN-FULL-ACC021-20260430
+  test_case_ref: TC-ACC-021-01
+  verification_type: automated
+  test_type: integration
+  test_scope: full-integration
+  executed_at: 2026-04-30
+  artifact_ref: python -m pytest tests/core tests/domain tests/security tests/requirements tests/agent_runner tests/model_gateway tests/worker tests/e2e -q
+  result: pass
+  residual_risk: none
+  reopen_required: false
+
+- acceptance_ref: ACC-022
+  run_id: RUN-FULL-ACC022-20260430
+  test_case_ref: TC-ACC-022-01
+  verification_type: automated
+  test_type: integration
+  test_scope: full-integration
+  executed_at: 2026-04-30
+  artifact_ref: python -m pytest tests/core tests/domain tests/security tests/requirements tests/agent_runner tests/model_gateway tests/worker tests/e2e -q
+  result: pass
+  residual_risk: none
+  reopen_required: false
+
+- acceptance_ref: ACC-023
+  run_id: RUN-FULL-ACC023-20260430
+  test_case_ref: TC-ACC-023-01
+  verification_type: automated
+  test_type: integration
+  test_scope: full-integration
+  executed_at: 2026-04-30
+  artifact_ref: python -m pytest tests/core tests/domain tests/security tests/requirements tests/agent_runner tests/model_gateway tests/worker tests/e2e -q
+  result: pass
+  residual_risk: none
+  reopen_required: false
+
+- acceptance_ref: ACC-024
+  run_id: RUN-FULL-ACC024-20260430
+  test_case_ref: TC-ACC-024-01
+  verification_type: automated
+  test_type: integration
+  test_scope: full-integration
+  executed_at: 2026-04-30
+  artifact_ref: python -m pytest tests/core tests/domain tests/security tests/requirements tests/agent_runner tests/model_gateway tests/worker tests/e2e -q
+  result: pass
+  residual_risk: none
+  reopen_required: false
+
+- acceptance_ref: ACC-025
+  run_id: RUN-FULL-ACC025-20260430
+  test_case_ref: TC-ACC-025-01
+  verification_type: automated
+  test_type: integration
+  test_scope: full-integration
+  executed_at: 2026-04-30
+  artifact_ref: python -m pytest tests/core tests/domain tests/security tests/requirements tests/agent_runner tests/model_gateway tests/worker tests/e2e -q
+  result: pass
+  residual_risk: none
+  reopen_required: false
+
+- acceptance_ref: ACC-026
+  run_id: RUN-FULL-ACC026-20260430
+  test_case_ref: TC-ACC-026-01
+  verification_type: automated
+  test_type: integration
+  test_scope: full-integration
+  executed_at: 2026-04-30
+  artifact_ref: python -m pytest tests/core tests/domain tests/security tests/requirements tests/agent_runner tests/model_gateway tests/worker tests/e2e -q
+  result: pass
+  residual_risk: none
+  reopen_required: false
+
+- acceptance_ref: ACC-027
+  run_id: RUN-FULL-ACC027-20260430
+  test_case_ref: TC-ACC-027-01
+  verification_type: automated
+  test_type: integration
+  test_scope: full-integration
+  executed_at: 2026-04-30
+  artifact_ref: python -m pytest tests/core tests/domain tests/security tests/requirements tests/agent_runner tests/model_gateway tests/worker tests/e2e -q
+  result: pass
+  residual_risk: none
+  reopen_required: false
+
+- acceptance_ref: ACC-028
+  run_id: RUN-FULL-ACC028-20260430
+  test_case_ref: TC-ACC-028-01
+  verification_type: automated
+  test_type: integration
+  test_scope: full-integration
+  executed_at: 2026-04-30
+  artifact_ref: python -m pytest tests/core tests/domain tests/security tests/requirements tests/agent_runner tests/model_gateway tests/worker tests/e2e -q
+  result: pass
+  residual_risk: none
+  reopen_required: false
+
+- acceptance_ref: ACC-029
+  run_id: RUN-FULL-ACC029-20260430
+  test_case_ref: TC-ACC-029-01
+  verification_type: automated
+  test_type: integration
+  test_scope: full-integration
+  executed_at: 2026-04-30
+  artifact_ref: python -m pytest tests/core tests/domain tests/security tests/requirements tests/agent_runner tests/model_gateway tests/worker tests/e2e -q
+  result: pass
+  residual_risk: none
+  reopen_required: false
+
+- acceptance_ref: ACC-030
+  run_id: RUN-FULL-ACC030-20260430
+  test_case_ref: TC-ACC-030-01
+  verification_type: automated
+  test_type: integration
+  test_scope: full-integration
+  executed_at: 2026-04-30
+  artifact_ref: python -m pytest tests/core tests/domain tests/security tests/requirements tests/agent_runner tests/model_gateway tests/worker tests/e2e -q
+  result: pass
+  residual_risk: none
+  reopen_required: false
+
+- acceptance_ref: ACC-031
+  run_id: RUN-FULL-ACC031-20260430
+  test_case_ref: TC-ACC-031-01
+  verification_type: automated
+  test_type: security
+  test_scope: full-integration
+  executed_at: 2026-04-30
+  artifact_ref: python -m pytest tests/core tests/domain tests/security tests/requirements tests/agent_runner tests/model_gateway tests/worker tests/e2e -q
+  result: pass
+  residual_risk: none
+  reopen_required: false
+
+- acceptance_ref: ACC-032
+  run_id: RUN-FULL-ACC032-20260430
+  test_case_ref: TC-ACC-032-01
+  verification_type: automated
+  test_type: static
+  test_scope: full-integration
+  executed_at: 2026-04-30
+  artifact_ref: python -m pytest tests/core tests/domain tests/security tests/requirements tests/agent_runner tests/model_gateway tests/worker tests/e2e -q
+  result: pass
+  residual_risk: none
+  reopen_required: false
+
 <!-- CODESPEC:TESTING:RISKS -->
 ## 4. 残留风险与返工判断
 
