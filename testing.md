@@ -863,6 +863,30 @@ Design approved 前，`reviews/design-review.yaml` 必须记录 R8 cold-start dr
   residual_risk: none
   reopen_required: false
 
+- acceptance_ref: ACC-006
+  run_id: RUN-WI004-ACC006-ROUTE-20260501
+  test_case_ref: TC-ACC-006-01
+  verification_type: automated
+  test_type: e2e
+  test_scope: branch-local
+  executed_at: 2026-05-01
+  artifact_ref: npm --prefix frontend test && npm --prefix frontend run build && route smoke on http://127.0.0.1:8443 for /, /investment, /investment/wf-001, /investment/wf-001/trace, /finance, /knowledge, /governance, /governance/team, /governance/team/quant_analyst, /governance/team/quant_analyst/config, /governance/approvals/ap-001
+  result: pass
+  residual_risk: none
+  reopen_required: false
+
+- acceptance_ref: ACC-007
+  run_id: RUN-WI004-ACC007-ROUTE-20260501
+  test_case_ref: TC-ACC-007-01
+  verification_type: automated
+  test_type: e2e
+  test_scope: branch-local
+  executed_at: 2026-05-01
+  artifact_ref: python -m pytest tests/e2e -q && npm --prefix frontend test
+  result: pass
+  residual_risk: none
+  reopen_required: false
+
 - acceptance_ref: ACC-023
   run_id: RUN-WI005-ACC023-20260430
   test_case_ref: TC-ACC-023-01
