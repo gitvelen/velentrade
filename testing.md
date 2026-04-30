@@ -659,6 +659,150 @@ Design approved 前，`reviews/design-review.yaml` 必须记录 R8 cold-start dr
 
 - run_note: 当前处于 Design 阶段，尚未进入实现与测试执行阶段；本文件只登记 planned TC、WI 映射和 report schema 期望。
 
+- acceptance_ref: ACC-001
+  run_id: RUN-WI001-ACC001-20260430
+  test_case_ref: TC-ACC-001-01
+  verification_type: automated
+  test_type: static_and_integration
+  test_scope: branch-local
+  executed_at: 2026-04-30
+  artifact_ref: tests/domain/test_wi001_foundation.py
+  result: pass
+  residual_risk: none
+  reopen_required: false
+
+- acceptance_ref: ACC-002
+  run_id: RUN-WI001-ACC002-20260430
+  test_case_ref: TC-ACC-002-01
+  verification_type: automated
+  test_type: static
+  test_scope: branch-local
+  executed_at: 2026-04-30
+  artifact_ref: tests/domain/test_wi001_foundation.py
+  result: pass
+  residual_risk: none
+  reopen_required: false
+
+- acceptance_ref: ACC-003
+  run_id: RUN-WI001-ACC003-20260430
+  test_case_ref: TC-ACC-003-01
+  verification_type: automated
+  test_type: contract
+  test_scope: branch-local
+  executed_at: 2026-04-30
+  artifact_ref: tests/domain/test_wi001_foundation.py
+  result: pass
+  residual_risk: none
+  reopen_required: false
+
+- acceptance_ref: ACC-004
+  run_id: RUN-WI001-ACC004-20260430
+  test_case_ref: TC-ACC-004-01
+  verification_type: automated
+  test_type: security_contract
+  test_scope: branch-local
+  executed_at: 2026-04-30
+  artifact_ref: tests/domain/test_wi001_foundation.py
+  result: pass
+  residual_risk: none
+  reopen_required: false
+
+- acceptance_ref: ACC-005
+  run_id: RUN-WI001-ACC005-20260430
+  test_case_ref: TC-ACC-005-01
+  verification_type: automated
+  test_type: integration
+  test_scope: branch-local
+  executed_at: 2026-04-30
+  artifact_ref: tests/domain/test_wi001_foundation.py
+  result: pass
+  residual_risk: none
+  reopen_required: false
+
+- acceptance_ref: ACC-031
+  run_id: RUN-WI001-ACC031-20260430
+  test_case_ref: TC-ACC-031-01
+  verification_type: automated
+  test_type: security
+  test_scope: branch-local
+  executed_at: 2026-04-30
+  artifact_ref: tests/security/test_security_boundaries.py
+  result: pass
+  residual_risk: none
+  reopen_required: false
+
+- acceptance_ref: ACC-032
+  run_id: RUN-WI001-ACC032-20260430
+  test_case_ref: TC-ACC-032-01
+  verification_type: automated
+  test_type: static
+  test_scope: branch-local
+  executed_at: 2026-04-30
+  artifact_ref: tests/requirements/test_requirement_structure.py
+  result: pass
+  residual_risk: none
+  reopen_required: false
+
+- acceptance_ref: ACC-008
+  run_id: RUN-WI002-ACC008-20260430
+  test_case_ref: TC-ACC-008-01
+  verification_type: automated
+  test_type: integration
+  test_scope: branch-local
+  executed_at: 2026-04-30
+  artifact_ref: tests/domain/workflow/test_wi002_workflow_runtime.py
+  result: pass
+  residual_risk: none
+  reopen_required: false
+
+- acceptance_ref: ACC-009
+  run_id: RUN-WI002-ACC009-20260430
+  test_case_ref: TC-ACC-009-01
+  verification_type: automated
+  test_type: integration
+  test_scope: branch-local
+  executed_at: 2026-04-30
+  artifact_ref: tests/domain/data/test_wi002_data_quality.py
+  result: pass
+  residual_risk: none
+  reopen_required: false
+
+- acceptance_ref: ACC-010
+  run_id: RUN-WI002-ACC010-20260430
+  test_case_ref: TC-ACC-010-01
+  verification_type: automated
+  test_type: contract
+  test_scope: branch-local
+  executed_at: 2026-04-30
+  artifact_ref: tests/domain/services/test_wi002_services.py
+  result: pass
+  residual_risk: none
+  reopen_required: false
+
+- acceptance_ref: ACC-011
+  run_id: RUN-WI002-ACC011-20260430
+  test_case_ref: TC-ACC-011-01
+  verification_type: automated
+  test_type: integration
+  test_scope: branch-local
+  executed_at: 2026-04-30
+  artifact_ref: tests/domain/services/test_wi002_services.py
+  result: pass
+  residual_risk: none
+  reopen_required: false
+
+- acceptance_ref: ACC-030
+  run_id: RUN-WI002-ACC030-20260430
+  test_case_ref: TC-ACC-030-01
+  verification_type: automated
+  test_type: integration
+  test_scope: branch-local
+  executed_at: 2026-04-30
+  artifact_ref: tests/domain/governance/test_wi002_governance.py
+  result: pass
+  residual_risk: none
+  reopen_required: false
+
 <!-- CODESPEC:TESTING:RISKS -->
 ## 4. 残留风险与返工判断
 
