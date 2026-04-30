@@ -863,6 +863,78 @@ Design approved 前，`reviews/design-review.yaml` 必须记录 R8 cold-start dr
   residual_risk: none
   reopen_required: false
 
+- acceptance_ref: ACC-023
+  run_id: RUN-WI005-ACC023-20260430
+  test_case_ref: TC-ACC-023-01
+  verification_type: automated
+  test_type: integration
+  test_scope: branch-local
+  executed_at: 2026-04-30
+  artifact_ref: tests/domain/finance/test_wi005_finance_boundary.py
+  result: pass
+  residual_risk: none
+  reopen_required: false
+
+- acceptance_ref: ACC-024
+  run_id: RUN-WI005-ACC024-20260430
+  test_case_ref: TC-ACC-024-01
+  verification_type: automated
+  test_type: integration
+  test_scope: branch-local
+  executed_at: 2026-04-30
+  artifact_ref: tests/domain/attribution/test_wi005_attribution_cfo_factor.py
+  result: pass
+  residual_risk: none
+  reopen_required: false
+
+- acceptance_ref: ACC-025
+  run_id: RUN-WI005-ACC025-20260430
+  test_case_ref: TC-ACC-025-01
+  verification_type: automated
+  test_type: integration
+  test_scope: branch-local
+  executed_at: 2026-04-30
+  artifact_ref: tests/domain/attribution/test_wi005_attribution_cfo_factor.py
+  result: pass
+  residual_risk: none
+  reopen_required: false
+
+- acceptance_ref: ACC-026
+  run_id: RUN-WI005-ACC026-20260430
+  test_case_ref: TC-ACC-026-01
+  verification_type: automated
+  test_type: integration
+  test_scope: branch-local
+  executed_at: 2026-04-30
+  artifact_ref: tests/domain/attribution/test_wi005_attribution_cfo_factor.py
+  result: pass
+  residual_risk: none
+  reopen_required: false
+
+- acceptance_ref: ACC-027
+  run_id: RUN-WI005-ACC027-20260430
+  test_case_ref: TC-ACC-027-01
+  verification_type: automated
+  test_type: integration
+  test_scope: branch-local
+  executed_at: 2026-04-30
+  artifact_ref: tests/domain/knowledge/test_wi005_researcher_reflection.py
+  result: pass
+  residual_risk: none
+  reopen_required: false
+
+- acceptance_ref: ACC-028
+  run_id: RUN-WI005-ACC028-20260430
+  test_case_ref: TC-ACC-028-01
+  verification_type: automated
+  test_type: integration
+  test_scope: branch-local
+  executed_at: 2026-04-30
+  artifact_ref: tests/domain/knowledge/test_wi005_researcher_reflection.py
+  result: pass
+  residual_risk: none
+  reopen_required: false
+
 <!-- CODESPEC:TESTING:RISKS -->
 ## 4. 残留风险与返工判断
 
