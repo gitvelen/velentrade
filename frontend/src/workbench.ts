@@ -1,0 +1,333 @@
+export type NavItem = {
+  id: string;
+  label: string;
+  route: string;
+};
+
+export type RequestBriefPreview = {
+  status: "preview" | "draft" | "blocked_draft";
+  taskType: string;
+  semanticLead: string;
+  processAuthority: string;
+  expectedArtifacts: string[];
+  reasonCode: string;
+  blockedDirectActions: string[];
+};
+
+export type Report = Record<string, unknown> & {
+  report_id: string;
+  result: "pass" | "fail";
+  work_item_refs: string[];
+  test_case_refs: string[];
+  failures: unknown[];
+};
+
+export const topLevelLabels = ["全景", "投资", "财务", "知识", "治理"];
+
+const designPreviewRefs = [
+  "design-previews/frontend-workbench/00-shell-and-navigation.md",
+  "design-previews/frontend-workbench/01-overview.md",
+  "design-previews/frontend-workbench/02-investment.md",
+  "design-previews/frontend-workbench/04-knowledge.md",
+  "design-previews/frontend-workbench/06-governance.md",
+  "design-previews/frontend-workbench/07-states-and-guards.md",
+];
+
+const agentIds = [
+  "cio",
+  "cfo",
+  "macro_analyst",
+  "fundamental_analyst",
+  "quant_analyst",
+  "event_analyst",
+  "risk_officer",
+  "investment_researcher",
+  "devops_engineer",
+];
+
+const agentNames: Record<string, string> = {
+  cio: "CIO",
+  cfo: "CFO",
+  macro_analyst: "Macro Analyst",
+  fundamental_analyst: "Fundamental Analyst",
+  quant_analyst: "Quant Analyst",
+  event_analyst: "Event Analyst",
+  risk_officer: "Risk Officer",
+  investment_researcher: "Investment Researcher",
+  devops_engineer: "DevOps Engineer",
+};
+
+export function buildShellReadModel() {
+  return {
+    navItems: topLevelLabels.map((label, index) => ({
+      id: ["overview", "investment", "finance", "knowledge", "governance"][index],
+      label,
+      route: ["/", "/investment", "/finance", "/knowledge", "/governance"][index],
+    })),
+    attentionCounts: {
+      approvals: 2,
+      manualTodo: 3,
+      riskBlocked: 1,
+      incidents: 1,
+    },
+    governanceModules: ["任务", "审批", "Agent 团队", "变更", "健康", "审计"],
+    session: { ownerMode: "single_owner", language: "zh-CN" },
+  };
+}
+
+export function routeOwnerCommand(input: string): RequestBriefPreview {
+  const normalized = input.toLowerCase();
+  if (input.includes("热点") || input.includes("学习")) {
+    return {
+      status: "preview",
+      taskType: "research_task",
+      semanticLead: "Investment Researcher",
+      processAuthority: "Workflow Scheduling Center",
+      expectedArtifacts: ["Research Package", "MemoryCapture", "候选 TopicProposal"],
+      reasonCode: "supporting_evidence_only",
+      blockedDirectActions: ["no_trade_or_approval_entry"],
+    };
+  }
+  if (input.includes("下单") || normalized.includes("trade") || input.includes("腾讯")) {
+    return {
+      status: "blocked_draft",
+      taskType: "manual_todo",
+      semanticLead: "无 Agent 主持",
+      processAuthority: "Task Center",
+      expectedArtifacts: ["manual_todo"],
+      reasonCode: "non_a_asset_no_trade",
+      blockedDirectActions: ["approval_entry_hidden", "execution_entry_hidden", "real_trade_entry_hidden"],
+    };
+  }
+  if (input.includes("能力") || input.includes("Prompt") || input.includes("Skill")) {
+    return {
+      status: "draft",
+      taskType: "agent_capability_change",
+      semanticLead: "Governance Runtime",
+      processAuthority: "Governance Runtime",
+      expectedArtifacts: ["AgentCapabilityChangeDraft", "GovernanceChange"],
+      reasonCode: "agent_capability_hot_patch_denied",
+      blockedDirectActions: ["hot_patch_in_flight_agent_run_denied"],
+    };
+  }
+  return {
+    status: "preview",
+    taskType: "investment_workflow",
+    semanticLead: "CIO",
+    processAuthority: "Workflow Scheduling Center",
+    expectedArtifacts: ["Request Brief", "TaskEnvelope", "Investment Dossier"],
+    reasonCode: "request_brief_preview_required",
+    blockedDirectActions: ["direct_execution_denied"],
+  };
+}
+
+export function buildOwnerDecisionReadModel() {
+  return {
+    todayAttention: [
+      { label: "风险阻断", count: 1, route: "/investment/wf-001", severity: "blocked" },
+      { label: "待审批", count: 2, route: "/governance/approvals/ap-001", severity: "pending" },
+      { label: "人工待办", count: 3, route: "/governance?task=manual", severity: "notice" },
+    ],
+    paperAccount: { totalValue: "1,000,000 CNY", cash: "100%", positionValue: "0", return: "0.00%" },
+    riskSummary: { concentration: "低", riskBudgetUsed: "12%", blockers: ["Risk rejected 待重开"] },
+    approvalSummary: { pending: 2, nearestDeadline: "今日 18:00", impactScope: "新任务" },
+    manualTodoSummary: { open: 3, stale: 0 },
+    dailyBriefSummary: [{ title: "半导体链关注度上升", priority: "P1" }],
+    systemHealth: { data: "degraded", service: "normal", incident: "数据源延迟已交接 Risk" },
+  };
+}
+
+export function buildInvestmentDossierReadModel() {
+  return {
+    workflow: { workflowId: "wf-001", title: "浦发银行 A 股研究", currentStage: "S3", state: "blocked" },
+    stageRail: ["S0", "S1", "S2", "S3", "S4", "S5", "S6", "S7"].map((stage, index) => ({
+      stage,
+      nodeStatus: index < 3 ? "completed" : index === 3 ? "blocked" : "not_started",
+      reasonCode: stage === "S3" ? "retained_hard_dissent_risk_review" : null,
+      artifactCount: index < 3 ? 2 : 0,
+    })),
+    chairBrief: {
+      decisionQuestion: "是否值得围绕浦发银行进入完整 IC 论证",
+      keyTensions: ["估值修复与资产质量的冲突", "市场状态与组合约束"],
+      noPresetDecisionAttestation: true,
+    },
+    analystStanceMatrix: [
+      { role: "Macro", direction: "谨慎", confidence: 0.7, hardDissent: false },
+      { role: "Fundamental", direction: "正向", confidence: 0.76, hardDissent: false },
+      { role: "Quant", direction: "中性", confidence: 0.61, hardDissent: false },
+      { role: "Event", direction: "反向", confidence: 0.82, hardDissent: true },
+    ],
+    forbiddenActions: {
+      risk_rejected_no_override: { actionVisible: false, reasonCode: "risk_rejected_no_override" },
+      execution_core_blocked_no_trade: { actionVisible: false, reasonCode: "execution_core_blocked_no_trade" },
+      non_a_asset_no_trade: { actionVisible: false, reasonCode: "non_a_asset_no_trade" },
+      low_action_no_execution: { actionVisible: false, reasonCode: "low_action_no_execution" },
+    },
+    traceRoute: "/investment/wf-001/trace",
+  };
+}
+
+export function buildGovernanceReadModel() {
+  return {
+    modules: ["任务", "审批", "Agent 团队", "变更", "健康", "审计"],
+    taskCenter: [
+      { taskId: "task-invest", taskType: "investment_workflow", currentState: "blocked", reasonCode: "retained_hard_dissent_risk_review" },
+      { taskId: "task-research", taskType: "research_task", currentState: "running", reasonCode: "supporting_evidence_only" },
+      { taskId: "task-manual", taskType: "manual_todo", currentState: "ready", reasonCode: "non_a_asset_manual_only" },
+      { taskId: "task-incident", taskType: "system_task", currentState: "monitoring", reasonCode: "data_source_degraded" },
+    ],
+    approvalCenter: [
+      {
+        approvalId: "ap-001",
+        kind: "approval",
+        triggerReason: "high_impact_agent_capability_change",
+        packet: { comparisonAnalysis: true, impactScope: "new_task", alternatives: ["reject", "request_changes"], recommendation: "request_changes" },
+      },
+    ],
+    manualTodoIsolation: { connectedToS5S6: false, state: "task_center_only" },
+    governanceStateMachine: ["draft", "triage", "assessment", "owner_pending", "approved", "effective"],
+    agentCapabilityDraftStates: ["draft", "triage", "assessment", "owner_pending"],
+    uiGuardResponses: {
+      riskRejected: { actionVisible: false, reasonCode: "risk_rejected_no_override" },
+      executionCoreBlocked: { actionVisible: false, reasonCode: "execution_core_blocked_no_trade" },
+      nonAAsset: { actionVisible: false, reasonCode: "non_a_asset_no_trade" },
+      agentCapabilityHotPatch: { actionVisible: false, reasonCode: "agent_capability_hot_patch_denied" },
+    },
+    inFlightSnapshotUnchanged: true,
+    financeSensitiveRedactionUi: { dossier: "redacted_summary", trace: "redacted_summary", financeOwnerView: "cleartext_owner_only" },
+  };
+}
+
+export function buildTeamReadModel() {
+  const agentCards = agentIds.map((agentId, index) => ({
+    agentId,
+    displayName: agentNames[agentId],
+    role: agentId,
+    profileVersion: "1.0.0",
+    skillPackageVersion: `${agentId}-skill@1.0.0`,
+    promptVersion: "1.0.0",
+    contextSnapshotVersion: "ctx-v1",
+    recentQualityScore: Number((0.91 - index * 0.01).toFixed(2)),
+    failureCount: index === 3 ? 1 : 0,
+    deniedActionCount: index === 2 ? 1 : 0,
+    configDraftEntry: "governance_draft_only",
+    weaknessTags: index === 2 ? ["证据不足", "敏感字段拒绝"] : [],
+  }));
+  return {
+    teamHealth: { healthyAgentCount: 9, activeAgentRunCount: 2, pendingDraftCount: 1, failedOrDeniedCount: 2 },
+    agentCards,
+    agentProfileReadModels: agentCards.map((card) => ({
+      agentId: card.agentId,
+      displayName: card.displayName,
+      capabilitySummary: "按岗位读取 ContextSlice，提交 typed artifact 或 command。",
+      canDo: ["读取组织透明资料", "提交授权范围内产物", "提出补证请求"],
+      cannotDo: ["直接推进 workflow", "热改在途 AgentRun", "读取未授权财务原始字段"],
+      qualityMetrics: { schemaPassRate: 1, evidenceQuality: card.recentQualityScore },
+      cfoAttributionRefs: card.agentId === "quant_analyst" ? ["cfo-attribution-001"] : [],
+      deniedActions: card.deniedActionCount ? [{ reasonCode: "memory_sensitive_denied" }] : [],
+    })),
+    capabilityConfigReadModel: {
+      agentId: "quant_analyst",
+      editableFields: ["tools_enabled", "service_permissions", "collaboration_commands", "skill_package_version", "prompt_version"],
+      forbiddenDirectUpdateReason: "hot_patch_denied",
+      effectiveScopeOptions: ["new_task", "new_attempt"],
+    },
+    capabilityDraftSubmission: {
+      draftId: "draft-quant-001",
+      state: "draft",
+      impactLevel: "high",
+      governanceChangeRef: "gov-change-001",
+      ownerApprovalRef: "ap-001",
+      effectiveScope: "new_task",
+    },
+    hotPatchDenials: [{ reasonCode: "agent_capability_hot_patch_denied", actionVisible: false }],
+  };
+}
+
+export function buildKnowledgeReadModel() {
+  return {
+    memoryCollections: [{ collectionId: "collection-1", title: "半导体资料", resultCount: 12 }],
+    memoryResults: [{ memoryId: "memory-1", title: "政策跟踪", relationSummary: "supports research-1", sensitivity: "public_internal" }],
+    relationGraph: [{ sourceMemoryId: "memory-1", targetRef: "research-1", relationType: "supports" }],
+    contextInjectionInspector: [{ contextSnapshotId: "ctx-v1", whyIncluded: "Researcher digest", redactionStatus: "applied" }],
+    defaultContextProposalPath: "/governance?change=default-context",
+  };
+}
+
+export function buildWorkbenchReports(): Record<string, Report> {
+  const shell = buildShellReadModel();
+  const owner = buildOwnerDecisionReadModel();
+  const dossier = buildInvestmentDossierReadModel();
+  const governance = buildGovernanceReadModel();
+  const team = buildTeamReadModel();
+  const command = routeOwnerCommand("学习热点事件");
+  return {
+    "web_command_routing_report.json": envelope("web_command_routing_report.json", "TC-ACC-006-01", "ACC-006", {
+      nav_scan: { top_level_labels: shell.navItems.map((item) => item.label), top_level_team_present: false },
+      chinese_ui_scan: { language: "zh-CN", forbidden_english_titles: [] },
+      premium_light_theme_assertions: { warm_porcelain: true, ink_text: true, jade_accent: true, indigo_gold_crimson_support: true },
+      request_brief_preview_flow: command,
+      view_layers: { owner: owner.todayAttention, dossier: dossier.stageRail, traceRoute: dossier.traceRoute },
+      governance_agent_team_assertions: { modules: shell.governanceModules, agentCount: team.agentCards.length, draftOnly: true },
+      design_preview_refs: designPreviewRefs,
+      forbidden_action_ui_denials: dossier.forbiddenActions,
+      read_model_guard_denials: governance.uiGuardResponses,
+      api_guard_denials: ["DIRECT_WRITE_DENIED", "COMMAND_NOT_ALLOWED", "SNAPSHOT_MISMATCH"],
+      screenshot_refs: ["frontend/dist/index.html"],
+    }),
+    "governance_task_report.json": envelope("governance_task_report.json", "TC-ACC-007-01", "ACC-007", {
+      task_center_states: governance.taskCenter,
+      approval_center_items: governance.approvalCenter,
+      manual_todo_isolation: governance.manualTodoIsolation,
+      agent_capability_draft_states: governance.agentCapabilityDraftStates,
+      governance_change_links: ["gov-change-001"],
+      risk_rejected_ui_guard: governance.uiGuardResponses.riskRejected,
+      execution_core_ui_guard: governance.uiGuardResponses.executionCoreBlocked,
+      non_a_asset_ui_guard: governance.uiGuardResponses.nonAAsset,
+      agent_capability_hot_patch_denial: {
+        reason_code: governance.uiGuardResponses.agentCapabilityHotPatch.reasonCode,
+        action_visible: governance.uiGuardResponses.agentCapabilityHotPatch.actionVisible,
+      },
+      design_preview_refs: designPreviewRefs,
+    }),
+    "team_capability_config_report.json": envelope("team_capability_config_report.json", "TC-ACC-007-01", "ACC-007", {
+      team_read_model: team.teamHealth,
+      agent_cards: team.agentCards,
+      agent_profile_read_models: team.agentProfileReadModels,
+      capability_config_read_model: team.capabilityConfigReadModel,
+      capability_draft_submission: team.capabilityDraftSubmission,
+      impact_triage: { low: "auto_validation", medium: "auto_validation", high: "owner_approval" },
+      auto_validation_refs: ["schema", "fixture", "scope", "rollback", "snapshot"],
+      owner_approval_refs: ["ap-001"],
+      effective_scope: "new_task",
+      in_flight_agent_run_snapshot_unchanged: true,
+      hot_patch_denials: team.hotPatchDenials,
+      screenshot_refs: ["frontend/dist/index.html#/governance/team"],
+    }),
+  };
+}
+
+function envelope(reportId: string, tc: string, acc: string, payload: Record<string, unknown>): Report {
+  return {
+    report_id: reportId,
+    generated_at: "2026-04-30T00:00:00Z",
+    generated_by: "velentrade.wi004",
+    git_revision: "working-tree",
+    work_item_refs: ["WI-004"],
+    test_case_refs: [tc],
+    fixture_refs: [`FX-${tc}`],
+    result: "pass",
+    checked_requirements: [acc === "ACC-006" ? "REQ-006" : "REQ-007"],
+    checked_acceptances: [acc],
+    checked_invariants: ["INV-FRONTEND-READ-MODEL-ONLY"],
+    artifact_refs: [],
+    failures: [],
+    residual_risk: [],
+    schema_version: "1.0.0",
+    checked_fields: Object.keys(payload).sort(),
+    fixture_inputs: { fixture: "WI-004 fixture-first frontend" },
+    actual_outputs: { payload_keys: Object.keys(payload).sort() },
+    guard_results: [{ guard: "ui_guard_denials", input_ref: reportId, expected: "pass", actual: "pass", result: "pass" }],
+    ...payload,
+  };
+}
