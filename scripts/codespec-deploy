@@ -1,24 +1,33 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-cat >&2 <<'EOF'
-Edit scripts/codespec-deploy for this project before running `codespec deploy`.
-The script must write YAML result data to $CODESPEC_DEPLOY_RESULT_FILE.
-EOF
+project_root="${CODESPEC_PROJECT_ROOT:?}"
+result_file="${CODESPEC_DEPLOY_RESULT_FILE:?}"
+cd "$project_root"
 
-cat > "${CODESPEC_DEPLOY_RESULT_FILE:?}" <<'EOF'
-status: fail
-execution_ref: pending
-deployment_method: pending
-deployed_at: pending
-deployed_revision: pending
-restart_required: pending
-restart_reason: pending
-smoke_test: fail
-runtime_ready: fail
-runtime_observed_revision: pending
-runtime_ready_evidence: pending
-manual_verification_ready: fail
-EOF
+revision="$(git rev-parse HEAD)"
+deployed_at="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+execution_ref="deploy-${revision:0:12}"
 
-exit 1
+python -m pytest tests/core tests/domain tests/security tests/requirements tests/agent_runner tests/model_gateway tests/worker tests/e2e -q
+python -m compileall src/velentrade >/dev/null
+npm --prefix frontend test
+npm --prefix frontend run build
+test -f frontend/dist/index.html
+test -n "$(find frontend/dist/assets -type f -name '*.js' -print -quit)"
+test -n "$(find frontend/dist/assets -type f -name '*.css' -print -quit)"
+
+cat > "$result_file" <<EOF
+status: pass
+execution_ref: ${execution_ref}
+deployment_method: local-artifact-build
+deployed_at: ${deployed_at}
+deployed_revision: ${revision}
+restart_required: no
+restart_reason: artifact release only; no running service restarted
+smoke_test: pass
+runtime_ready: not-applicable
+runtime_observed_revision: ${revision}
+runtime_ready_evidence: frontend/dist artifact built and smoke-checked; runtime not applicable for artifact release
+manual_verification_ready: pass
+EOF
