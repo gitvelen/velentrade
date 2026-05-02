@@ -142,6 +142,83 @@ describe("WI-004 workbench interactions", () => {
     expect(document.body.textContent).toContain("任务卡已生成：task-api-1");
   });
 
+  it("links confirmed investment tasks to the live investment dossier read model", async () => {
+    vi.stubGlobal("fetch", vi.fn(async (input: string | URL | Request, init?: RequestInit) => {
+      const href = typeof input === "string" ? input : input instanceof URL ? input.pathname : input.url;
+      if (href.endsWith("/api/requests/briefs")) {
+        expect(init?.method).toBe("POST");
+        return mockJsonResponse({
+          brief_id: "brief-investment-1",
+          route_type: "investment_workflow",
+          suggested_semantic_lead: "cio",
+          process_authority: "workflow_scheduling_center",
+          predicted_outputs: ["ICChairBrief", "DecisionPacket"],
+          forbidden_action_reason_code: null,
+          owner_confirmation_status: "draft",
+          version: 1,
+        });
+      }
+      if (href.endsWith("/api/requests/briefs/brief-investment-1/confirmation")) {
+        expect(init?.method).toBe("POST");
+        return mockJsonResponse({
+          task_id: "task-investment-1",
+          task_type: "investment_workflow",
+          current_state: "ready",
+          reason_code: "request_brief_confirmed",
+          workflow_id: "workflow-api-1",
+        });
+      }
+      if (href.endsWith("/api/workflows/workflow-api-1/dossier")) {
+        return mockJsonResponse({
+          workflow: {
+            workflow_id: "workflow-api-1",
+            title: "API 投资档案",
+            current_stage: "S0",
+            state: "running",
+          },
+          stage_rail: [{ stage: "S0", node_status: "not_started", reason_code: null, artifact_count: 0 }],
+          chair_brief: {
+            decision_question: "是否进入正式 IC",
+            key_tensions: ["真实 API 链路"],
+            no_preset_decision_attestation: true,
+          },
+          analyst_stance_matrix: [],
+          forbidden_actions: {},
+        });
+      }
+      throw new Error(`unexpected fetch: ${href}`);
+    }));
+
+    await bootWorkbench("/");
+
+    await act(async () => {
+      buttonByName("自由对话").click();
+    });
+    await act(async () => {
+      const input = inputByLabel("自然语言请求");
+      setInputValue(input, "请正式研究浦发银行");
+    });
+    await act(async () => {
+      buttonByName("生成请求预览").click();
+    });
+    await flushAsyncWork();
+    await act(async () => {
+      buttonByName("确认生成任务卡").click();
+    });
+    await flushAsyncWork();
+
+    expect(document.body.textContent).toContain("任务卡已生成：task-investment-1");
+
+    await act(async () => {
+      linkByName("打开投资档案").click();
+    });
+    await flushAsyncWork();
+
+    expect(window.location.pathname).toBe("/investment/workflow-api-1");
+    expect(document.body.textContent).toContain("API 投资档案");
+    expect(document.body.textContent).toContain("当前查看：S0 任务接收");
+  });
+
   it("keeps vague owner commands in draft and asks concise clarification questions", async () => {
     await bootWorkbench("/");
 

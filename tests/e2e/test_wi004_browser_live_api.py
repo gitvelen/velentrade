@@ -170,7 +170,7 @@ def test_browser_owner_command_uses_live_fastapi_via_vite_proxy(tmp_path):
             """
             const input = document.querySelector('input[aria-label="自然语言请求"]');
             const setter = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, 'value').set;
-            setter.call(input, '学习热点事件');
+            setter.call(input, '请正式研究浦发银行');
             input.dispatchEvent(new Event('input', { bubbles: true }));
             """
         )
@@ -182,6 +182,10 @@ def test_browser_owner_command_uses_live_fastapi_via_vite_proxy(tmp_path):
         )
         page.evaluate("[...document.querySelectorAll('button')].find((item) => item.innerText.includes('确认生成任务卡')).click()")
         _wait_for_expression(page, "document.body.innerText.includes('任务卡已生成：')")
+        _wait_for_expression(page, "document.body.innerText.includes('打开投资档案')")
+        page.evaluate("[...document.querySelectorAll('a')].find((item) => item.innerText.includes('打开投资档案')).click()")
+        _wait_for_expression(page, "window.location.pathname.startsWith('/investment/')")
+        _wait_for_expression(page, "document.body.innerText.includes('投资档案') && document.body.innerText.includes('S0')")
         task_count = _wait_for_expression(
             page,
             "fetch('/api/tasks').then((response) => response.json()).then((payload) => payload.data.task_center.length)",

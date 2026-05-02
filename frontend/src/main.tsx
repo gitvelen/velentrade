@@ -63,6 +63,7 @@ import {
 import "./styles.css";
 
 type Navigate = (href: string) => void;
+type ConfirmedTaskFeedback = { label: string; href?: string };
 
 function App() {
   const shell = buildShellReadModel();
@@ -73,7 +74,7 @@ function App() {
   const [generatedPreview, setGeneratedPreview] = useState<RequestBriefPreview | null>(null);
   const [requestBrief, setRequestBrief] = useState<RequestBriefApiReadModel | null>(null);
   const [requestBriefStatus, setRequestBriefStatus] = useState<"idle" | "syncing" | "ready" | "failed">("idle");
-  const [confirmedTask, setConfirmedTask] = useState<string | null>(null);
+  const [confirmedTask, setConfirmedTask] = useState<ConfirmedTaskFeedback | null>(null);
 
   useEffect(() => {
     const onPopState = () => setCurrentLocation(`${window.location.pathname}${window.location.search}`);
@@ -172,10 +173,14 @@ function App() {
                       }
                       confirmRequestBrief(requestBrief.briefId, requestBrief.version)
                         .then((task: TaskCardApiReadModel) => {
-                          setConfirmedTask(`任务卡已生成：${task.taskId}`);
+                          setConfirmedTask({
+                            label: `任务卡已生成：${task.taskId}`,
+                            href: task.workflowId ? `/investment/${task.workflowId}` : undefined,
+                          });
                         })
-                        .catch(() => setConfirmedTask(`任务卡已生成：${generatedPreview.display.taskLabel}`));
+                        .catch(() => setConfirmedTask({ label: `任务卡已生成：${generatedPreview.display.taskLabel}` }));
                     }}
+                    onNavigate={navigate}
                     requestBriefStatus={requestBriefStatus}
                     canConfirm={Boolean(requestBrief?.briefId)}
                   />
@@ -807,13 +812,15 @@ function RequestPreviewCard({
   confirmedTask,
   onCancel,
   onConfirm,
+  onNavigate,
   requestBriefStatus,
   canConfirm,
 }: {
   preview: RequestBriefPreview;
-  confirmedTask: string | null;
+  confirmedTask: ConfirmedTaskFeedback | null;
   onCancel: () => void;
   onConfirm: () => void;
+  onNavigate: Navigate;
   requestBriefStatus: "idle" | "syncing" | "ready" | "failed";
   canConfirm: boolean;
 }) {
@@ -838,7 +845,17 @@ function RequestPreviewCard({
         {preview.status === "preview" ? <button type="button" disabled={!canConfirm} onClick={onConfirm}>确认生成任务卡</button> : null}
         <button type="button" className="ghost-button" onClick={onCancel}>{preview.status === "preview" ? "取消" : "继续编辑"}</button>
       </div>
-      {confirmedTask ? <p className="panel-note">{confirmedTask} · 等待后端确认后刷新状态</p> : null}
+      {confirmedTask ? (
+        <p className="panel-note">
+          {confirmedTask.label} · 等待后端确认后刷新状态
+          {confirmedTask.href ? (
+            <>
+              {" · "}
+              <WorkbenchLink className="inline-action" href={confirmedTask.href} onNavigate={onNavigate}>打开投资档案</WorkbenchLink>
+            </>
+          ) : null}
+        </p>
+      ) : null}
     </div>
   );
 }

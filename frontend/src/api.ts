@@ -188,6 +188,7 @@ export type TaskCardApiReadModel = {
   taskType: string;
   currentState: string;
   reasonCode: string;
+  workflowId?: string;
 };
 
 export type CapabilityDraftApiReadModel = {
@@ -537,6 +538,7 @@ export async function confirmRequestBrief(briefId: string, version: number): Pro
     task_type?: string;
     current_state?: string;
     reason_code?: string;
+    workflow_id?: string | null;
   }>(`/api/requests/briefs/${briefId}/confirmation`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -548,6 +550,7 @@ export async function confirmRequestBrief(briefId: string, version: number): Pro
     taskType: payload.task_type ?? "manual_todo",
     currentState: payload.current_state ?? "draft",
     reasonCode: payload.reason_code ?? "unknown",
+    workflowId: payload.workflow_id ?? undefined,
   };
 }
 
