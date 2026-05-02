@@ -1,11 +1,13 @@
 from __future__ import annotations
 
+import os
 from dataclasses import asdict, is_dataclass, replace
 from typing import Any
 
 from fastapi import FastAPI
 from fastapi.responses import JSONResponse
 
+from velentrade.core.settings import Settings
 from velentrade.db.session import build_engine
 from velentrade.db.store import SqlAlchemyGatewayMirror
 from velentrade.domain.agents.registry import (
@@ -436,7 +438,10 @@ def _governance_change_read_model(change) -> dict[str, Any]:
 
 def build_app(runtime: ApiRuntime | None = None) -> FastAPI:
     app = FastAPI(title="velentrade-api", version="0.1.0")
-    api_runtime = runtime or ApiRuntime()
+    settings = Settings()
+    database_url = os.environ.get(settings.database_url_env)
+    api_runtime = runtime or ApiRuntime(database_url=database_url)
+    app.state.api_runtime = api_runtime
 
     @app.get("/api/team")
     def get_team() -> dict[str, Any]:

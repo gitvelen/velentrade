@@ -26,24 +26,84 @@ if [ "$release_mode" = "runtime" ]; then
 
   python - <<'PY'
 import json
-import sys
+import subprocess
 import time
 from urllib import error, request
 
-deadline = time.time() + 180
-url = "http://127.0.0.1:8000/api/team"
-last_error = None
-while time.time() < deadline:
-    try:
-        with request.urlopen(url, timeout=5) as response:
-            body = json.loads(response.read().decode("utf-8"))
-        if response.status == 200 and "data" in body:
-            break
-    except (error.URLError, TimeoutError, ConnectionError) as exc:
-        last_error = exc
-        time.sleep(2)
-else:
+API_BASE = "http://127.0.0.1:8000"
+RUNNER_BASE = "http://127.0.0.1:8100"
+
+
+def api_json(method, path, payload=None, base_url=API_BASE):
+    data = None if payload is None else json.dumps(payload).encode("utf-8")
+    http_request = request.Request(
+        url=f"{base_url}{path}",
+        data=data,
+        headers={"Content-Type": "application/json"},
+        method=method,
+    )
+    with request.urlopen(http_request, timeout=10) as response:
+        return json.loads(response.read().decode("utf-8"))
+
+
+def wait_api_ready():
+    deadline = time.time() + 180
+    last_error = None
+    while time.time() < deadline:
+        try:
+            body = api_json("GET", "/api/team")
+            if "data" in body:
+                return
+        except (error.URLError, TimeoutError, ConnectionError) as exc:
+            last_error = exc
+            time.sleep(2)
     raise SystemExit(f"api runtime did not become ready: {last_error}")
+
+
+wait_api_ready()
+
+brief = api_json("POST", "/api/requests/briefs", {
+    "raw_text": "runtime smoke formal investment workflow",
+    "source": "runtime_smoke",
+    "requested_scope": {
+        "intent": "formal_investment_decision",
+        "asset_scope": "a_share_common_stock",
+        "target_action": "approve_trade"
+    },
+    "authorization_boundary": "research_only_until_owner_approval"
+})["data"]
+task = api_json("POST", f"/api/requests/briefs/{brief['brief_id']}/confirmation", {
+    "decision": "confirm",
+    "client_seen_version": 1
+})["data"]
+task_id = task["task_id"]
+
+runner = api_json("POST", "/internal/agent-runner/runs/runtime-smoke-run/start", {
+    "agent_run_id": "runtime-smoke-run",
+    "workflow_id": "runtime-smoke-workflow",
+    "attempt_no": 1,
+    "stage": "S1",
+    "agent_id": "investment_researcher",
+    "profile_version": "1.0.0",
+    "context_snapshot_id": "ctx-v1",
+    "context_slice_id": "slice-runtime-smoke",
+    "tool_profile_id": "readonly-basic",
+    "skill_package_versions": ["research-pack@1.0.0"],
+    "model_profile_id": "fake_test",
+    "run_goal": "runtime smoke deterministic proposal",
+    "output_artifact_schema": "ResearchPackage",
+    "allowed_command_types": ["request_evidence"],
+    "budget_tokens": 1000,
+    "timeout_seconds": 30
+}, base_url=RUNNER_BASE)["data"]
+if runner["status"] != "completed" or runner["business_fact_created"]:
+    raise SystemExit(f"agent-runner smoke failed: {runner}")
+
+subprocess.run(["docker", "compose", "restart", "api"], check=True, capture_output=True, text=True)
+wait_api_ready()
+persisted_tasks = api_json("GET", "/api/tasks")["data"]["task_center"]
+if task_id not in {item["task_id"] for item in persisted_tasks}:
+    raise SystemExit("persisted_task_after_restart missing from /api/tasks")
 PY
 
   running_services="$(docker compose ps --status running --services)"
@@ -62,7 +122,7 @@ restart_reason: docker compose services launched for local runtime release
 smoke_test: pass
 runtime_ready: pass
 runtime_observed_revision: ${revision}
-runtime_ready_evidence: docker compose services are running and http://127.0.0.1:8000/api/team returned 200
+runtime_ready_evidence: docker compose services are running; /api/requests/briefs created a task; persisted_task_after_restart survived docker compose restart api; agent-runner internal endpoint returned completed fake_test result
 manual_verification_ready: pass
 EOF
   exit 0

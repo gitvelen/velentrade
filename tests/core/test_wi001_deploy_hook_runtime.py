@@ -12,3 +12,7 @@ def test_deploy_hook_supports_runtime_compose_release_mode():
     assert "docker compose down -v --remove-orphans" in script
     assert "deployment_method: docker-compose-runtime" in script
     assert "runtime_ready: pass" in script
+    assert "/api/requests/briefs" in script
+    assert "docker compose restart api" in script
+    assert "persisted_task_after_restart" in script
+    assert "/internal/agent-runner/runs/runtime-smoke-run/start" in script

@@ -2,7 +2,25 @@ from __future__ import annotations
 
 from fastapi.testclient import TestClient
 
+from velentrade.api import app as api_app
 from velentrade.api.app import build_app
+
+
+def test_build_app_factory_uses_database_url_env(monkeypatch):
+    captured_urls: list[str] = []
+
+    class FakeStore:
+        def __init__(self, engine):
+            self.engine = engine
+
+    monkeypatch.setenv("VELENTRADE_DATABASE_URL", "postgresql+psycopg://runtime-db")
+    monkeypatch.setattr(api_app, "build_engine", lambda database_url: captured_urls.append(database_url) or object())
+    monkeypatch.setattr(api_app, "SqlAlchemyGatewayMirror", FakeStore)
+
+    app = api_app.build_app()
+
+    assert captured_urls == ["postgresql+psycopg://runtime-db"]
+    assert isinstance(app.state.api_runtime.gateway.store, FakeStore)
 
 
 def test_team_and_agent_profile_endpoints_expose_wi001_read_models():
