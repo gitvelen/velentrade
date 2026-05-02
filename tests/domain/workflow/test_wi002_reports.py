@@ -19,6 +19,9 @@ def test_wi002_reports_include_contract_payloads_and_branch_local_evidence_field
             "quality_band_actions",
             "critical_field_minimums",
             "fallback_attempts",
+            "real_source_adapter",
+            "source_registry_routing",
+            "public_source_fallback",
             "cache_decision_policy",
             "conflict_resolution_report",
             "execution_core_freshness_gate",
@@ -62,3 +65,10 @@ def test_wi002_reports_include_contract_payloads_and_branch_local_evidence_field
         assert report["failures"] == []
         assert set(report) >= fields
         assert report["guard_results"][0]["result"] == "pass"
+
+    data_report = reports["data_quality_degradation_report.json"]
+    assert data_report["real_source_adapter"]["adapter_kind"] == "public_http_csv_daily_quote"
+    assert data_report["real_source_adapter"]["live_provider_smoke"] == "not_claimed"
+    assert data_report["source_registry_routing"]["require_real_skips_fixture_only"] is True
+    assert data_report["public_source_fallback"]["selected_source_id"] == "backup-public"
+    assert data_report["public_source_fallback"]["quality_band"] == "normal"

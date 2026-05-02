@@ -5,6 +5,15 @@ from typing import Any
 
 from velentrade.domain.common import utc_now
 from velentrade.domain.data.quality import DataQualityService, DataRequest, RequiredField
+from velentrade.domain.data.sources import (
+    DataCollectionService,
+    DataSourceDefinition,
+    DataSourceRegistry,
+    NormalizedDataSet,
+    PublicHttpCsvDailyQuoteAdapter,
+    SourceFetchError,
+    StaticDataSourceAdapter,
+)
 from velentrade.domain.governance.runtime import GovernanceRuntime
 from velentrade.domain.services.boundary import ServiceBoundaryChecker, ServiceOutput
 from velentrade.domain.services.market_state import MarketStateEngine
@@ -100,6 +109,72 @@ def _data_report() -> dict[str, Any]:
     normal = service.evaluate(base_request, 0.95, 0.95)
     degraded = service.evaluate(base_request, 0.75, 0.80)
     blocked = service.evaluate(base_request, 0.45, 0.45, fallback_attempts=["primary", "backup"])
+    real_request = DataRequest(
+        request_id="public-data-report",
+        trace_id="trace-public-data",
+        data_domain="a_share_market",
+        symbol_or_scope="600000.SH",
+        required_usage="decision_core",
+        freshness_requirement="same_trading_day",
+        required_fields=[
+            RequiredField("symbol", True, True, critical=True),
+            RequiredField("trade_date", True, True, critical=True),
+            RequiredField("close", True, True, critical=True),
+            RequiredField("volume", True, True),
+            RequiredField("source_timestamp", True, True),
+        ],
+        requesting_stage="S1",
+        requesting_agent_or_service="data_service",
+    )
+    fixture_source = DataSourceDefinition(
+        source_id="fixture-only",
+        data_domain="a_share_market",
+        allowed_usage=("decision_core",),
+        priority="T4",
+        status="fixture_only",
+        license_summary="fixture contract only",
+        rate_limit={"requests_per_minute": 0},
+        adapter_kind="fixture_contract",
+    )
+    primary_source = DataSourceDefinition(
+        source_id="primary-public",
+        data_domain="a_share_market",
+        allowed_usage=("decision_core", "research"),
+        priority="T1",
+        status="active",
+        license_summary="public HTTP CSV; review provider terms before production use",
+        rate_limit={"requests_per_minute": 30},
+        adapter_kind="public_http_csv_daily_quote",
+        endpoint_template="https://quotes.example/{symbol}.csv",
+        cache_ttl_seconds=86400,
+    )
+    backup_source = DataSourceDefinition(
+        source_id="backup-public",
+        data_domain="a_share_market",
+        allowed_usage=("decision_core", "research"),
+        priority="T1",
+        status="active",
+        license_summary="public HTTP CSV fallback; review provider terms before production use",
+        rate_limit={"requests_per_minute": 30},
+        adapter_kind="public_http_csv_daily_quote",
+        endpoint_template="https://backup-quotes.example/{symbol}.csv",
+        cache_ttl_seconds=86400,
+    )
+
+    def fail_fetch(_url: str) -> str:
+        raise SourceFetchError("primary public source unavailable")
+
+    registry = DataSourceRegistry()
+    registry.register(fixture_source, StaticDataSourceAdapter(NormalizedDataSet("fixture-only", [])))
+    registry.register(primary_source, PublicHttpCsvDailyQuoteAdapter(primary_source, fetch_text=fail_fetch))
+    registry.register(
+        backup_source,
+        PublicHttpCsvDailyQuoteAdapter(
+            backup_source,
+            fetch_text=lambda _url: "Date,Open,High,Low,Close,Volume\n2026-04-30,10,11,9,10.8,200\n",
+        ),
+    )
+    collection = DataCollectionService(registry).collect(real_request, require_real=True)
     execution = service.evaluate(
         DataRequest(
             request_id="exec-report",
@@ -127,6 +202,29 @@ def _data_report() -> dict[str, Any]:
             },
             "critical_field_minimums": execution.critical_field_results,
             "fallback_attempts": blocked.fallback_attempts,
+            "real_source_adapter": {
+                "adapter_kind": backup_source.adapter_kind,
+                "license_summary": backup_source.license_summary,
+                "rate_limit": backup_source.rate_limit,
+                "normalized_fields": sorted(collection.data.records[0]) if collection.data else [],
+                "live_provider_smoke": "not_claimed",
+            },
+            "source_registry_routing": {
+                "require_real_skips_fixture_only": all(
+                    source.adapter_kind != "fixture_contract"
+                    for source, _adapter in registry.eligible_sources("a_share_market", "decision_core", require_real=True)
+                ),
+                "eligible_real_sources": [
+                    source.source_id
+                    for source, _adapter in registry.eligible_sources("a_share_market", "decision_core", require_real=True)
+                ],
+            },
+            "public_source_fallback": {
+                "selected_source_id": collection.selected_source_id,
+                "fallback_attempts": collection.report.fallback_attempts,
+                "quality_band": collection.report.quality_band,
+                "decision_core_status": collection.report.decision_core_status,
+            },
             "cache_decision_policy": service.evaluate(base_request, 0.95, 0.95, cache_hit=True).cache_usage,
             "conflict_resolution_report": service.evaluate(base_request, 0.95, 0.95, conflict_severity="critical").reason_code,
             "execution_core_freshness_gate": execution.execution_core_status,
