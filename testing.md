@@ -20,7 +20,7 @@
 - `in_memory_domain`: 部分 domain dataclass 行为可由现有测试支撑，但尚未逐 RUN 复核升级。
 - `api_connected`: 已完成 WI-001/WI-004 foundation 级证据；`FastAPI` app/router、`/api/team`、`/api/gateway/*`、`/api/collaboration/commands`、`/api/workflows/*`、`/api/knowledge/memory-items*`、`/api/tasks`、`/api/approvals`、`/api/governance/changes`、`/api/finance/overview`、`/api/devops/health` 已有自动化验证，但真实外部数据采集和跨 WI 浏览器到后端闭环仍未完成。
 - `db_persistent`: 已完成 WI-001 foundation 级证据；`Alembic`、PostgreSQL schema、seed、Postgres smoke、API->DB mirror、Task/Workflow/WorkflowStage 持久化恢复已有自动化验证，但真实外部数据源 adapter 仍未接入。
-- `integrated_runtime`: 未完成；`docker-compose` runtime smoke 已验证 PostgreSQL migration、Redis/Celery 服务、FastAPI endpoint、same-origin frontend static、agent-runner 和 API restart 后持久化，但前端浏览器点击仍是在独立 live API/Vite run 中验证，尚无同一 RUN 内 PostgreSQL + Redis/Celery + API + 前端浏览器 + 跨 WI 数据流闭环。
+- `integrated_runtime`: WI-001/WI-004 RequestBrief -> Task foundation slice 已完成；同一 `docker-compose` RUN 已验证 PostgreSQL migration、Redis/Celery 服务、FastAPI endpoint、same-origin frontend、Chromium 浏览器点击、agent-runner 和 API restart 后持久化。全 V1 投资/数据/执行闭环仍未完成，不能外推为所有 WI 的 integrated_runtime。
 - `owner_verified`: 未完成；人工验收仍未通过。
 
 后续只有满足 `../lessons_learned.md` R10-R13 的真实证据，才允许重新追加 `test_scope: full-integration` 的 pass 记录。
@@ -1324,6 +1324,32 @@ Design approved 前，`reviews/design-review.yaml` 必须记录 R8 cold-start dr
   residual_risk: Dockerfile/prebuilt image path now avoids container-start `pip install -e .`; Alembic reads VELENTRADE_DATABASE_URL; smoke proves Postgres/Redis/API/worker/beat/agent-runner services running and RequestBrief task persistence across API restart. This is not integrated_runtime because no browser click ran against this same compose runtime.
   reopen_required: false
 
+- acceptance_ref: ACC-005
+  run_id: RUN-WI001-COMPOSE-BROWSER-RUNTIME-20260502
+  test_case_ref: TC-ACC-005-01
+  verification_type: manual_runtime_smoke
+  test_type: runtime_e2e
+  test_scope: branch-local-compose-browser-runtime
+  completion_level: integrated_runtime
+  executed_at: 2026-05-02
+  artifact_ref: docker compose build migrate api agent-runner worker beat; docker compose up -d --force-recreate agent-runner api worker beat; python integrated runtime smoke for /api/team, same-origin /, /api/requests/briefs confirmation, /internal/agent-runner/runs/runtime-smoke-run-2/start, docker compose restart api, /api/tasks persisted_task_after_restart, Chromium click 自由对话 -> 生成请求预览 -> 确认生成任务卡 against http://127.0.0.1:8000, docker compose ps running services
+  result: pass
+  residual_risk: Proves WI-001/WI-004 foundation runtime only: RequestBrief -> Task through browser/API/PostgreSQL with Redis/Celery services and agent-runner alive. Does not prove full S0-S7 investment semantics, external data provider, paper execution, or Owner acceptance.
+  reopen_required: false
+
+- acceptance_ref: ACC-006
+  run_id: RUN-WI004-COMPOSE-BROWSER-RUNTIME-20260502
+  test_case_ref: TC-ACC-006-01
+  verification_type: manual_runtime_smoke
+  test_type: browser_e2e
+  test_scope: branch-local-compose-browser-runtime
+  completion_level: integrated_runtime
+  executed_at: 2026-05-02
+  artifact_ref: same command as RUN-WI001-COMPOSE-BROWSER-RUNTIME-20260502; observed output included browser_click_confirmed_task=true, persisted_task_after_restart=true, same_origin_frontend_served=true, agent_runner_status=completed, running_services=[agent-runner, api, beat, postgres, redis, worker]
+  result: pass
+  residual_risk: Browser action is verified against built frontend served by compose FastAPI, not Vite; still not Owner manual acceptance and not a full investment workflow browser path.
+  reopen_required: false
+
 - acceptance_ref: ACC-006
   run_id: RUN-WI004-API-CONNECTED-20260502
   test_case_ref: TC-ACC-006-01
@@ -1839,6 +1865,6 @@ Design approved 前，`reviews/design-review.yaml` 必须记录 R8 cold-start dr
 - notes:
   - 本阶段已追加 WI-001/WI-004 的 `api_connected` 与 `db_persistent` 级实现证据；历史 `RUN-FULL-*` 仍仅为 `fixture_contract`。
   - Implementation 阶段必须按 `contracts/verification-report-schemas.md` 生成可复核 report artifact。
-  - 公开 HTTP CSV 数据源 adapter 已达到 `in_memory_domain` 自动化验证；外网 live provider smoke、live browser -> FastAPI -> PostgreSQL/Redis/Celery 跨 WI 闭环和 Owner 人工验收仍未完成。
-  - 2026-05-02 docker compose runtime blocker 已修复到 `db_persistent` 级：允许 Dockerfile/预构建镜像/`wheelhouse/`，runtime image 在 build 阶段通过 PyPI mirror 或 wheelhouse 安装依赖，api/worker/beat/agent-runner 启动命令不再 `pip install -e .`；手工 compose smoke 已通过 same-origin frontend static、RequestBrief->Task、agent-runner fake_test、API restart 后 task 持久化和六个服务 running 检查。仍不能声称 `integrated_runtime`，因为缺少同一 compose runtime 内的浏览器点击闭环。
+  - 公开 HTTP CSV 数据源 adapter 已达到 `in_memory_domain` 自动化验证；外网 live provider smoke、完整 S0-S7/browser -> FastAPI -> PostgreSQL/Redis/Celery 投资链闭环和 Owner 人工验收仍未完成。
+  - 2026-05-02 docker compose runtime blocker 已修复到 WI-001/WI-004 `integrated_runtime` foundation 级：允许 Dockerfile/预构建镜像/`wheelhouse/`，runtime image 在 build 阶段通过 PyPI mirror 或 wheelhouse 安装依赖，api/worker/beat/agent-runner 启动命令不再 `pip install -e .`；同一 compose runtime 已通过 same-origin frontend、Chromium 浏览器点击、RequestBrief->Task、agent-runner fake_test、API restart 后 task 持久化和六个服务 running 检查。仍不能外推到全 V1，因为 S0-S7、真实外部数据、纸面执行和 Owner 人工验收未闭环。
   - 若后续任何 P0 自动化不可行，必须回到 Requirement 或 review 明确记录例外理由。
