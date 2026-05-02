@@ -4,7 +4,7 @@ from copy import deepcopy
 from typing import Any
 
 from velentrade.domain.common import utc_now
-from velentrade.domain.investment.owner_exception.approval import OwnerExceptionService
+from velentrade.domain.investment.owner_exception.approval import ApprovalRecord, OwnerExceptionService
 from velentrade.domain.investment.risk.runtime import RiskReviewRuntime
 
 
@@ -18,13 +18,29 @@ def build_wi008_risk_reports() -> dict[str, dict[str, Any]]:
     packet = owner.create_packet("candidate-1", "major_deviation")
     pending = owner.submit_for_approval(packet)
     expired = owner.apply_timeout(pending)
+    timeout_records = {
+        approval_type: ApprovalRecord(
+            approval_id=f"approval-{approval_type}",
+            approval_type=approval_type,
+            approval_object_ref="object-1",
+            trigger_reason="timeout_fixture",
+            comparison_options=[],
+            recommended_decision="no_effect_on_timeout",
+            risk_and_impact={},
+            evidence_refs=[],
+            effective_scope="current_attempt_only",
+            timeout_policy="default",
+            decision="expired",
+        )
+        for approval_type in ["risk_conditional_pass", "cio_major_deviation", "high_impact_governance", "manual_todo"]
+    }
     payload = {
         "risk_states": {"approved": approved.__dict__, "conditional_pass": conditional.__dict__, "rejected": rejected.__dict__},
         "approval_packet": packet.__dict__,
         "repairability": {"rejected": rejected.repairability, "unrepairable": unrepairable.repairability},
         "reopen_target": risk.reopen_or_close(rejected),
         "owner_timeout": expired.__dict__,
-        "timeout_disposition_by_type": {"owner_exception": owner.timeout_disposition(expired)},
+        "timeout_disposition_by_type": {approval_type: owner.timeout_disposition(record) for approval_type, record in timeout_records.items()},
         "blocked_execution": rejected.review_result == "rejected" and expired.decision == "expired",
         "reopen_required_for_repair": risk.reopen_or_close(rejected)["action"] == "reopen",
         "unrepairable_attempt_closed": risk.reopen_or_close(unrepairable)["action"] == "close_attempt",

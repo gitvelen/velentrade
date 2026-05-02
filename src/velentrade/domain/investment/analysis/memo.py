@@ -7,10 +7,62 @@ from velentrade.domain.common import new_id
 
 
 ROLE_PAYLOAD_FIELDS = {
-    "macro": {"market_state", "policy_transmission", "liquidity", "credit_cycle", "style_tailwind", "macro_risks"},
-    "fundamental": {"business_model", "moat", "financial_quality", "earnings_scenario", "valuation_method", "fair_value", "accounting_red_flags"},
-    "quant": {"signal_hypothesis", "trend", "factor_exposure", "sample_context", "stability", "regime_fit", "crowding_risk"},
-    "event": {"event_type", "timeline", "source_reliability", "verification_status", "catalyst_strength", "event_window", "reversal_risk"},
+    "macro": {
+        "engine_market_state",
+        "analyst_market_state_view",
+        "market_state_conflict",
+        "policy_stance",
+        "liquidity_condition",
+        "credit_cycle",
+        "industry_policy_alignment",
+        "style_bias",
+        "macro_tailwinds",
+        "macro_headwinds",
+        "transmission_path",
+        "macro_risk_triggers",
+    },
+    "fundamental": {
+        "business_model_quality_score",
+        "moat_assessment",
+        "financial_quality",
+        "earnings_scenarios",
+        "valuation_methods_used",
+        "fair_value_range",
+        "valuation_percentile",
+        "safety_margin",
+        "sensitivity_factors",
+        "accounting_red_flags",
+        "key_kpi_watchlist",
+        "fundamental_catalysts",
+        "valuation_conclusion",
+    },
+    "quant": {
+        "signal_hypothesis",
+        "trend_state",
+        "momentum_score",
+        "volume_price_confirmation",
+        "factor_exposures",
+        "factor_signal_scores",
+        "sample_context",
+        "signal_stability_score",
+        "regime_fit",
+        "timing_implication",
+        "overheat_or_crowding_risk",
+        "invalidating_price_or_signal_levels",
+    },
+    "event": {
+        "event_type",
+        "event_timeline",
+        "source_reliability",
+        "verification_status",
+        "catalyst_strength_score",
+        "time_window_assessment",
+        "affected_fundamental_assumptions",
+        "sentiment_and_fund_flow",
+        "historical_analogues",
+        "reversal_risk",
+        "supporting_evidence_only",
+    },
 }
 
 ROLE_SKILLS = {
@@ -42,6 +94,9 @@ class AnalystMemo:
     applicable_conditions: list[str]
     invalidation_conditions: list[str]
     suggested_action_implication: str
+    data_quality_notes: str
+    needs_reopen_or_escalation: bool
+    collaboration_command_refs: list[str]
     role_payload: dict[str, Any]
     skill_package_ref: str
     rubric_ref: str
@@ -85,6 +140,9 @@ class AnalystMemoFactory:
                     applicable_conditions=[f"{role}-condition"],
                     invalidation_conditions=[f"{role}-invalidation"],
                     suggested_action_implication="role_view_only_no_order",
+                    data_quality_notes="decision_core inputs reviewed; no critical data blockers in fixture",
+                    needs_reopen_or_escalation=hard_dissent,
+                    collaboration_command_refs=[f"cmd-{role}-evidence"] if hard_dissent else [],
                     role_payload=_role_payload(role),
                     skill_package_ref=ROLE_SKILLS[role],
                     rubric_ref=f"{role}-rubric-v1",
@@ -120,6 +178,9 @@ def _schema_pass(memo: AnalystMemo) -> bool:
         and -5 <= memo.direction_score <= 5
         and 0 <= memo.confidence <= 1
         and 0 <= memo.evidence_quality <= 1
+        and isinstance(memo.data_quality_notes, str)
+        and isinstance(memo.needs_reopen_or_escalation, bool)
+        and isinstance(memo.collaboration_command_refs, list)
         and bool(memo.supporting_evidence_refs)
         and bool(memo.counter_evidence_refs)
         and ROLE_PAYLOAD_FIELDS[memo.role].issubset(set(memo.role_payload))

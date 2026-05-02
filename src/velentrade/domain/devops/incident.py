@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from typing import Any
 
 from velentrade.domain.common import new_id, utc_now
@@ -133,6 +133,23 @@ class DevOpsIncidentRuntime:
         if signal.check_type == "cost_token":
             self.cost_observations.append({"subject": signal.subject, "multiple": signal.metrics.get("daily_cost_multiple"), "p0_pass_fail_relevant": False})
         return incident
+
+    def mark_recovery_validated(self, incident_id: str) -> None:
+        recovery = self.recovery_plans[incident_id]
+        self.recovery_plans[incident_id] = replace(
+            recovery,
+            technical_recovery_status="validated",
+            investment_resume_allowed=False,
+        )
+        incident = self.incidents[incident_id]
+        self.incidents[incident_id] = replace(incident, status="monitoring")
+
+    def close_incident(self, incident_id: str) -> None:
+        recovery = self.recovery_plans[incident_id]
+        if recovery.technical_recovery_status != "validated":
+            raise ValueError("recovery_validation_required")
+        incident = self.incidents[incident_id]
+        self.incidents[incident_id] = replace(incident, status="closed")
 
     def block_risk_relaxation_attempt(self, target: str) -> str:
         if target in {"risk_hard_blocker", "decision_core_threshold", "execution_core_threshold", "prompt", "skill", "execution_parameter"}:

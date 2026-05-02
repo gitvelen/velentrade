@@ -26,14 +26,21 @@ class ExecutionCoreSnapshot:
     reason_code: str | None
     bars: list[MinuteBar]
     fee_config: dict[str, float]
+    may_create_execution_authorization: bool = True
 
     @classmethod
-    def pass_with_bars(cls, bars: list[MinuteBar]) -> "ExecutionCoreSnapshot":
-        return cls("pass", None, bars, {"commission_bps": 2.5, "min_commission": 5, "stamp_tax_sell_bps": 10, "transfer_bps": 0.1})
+    def pass_with_bars(cls, bars: list[MinuteBar], may_create_execution_authorization: bool = True) -> "ExecutionCoreSnapshot":
+        return cls(
+            "pass",
+            None,
+            bars,
+            {"commission_bps": 2.5, "min_commission": 5, "stamp_tax_sell_bps": 10, "transfer_bps": 0.1},
+            may_create_execution_authorization,
+        )
 
     @classmethod
     def blocked(cls, reason_code: str) -> "ExecutionCoreSnapshot":
-        return cls("blocked", reason_code, [], {"commission_bps": 2.5, "min_commission": 5, "stamp_tax_sell_bps": 10, "transfer_bps": 0.1})
+        return cls("blocked", reason_code, [], {"commission_bps": 2.5, "min_commission": 5, "stamp_tax_sell_bps": 10, "transfer_bps": 0.1}, False)
 
 
 @dataclass(frozen=True)
@@ -69,16 +76,41 @@ class PaperExecutionReceipt:
 
 
 class PaperExecutionService:
-    def execute(self, order: PaperOrder, snapshot: ExecutionCoreSnapshot) -> PaperExecutionReceipt:
+    def execute(
+        self,
+        order: PaperOrder,
+        snapshot: ExecutionCoreSnapshot,
+        available_cash: float | None = None,
+        available_position: float | None = None,
+    ) -> PaperExecutionReceipt:
         window = {"urgent": "30m", "normal": "2h", "low": "full_day"}[order.urgency]
         if snapshot.status != "pass" or not snapshot.bars:
             return self._receipt(order, window, "blocked", None, 0, "execution_core_blocked", snapshot)
+        if not snapshot.may_create_execution_authorization:
+            return self._receipt(order, window, "blocked", None, 0, "cache_execution_authorization_denied", snapshot)
         price, method = _vwap_or_twap(snapshot.bars)
         if not _price_hits(order, price, snapshot.bars):
             return self._receipt(order, window, "expired" if order.urgency == "urgent" else "unfilled", None, 0, "price_range_not_hit", snapshot, method)
         slipped = _apply_slippage(order, price, snapshot.bars)
         quantity = order.target_quantity_or_weight
-        return self._receipt(order, window, "filled", slipped, quantity, None, snapshot, method)
+        fill_status = "filled"
+        reason_code = None
+        if order.side == "buy" and available_cash is not None:
+            affordable_quantity = round(available_cash / slipped, 3) if slipped else 0
+            if affordable_quantity <= 0:
+                return self._receipt(order, window, "blocked", None, 0, "insufficient_cash_blocked", snapshot, method)
+            if affordable_quantity < quantity:
+                quantity = affordable_quantity
+                fill_status = "partial"
+                reason_code = "insufficient_cash_partial"
+        if order.side == "sell" and available_position is not None:
+            if available_position <= 0:
+                return self._receipt(order, window, "blocked", None, 0, "insufficient_position_blocked", snapshot, method)
+            if available_position < quantity:
+                quantity = available_position
+                fill_status = "partial"
+                reason_code = "insufficient_position_partial"
+        return self._receipt(order, window, fill_status, slipped, quantity, reason_code, snapshot, method)
 
     def _receipt(
         self,
@@ -92,9 +124,10 @@ class PaperExecutionService:
         pricing_method: str = "minute_vwap",
     ) -> PaperExecutionReceipt:
         gross = (fill_price or 0) * quantity
-        commission = max(5.0, gross * snapshot.fee_config["commission_bps"] / 10000) if fill_status == "filled" else 0
-        transfer = gross * snapshot.fee_config["transfer_bps"] / 10000 if fill_status == "filled" else 0
-        stamp = gross * snapshot.fee_config["stamp_tax_sell_bps"] / 10000 if fill_status == "filled" and order.side == "sell" else 0
+        is_executed = fill_status in {"filled", "partial"}
+        commission = max(5.0, gross * snapshot.fee_config["commission_bps"] / 10000) if is_executed else 0
+        transfer = gross * snapshot.fee_config["transfer_bps"] / 10000 if is_executed else 0
+        stamp = gross * snapshot.fee_config["stamp_tax_sell_bps"] / 10000 if is_executed and order.side == "sell" else 0
         policy_bps = {"urgent": 8, "normal": 5, "low": 3}[order.urgency]
         return PaperExecutionReceipt(
             paper_order_id=order.paper_order_id,
@@ -108,8 +141,8 @@ class PaperExecutionService:
             fees={"commission": round(commission, 3), "transfer": round(transfer, 3)},
             taxes={"stamp_tax": round(stamp, 3)},
             slippage={"policy_bps": policy_bps},
-            t_plus_one_state="locked_until_next_trading_day" if fill_status == "filled" and order.side == "buy" else "not_applicable",
-            attribution_ref=new_id("attribution") if fill_status == "filled" else None,
+            t_plus_one_state="locked_until_next_trading_day" if is_executed and order.side == "buy" else "not_applicable",
+            attribution_ref=new_id("attribution") if is_executed else None,
             reason_code=reason_code,
         )
 

@@ -82,4 +82,16 @@ class OwnerExceptionService:
         )
 
     def timeout_disposition(self, approval: ApprovalRecord) -> str:
-        return "no_execution" if approval.decision == "expired" else "await_owner"
+        if approval.decision != "expired":
+            return "await_owner"
+        if approval.approval_type == "request_brief_confirmation":
+            return "request_brief_expired_no_workflow"
+        if approval.approval_type in {"risk_conditional_pass", "s6_investment_exception"}:
+            return "s6_blocked_no_execution"
+        if approval.approval_type == "cio_major_deviation":
+            return "reopen_s4_or_close_no_execution"
+        if approval.approval_type in {"high_impact_governance", "prompt_knowledge_promotion", "finance_risk_budget"}:
+            return "governance_expired_no_effect"
+        if approval.approval_type == "manual_todo":
+            return "manual_todo_expired_only"
+        return "no_execution"

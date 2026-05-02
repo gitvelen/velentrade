@@ -151,10 +151,25 @@ class DecisionService:
         )
 
     def validate_cio_memo(self, packet: DecisionPacket, memo: CIODecisionMemo, optimizer_target_weights: dict[str, float]) -> DecisionGuardResult:
+        if memo.decision_packet_ref != packet.packet_id:
+            raise ValueError("decision_packet_ref_mismatch")
+        if memo.decision not in packet.allowed_cio_actions:
+            raise ValueError("cio_action_not_allowed")
         optimizer_weight = optimizer_target_weights.get(memo.target_symbol)
         optimizer_available = optimizer_weight is not None
         single_pp = round(abs(memo.target_weight - (optimizer_weight or 0)) * 100, 3) if optimizer_available else 0.0
-        portfolio_active = round(0.5 * sum(abs(memo.target_weight - weight) for weight in optimizer_target_weights.values()), 3)
+        portfolio_active = (
+            round(
+                0.5
+                * sum(
+                    abs((memo.target_weight if symbol == memo.target_symbol else 0.0) - weight)
+                    for symbol, weight in optimizer_target_weights.items()
+                ),
+                3,
+            )
+            if optimizer_available
+            else 0.0
+        )
         major = optimizer_available and (single_pp >= 5.0 or portfolio_active >= 0.20)
         low_action = packet.action_conviction < 0.65
         reason_codes: list[str] = []

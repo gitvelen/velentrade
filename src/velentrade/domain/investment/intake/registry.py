@@ -6,6 +6,7 @@ from velentrade.domain.common import utc_now
 
 
 OPEN_SOURCE_TYPES = {"owner", "analyst", "researcher", "service_signal", "holding_risk", "announcement"}
+SUPPORTING_EVIDENCE_ROUTES = {"candidate", "research_package", "research_task"}
 
 
 @dataclass(frozen=True)
@@ -40,6 +41,7 @@ class TopicQueueEntry:
 @dataclass
 class OpportunityRegistry:
     entries: dict[str, TopicQueueEntry] = field(default_factory=dict)
+    supporting_evidence_routes: dict[str, str] = field(default_factory=dict)
 
     def register(self, proposal: TopicProposal) -> TopicProposal:
         if proposal.source_type not in OPEN_SOURCE_TYPES:
@@ -58,7 +60,9 @@ class OpportunityRegistry:
         )
         return proposal
 
-    def route_supporting_evidence(self, raw_trigger_ref: str, symbol: str) -> TopicQueueEntry:
+    def route_supporting_evidence(self, raw_trigger_ref: str, symbol: str, route_to: str = "candidate") -> TopicQueueEntry:
+        if route_to not in SUPPORTING_EVIDENCE_ROUTES:
+            raise ValueError(f"Unsupported supporting evidence route: {route_to}")
         proposal = TopicProposal(
             topic_proposal_id=f"candidate-{raw_trigger_ref}",
             source_type="announcement",
@@ -79,6 +83,7 @@ class OpportunityRegistry:
             }
         )
         self.entries[routed.topic_id] = routed
+        self.supporting_evidence_routes[routed.topic_id] = route_to
         return routed
 
     def formal_ic_entries(self) -> list[TopicQueueEntry]:

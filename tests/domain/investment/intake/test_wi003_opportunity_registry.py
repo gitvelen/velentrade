@@ -28,3 +28,19 @@ def test_open_sources_register_opportunities_without_entering_formal_ic_directly
     assert supporting_only.formal_ic_status == "candidate"
     assert supporting_only.rejected_reason == "supporting_evidence_only"
     assert registry.formal_ic_entries() == []
+
+
+def test_supporting_evidence_can_only_route_to_candidate_or_research_paths():
+    registry = OpportunityRegistry()
+
+    candidate = registry.route_supporting_evidence("news-1", symbol="600000.SH", route_to="candidate")
+    research_package = registry.route_supporting_evidence("news-2", symbol="600000.SH", route_to="research_package")
+    research_task = registry.route_supporting_evidence("news-3", symbol="600000.SH", route_to="research_task")
+
+    assert candidate.formal_ic_status == "candidate"
+    assert research_package.formal_ic_status == "candidate"
+    assert research_task.formal_ic_status == "candidate"
+    assert registry.supporting_evidence_routes[candidate.topic_id] == "candidate"
+    assert registry.supporting_evidence_routes[research_package.topic_id] == "research_package"
+    assert registry.supporting_evidence_routes[research_task.topic_id] == "research_task"
+    assert registry.formal_ic_entries() == []

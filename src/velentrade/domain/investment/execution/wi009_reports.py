@@ -16,20 +16,36 @@ def build_paper_execution_report() -> dict[str, Any]:
     filled_order = PaperOrder("order-filled", "wf-1", "memo-1", "600000.SH", "buy", 10000, {"max_price": 10.5}, "normal", "exec-core-1")
     blocked_order = PaperOrder("order-blocked", "wf-1", "memo-1", "600000.SH", "buy", 10000, {"max_price": 10.5}, "urgent", "exec-core-blocked")
     miss_order = PaperOrder("order-miss", "wf-1", "memo-1", "600000.SH", "buy", 10000, {"max_price": 9.0}, "urgent", "exec-core-1")
+    cache_order = PaperOrder("order-cache", "wf-1", "memo-1", "600000.SH", "buy", 10000, {"max_price": 10.5}, "normal", "exec-core-cache")
+    partial_order = PaperOrder("order-partial", "wf-1", "memo-1", "600000.SH", "buy", 10000, {"max_price": 10.5}, "normal", "exec-core-1")
+    twap_sell_order = PaperOrder("order-twap-sell", "wf-1", "memo-1", "600000.SH", "sell", 2000, {"min_price": 9.5}, "low", "exec-core-twap")
     filled = service.execute(filled_order, ExecutionCoreSnapshot.pass_with_bars(bars))
     blocked = service.execute(blocked_order, ExecutionCoreSnapshot.blocked("minute_bar_stale"))
     missed = service.execute(miss_order, ExecutionCoreSnapshot.pass_with_bars(bars))
+    cache_blocked = service.execute(cache_order, ExecutionCoreSnapshot.pass_with_bars(bars, may_create_execution_authorization=False))
+    partial = service.execute(partial_order, ExecutionCoreSnapshot.pass_with_bars(bars), available_cash=25_000)
+    twap_sell = service.execute(
+        twap_sell_order,
+        ExecutionCoreSnapshot.pass_with_bars(
+            [
+                MinuteBar("2026-04-30T09:31:00+08:00", 10.0, 10.2, 9.9, 10.1, 0),
+                MinuteBar("2026-04-30T09:32:00+08:00", 10.1, 10.3, 10.0, 10.2, 0),
+                MinuteBar("2026-04-30T09:33:00+08:00", 10.2, 10.4, 10.1, 10.3, 0),
+            ]
+        ),
+    )
     payload = {
         "order_windows": {"urgent": "30m", "normal": "2h", "low": "full_day"},
         "minute_bar_fixture": [bar.__dict__ for bar in bars],
-        "pricing_method": filled.pricing_method,
-        "vwap_or_twap_calculation": {"filled_price": filled.fill_price, "fallback": "twap_when_zero_volume"},
-        "price_range_check": {"filled": "hit", "missed": missed.reason_code},
-        "fill_status": {"filled": filled.fill_status, "blocked": blocked.fill_status, "missed": missed.fill_status},
+        "pricing_method": {"filled": filled.pricing_method, "twap_sell": twap_sell.pricing_method},
+        "vwap_or_twap_calculation": {"filled_price": filled.fill_price, "twap_sell_price": twap_sell.fill_price, "fallback": "twap_when_zero_volume"},
+        "price_range_check": {"filled": "hit", "missed": missed.reason_code, "twap_sell": "hit"},
+        "fill_status": {"filled": filled.fill_status, "partial": partial.fill_status, "blocked": blocked.fill_status, "missed": missed.fill_status, "twap_sell": twap_sell.fill_status},
         "fees": filled.fees,
-        "taxes": filled.taxes,
+        "taxes": {"buy": filled.taxes, "sell": twap_sell.taxes},
         "slippage": filled.slippage,
         "execution_core_freshness_block": blocked.reason_code,
-        "t_plus_one_state": filled.t_plus_one_state,
+        "cache_execution_authorization_block": cache_blocked.reason_code,
+        "t_plus_one_state": {"buy": filled.t_plus_one_state, "sell": twap_sell.t_plus_one_state},
     }
     return _envelope("paper_execution_report.json", "TC-ACC-021-01", "ACC-021", "REQ-021", payload)

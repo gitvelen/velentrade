@@ -29,7 +29,7 @@ def _envelope(report_id: str, payload: dict[str, Any]) -> dict[str, Any]:
         "result": "pass",
         "checked_requirements": [req],
         "checked_acceptances": [acc],
-        "checked_invariants": ["INV-SUPPORTING-EVIDENCE-NOT-FORMAL-IC"],
+        "checked_invariants": ["INV-SUPPORTING-EVIDENCE-NO-FORMAL-IC"],
         "artifact_refs": [],
         "failures": [],
         "residual_risk": [],
@@ -61,12 +61,14 @@ def _registration_report() -> dict[str, Any]:
     sources = ["owner", "analyst", "researcher", "service_signal", "holding_risk", "announcement"]
     for source in sources:
         registry.register(_proposal(f"topic-{source}", source))
-    supporting = registry.route_supporting_evidence("news-1", "600000.SH")
+    registry.route_supporting_evidence("news-1", "600000.SH", route_to="candidate")
+    registry.route_supporting_evidence("news-2", "600000.SH", route_to="research_package")
+    registry.route_supporting_evidence("news-3", "600000.SH", route_to="research_task")
     return _envelope(
         "topic_registration_report.json",
         {
             "registered_sources": sources,
-            "supporting_evidence_only_actions": [supporting.rejected_reason],
+            "supporting_evidence_only_actions": sorted(set(registry.supporting_evidence_routes.values())),
             "candidate_states": {entry.topic_id: entry.formal_ic_status for entry in registry.entries.values() if entry.formal_ic_status == "candidate"},
             "formal_ic_states": [entry.formal_ic_status for entry in registry.formal_ic_entries()],
             "rejected_reasons": [entry.rejected_reason for entry in registry.entries.values() if entry.rejected_reason],
@@ -125,6 +127,7 @@ def _context_report() -> dict[str, Any]:
             "chair_brief": brief.__dict__,
             "chair_brief_no_preset_decision": brief.no_preset_decision_attestation,
             "evidence_resolution": builder.resolve_evidence(package),
+            "missing_sections": builder.missing_sections(package),
         },
     )
 

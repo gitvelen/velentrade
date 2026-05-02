@@ -4,6 +4,17 @@ from dataclasses import dataclass
 
 
 ROLE_ATTACHMENT_KEYS = ("macro", "fundamental", "quant", "event")
+REQUIRED_PACKAGE_FIELDS = (
+    "request_brief_ref",
+    "data_readiness_ref",
+    "market_state_ref",
+    "service_result_refs",
+    "portfolio_context_ref",
+    "risk_constraint_refs",
+    "research_package_refs",
+    "role_attachment_refs",
+    "context_snapshot_id",
+)
 
 
 @dataclass(frozen=True)
@@ -64,14 +75,14 @@ class ICContextBuilder:
 
     def build_chair_brief(self, package: ICContextPackage, time_budget: str) -> ICChairBrief:
         return ICChairBrief(
-            decision_question=f"围绕 {package.topic_id} 判断是否值得进入完整 IC 论证",
+            decision_question=f"围绕 {package.topic_id} 的投资或风险判断，需要回答哪些关键问题",
             scope_boundary="仅限 A 股普通股纸面投资研究，不涉及真实下单。",
             key_tensions=["数据质量与研究资料是否足以支持论证", "市场状态与组合约束是否冲突"],
             must_answer_questions=["核心机会或风险是什么", "关键反证和失效条件是什么", "需要哪些补充证据"],
             time_budget=time_budget,
             action_standard="只有证据、数据质量和风险约束均满足时，后续阶段才可讨论行动强度。",
             risk_constraints_to_respect=package.risk_constraint_refs,
-            forbidden_assumptions=["不得预设买卖持有结论", "不得跳过 Risk/Owner/执行审计"],
+            forbidden_assumptions=["不得预设买卖持有结论", "不得替任何 Analyst 指定结论", "不得跳过 Risk/Owner/执行审计"],
             no_preset_decision_attestation=True,
         )
 
@@ -84,7 +95,24 @@ class ICContextBuilder:
             *package.service_result_refs,
             *package.risk_constraint_refs,
             *package.research_package_refs,
+            *package.reflection_hit_refs,
             *package.role_attachment_refs.values(),
         ]
         missing = [ref for ref in refs if not ref]
-        return {"resolved_refs": [ref for ref in refs if ref], "missing_refs": missing}
+        return {
+            "resolved_refs": [ref for ref in refs if ref],
+            "missing_refs": missing,
+            "missing_sections": self.missing_sections(package),
+        }
+
+    def missing_sections(self, package: ICContextPackage) -> list[str]:
+        missing_sections: list[str] = []
+        for field_name in REQUIRED_PACKAGE_FIELDS:
+            value = getattr(package, field_name)
+            if isinstance(value, dict):
+                if not value or any(not ref for ref in value.values()):
+                    missing_sections.append(field_name)
+                continue
+            if not value:
+                missing_sections.append(field_name)
+        return missing_sections

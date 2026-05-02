@@ -1,4 +1,4 @@
-from velentrade.domain.investment.owner_exception.approval import OwnerExceptionService
+from velentrade.domain.investment.owner_exception.approval import ApprovalRecord, OwnerExceptionService
 from velentrade.domain.investment.risk.runtime import RiskReviewRuntime
 from velentrade.domain.investment.risk.wi008_reports import build_wi008_risk_reports
 
@@ -32,6 +32,45 @@ def test_owner_exception_packet_and_timeout_never_execute():
     assert service.timeout_disposition(expired) == "no_execution"
 
 
+def test_owner_timeout_disposition_is_specific_to_approval_type():
+    service = OwnerExceptionService()
+
+    records = {
+        approval_type: ApprovalRecord(
+            approval_id=f"approval-{approval_type}",
+            approval_type=approval_type,
+            approval_object_ref="object-1",
+            trigger_reason="timeout_fixture",
+            comparison_options=[],
+            recommended_decision="no_effect_on_timeout",
+            risk_and_impact={},
+            evidence_refs=[],
+            effective_scope="current_attempt_only",
+            timeout_policy="default",
+            decision="expired",
+        )
+        for approval_type in [
+            "request_brief_confirmation",
+            "risk_conditional_pass",
+            "s6_investment_exception",
+            "cio_major_deviation",
+            "high_impact_governance",
+            "prompt_knowledge_promotion",
+            "finance_risk_budget",
+            "manual_todo",
+        ]
+    }
+
+    assert service.timeout_disposition(records["request_brief_confirmation"]) == "request_brief_expired_no_workflow"
+    assert service.timeout_disposition(records["risk_conditional_pass"]) == "s6_blocked_no_execution"
+    assert service.timeout_disposition(records["s6_investment_exception"]) == "s6_blocked_no_execution"
+    assert service.timeout_disposition(records["cio_major_deviation"]) == "reopen_s4_or_close_no_execution"
+    assert service.timeout_disposition(records["high_impact_governance"]) == "governance_expired_no_effect"
+    assert service.timeout_disposition(records["prompt_knowledge_promotion"]) == "governance_expired_no_effect"
+    assert service.timeout_disposition(records["finance_risk_budget"]) == "governance_expired_no_effect"
+    assert service.timeout_disposition(records["manual_todo"]) == "manual_todo_expired_only"
+
+
 def test_wi008_risk_report_has_contract_payloads():
     report = build_wi008_risk_reports()["risk_owner_exception_report.json"]
 
@@ -48,4 +87,10 @@ def test_wi008_risk_report_has_contract_payloads():
         "reopen_required_for_repair",
         "unrepairable_attempt_closed",
         "bypass_attempt_denied",
+    }
+    assert report["timeout_disposition_by_type"] == {
+        "risk_conditional_pass": "s6_blocked_no_execution",
+        "cio_major_deviation": "reopen_s4_or_close_no_execution",
+        "high_impact_governance": "governance_expired_no_effect",
+        "manual_todo": "manual_todo_expired_only",
     }

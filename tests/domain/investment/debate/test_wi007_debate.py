@@ -30,7 +30,13 @@ def test_hard_dissent_enters_bounded_debate_and_handoff_to_risk_when_retained():
     assert summary.retained_hard_dissent is True
     assert summary.risk_review_required is True
     assert summary.semantic_lead_signature == "cio"
-    assert all(command["admission_status"] == "accepted" for command in summary.collaboration_commands)
+    assert {command["admission_status"] for command in summary.collaboration_commands} == {"accepted", "rejected", "expired"}
+    assert {command["command_type"] for command in summary.collaboration_commands} >= {
+        "ask_question",
+        "request_view_update",
+        "request_evidence",
+        "request_agent_run",
+    }
     assert summary.handoff_packets[0]["to_stage_or_agent"] == "S5"
 
 
@@ -44,6 +50,32 @@ def test_low_consensus_blocks_execution_without_unbounded_debate():
     assert summary.rounds_used <= 2
     assert summary.execution_blocked is True
     assert summary.next_stage_decision == "blocked"
+
+
+def test_debate_recomputes_consensus_from_latest_accepted_view_updates():
+    manager = DebateManager(max_rounds=2)
+    memos = AnalystMemoFactory().fixture_memos(direction_scores=[2, 2, 1, -1], confidences=[0.9, 0.85, 0.8, 0.9])
+    initial = manager.calculator.calculate(memos)
+
+    summary = manager.run(
+        "wf-medium-recomputed",
+        memos,
+        round_updates={
+            "event_analyst": {
+                "direction_score": 1,
+                "hard_dissent": False,
+                "hard_dissent_reason": "",
+                "confidence": 0.75,
+            }
+        },
+    )
+
+    assert summary.rounds_used == 2
+    assert summary.retained_hard_dissent is False
+    assert summary.recomputed_consensus_score > initial.consensus_score
+    assert summary.recomputed_action_conviction > initial.action_conviction
+    assert summary.stop_reason == "converged"
+    assert any(update["producer_agent_id"] == "event_analyst" for update in summary.view_updates)
 
 
 def test_wi007_debate_report_has_contract_payloads():

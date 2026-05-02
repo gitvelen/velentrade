@@ -47,3 +47,43 @@ def test_hard_gates_weighted_scoring_concurrency_and_p0_preemption():
     assert queue.entries[preempted_id].formal_ic_status == "deferred"
     assert queue.entries[preempted_id].rejected_reason == "preempted_waiting"
     assert queue.global_workflow_count <= 5
+
+
+def test_duplicate_topic_and_compliance_forbidden_fail_hard_gates():
+    queue = TopicQueue(max_active_ic=3, max_global_workflows=5)
+    high = TopicScore(5, 5, 4, 4)
+
+    queue.submit(_proposal("topic-live", "P1"), high, request_brief_complete=True, decision_core_available=True)
+    duplicate = queue.submit(
+        _proposal("topic-live-duplicate", "P1"),
+        high,
+        request_brief_complete=True,
+        decision_core_available=True,
+        duplicate_symbols={"600000.SH"},
+    )
+    forbidden = queue.submit(
+        _proposal("topic-forbidden", "P1", symbol="600001.SH"),
+        high,
+        request_brief_complete=True,
+        decision_core_available=True,
+        compliance_execution_clear=False,
+    )
+
+    assert duplicate.formal_ic_status == "rejected"
+    assert duplicate.rejected_reason == "duplicate_topic_active"
+    assert duplicate.hard_gate_results["topic_not_duplicate"] is False
+    assert forbidden.formal_ic_status == "rejected"
+    assert forbidden.rejected_reason == "compliance_or_execution_forbidden"
+    assert forbidden.hard_gate_results["compliance_execution_clear"] is False
+
+
+def test_global_workflow_cap_prevents_admitting_more_formal_ic_workflows():
+    queue = TopicQueue(max_active_ic=3, max_global_workflows=5, global_workflow_count=5)
+    high = TopicScore(5, 5, 4, 4)
+
+    blocked = queue.submit(_proposal("topic-global-cap", "P1"), high, request_brief_complete=True, decision_core_available=True)
+
+    assert blocked.formal_ic_status == "queued"
+    assert blocked.rejected_reason == "topic_concurrency_full"
+    assert blocked.hard_gate_results["global_workflow_slot_available"] is False
+    assert queue.global_workflow_count == 5

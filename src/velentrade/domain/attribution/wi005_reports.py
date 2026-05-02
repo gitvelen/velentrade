@@ -66,7 +66,7 @@ def build_wi005_attribution_reports() -> dict[str, dict[str, Any]]:
             evidence_ref_completeness=0.9,
             counter_evidence_coverage=0.7,
             stale_or_conflict_penalty_adjusted=0.9,
-            conditions=[("growth", "hit"), ("risk", "miss")],
+            conditions=[("growth", "hit"), ("risk", "hit")],
         )
     )
     abnormal = PerformanceAttributionService().evaluate(

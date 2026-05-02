@@ -13,6 +13,7 @@ WEIGHTS = {
     "portfolio_relevance": 0.15,
 }
 P0_TRIGGERS = {"holding_risk", "major_announcement", "execution_failure", "risk_explicit", "owner_explicit"}
+PRIORITY_ORDER = {"P0": 0, "P1": 1, "P2": 2, None: 3}
 
 
 @dataclass(frozen=True)
@@ -51,6 +52,8 @@ class TopicQueue:
         request_brief_complete: bool,
         decision_core_available: bool,
         p0_trigger: str | None = None,
+        compliance_execution_clear: bool = True,
+        duplicate_symbols: set[str] | None = None,
     ) -> TopicQueueEntry:
         scores = score.as_dict()
         hard_gates = {
@@ -58,8 +61,11 @@ class TopicQueue:
             "request_brief_complete": request_brief_complete,
             "decision_core_available": decision_core_available,
             "research_package_non_empty": bool(proposal.research_package_ref),
+            "compliance_execution_clear": compliance_execution_clear,
+            "topic_not_duplicate": proposal.symbol not in set(duplicate_symbols or set()),
             "supporting_evidence_not_direct": True,
             "priority_scored": True,
+            "global_workflow_slot_available": self.global_workflow_count < self.max_global_workflows,
         }
         priority = proposal.requested_priority or "P2"
         if priority == "P0" and p0_trigger not in P0_TRIGGERS:
@@ -76,6 +82,10 @@ class TopicQueue:
             rejected_reason = "decision_core_blocked"
         elif not hard_gates["research_package_non_empty"]:
             rejected_reason = "research_package_empty"
+        elif not hard_gates["compliance_execution_clear"]:
+            rejected_reason = "compliance_or_execution_forbidden"
+        elif not hard_gates["topic_not_duplicate"]:
+            rejected_reason = "duplicate_topic_active"
         elif not hard_gates["p0_trigger_allowed"]:
             rejected_reason = "p0_trigger_not_allowed"
 
@@ -85,11 +95,16 @@ class TopicQueue:
             return entry
 
         active = self.active_entries()
+        if not hard_gates["global_workflow_slot_available"]:
+            entry = self._entry(proposal, hard_gates, scores, "queued", "topic_concurrency_full")
+            self.entries[entry.topic_id] = entry
+            return entry
+
         if len(active) >= self.max_active_ic:
             if priority == "P0":
                 preemptable = [entry for entry in active if entry.requested_priority != "P0"]
                 if preemptable:
-                    victim = min(preemptable, key=lambda item: item.priority_scores["weighted_total"])
+                    victim = min(preemptable, key=self._preemption_rank)
                     self._defer_for_preemption(victim, proposal.topic_proposal_id)
                     entry = self._entry(proposal, hard_gates, scores, "active")
                     self.entries[entry.topic_id] = entry
@@ -144,3 +159,11 @@ class TopicQueue:
             }
         )
         self.preemption_events.append(audit)
+
+    @staticmethod
+    def _preemption_rank(item: TopicQueueEntry) -> tuple[int, float, str]:
+        return (
+            PRIORITY_ORDER.get(item.requested_priority, 3),
+            item.priority_scores["weighted_total"],
+            item.created_at,
+        )

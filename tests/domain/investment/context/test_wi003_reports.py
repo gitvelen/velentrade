@@ -28,6 +28,7 @@ def test_wi003_reports_include_contract_payload_fields():
             "chair_brief",
             "chair_brief_no_preset_decision",
             "evidence_resolution",
+            "missing_sections",
         },
     }
 
@@ -37,3 +38,9 @@ def test_wi003_reports_include_contract_payload_fields():
         assert reports[name]["work_item_refs"] == ["WI-003"]
         assert reports[name]["failures"] == []
         assert set(reports[name]) >= fields
+    assert reports["topic_registration_report.json"]["checked_invariants"] == ["INV-SUPPORTING-EVIDENCE-NO-FORMAL-IC"]
+    assert set(reports["topic_registration_report.json"]["supporting_evidence_only_actions"]) == {
+        "candidate",
+        "research_package",
+        "research_task",
+    }

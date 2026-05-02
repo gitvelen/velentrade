@@ -1,6 +1,66 @@
 from velentrade.domain.investment.analysis.consensus import ConsensusCalculator
-from velentrade.domain.investment.analysis.memo import AnalystMemoFactory, AnalystMemoValidator
+from velentrade.domain.investment.analysis.memo import ROLE_PAYLOAD_FIELDS, AnalystMemoFactory, AnalystMemoValidator
 from velentrade.domain.investment.analysis.wi007_reports import build_wi007_analysis_reports
+
+
+EXPECTED_ROLE_PAYLOAD_FIELDS = {
+    "macro": {
+        "engine_market_state",
+        "analyst_market_state_view",
+        "market_state_conflict",
+        "policy_stance",
+        "liquidity_condition",
+        "credit_cycle",
+        "industry_policy_alignment",
+        "style_bias",
+        "macro_tailwinds",
+        "macro_headwinds",
+        "transmission_path",
+        "macro_risk_triggers",
+    },
+    "fundamental": {
+        "business_model_quality_score",
+        "moat_assessment",
+        "financial_quality",
+        "earnings_scenarios",
+        "valuation_methods_used",
+        "fair_value_range",
+        "valuation_percentile",
+        "safety_margin",
+        "sensitivity_factors",
+        "accounting_red_flags",
+        "key_kpi_watchlist",
+        "fundamental_catalysts",
+        "valuation_conclusion",
+    },
+    "quant": {
+        "signal_hypothesis",
+        "trend_state",
+        "momentum_score",
+        "volume_price_confirmation",
+        "factor_exposures",
+        "factor_signal_scores",
+        "sample_context",
+        "signal_stability_score",
+        "regime_fit",
+        "timing_implication",
+        "overheat_or_crowding_risk",
+        "invalidating_price_or_signal_levels",
+    },
+    "event": {
+        "event_type",
+        "event_timeline",
+        "source_reliability",
+        "verification_status",
+        "catalyst_strength_score",
+        "time_window_assessment",
+        "affected_fundamental_assumptions",
+        "sentiment_and_fund_flow",
+        "historical_analogues",
+        "reversal_risk",
+        "supporting_evidence_only",
+    },
+}
 
 
 def test_four_analyst_memos_have_independent_payloads_and_valid_ranges():
@@ -14,6 +74,17 @@ def test_four_analyst_memos_have_independent_payloads_and_valid_ranges():
     assert validation["evidence_quality_range_pass"] is True
     assert {memo.role for memo in memos} == {"macro", "fundamental", "quant", "event"}
     assert len({tuple(sorted(memo.role_payload)) for memo in memos}) == 4
+
+
+def test_analyst_memo_matches_spec_shell_and_role_payload_contracts():
+    memos = AnalystMemoFactory().fixture_memos()
+
+    assert ROLE_PAYLOAD_FIELDS == EXPECTED_ROLE_PAYLOAD_FIELDS
+    for memo in memos:
+        assert isinstance(memo.data_quality_notes, str)
+        assert isinstance(memo.needs_reopen_or_escalation, bool)
+        assert isinstance(memo.collaboration_command_refs, list)
+        assert set(memo.role_payload) == EXPECTED_ROLE_PAYLOAD_FIELDS[memo.role]
 
 
 def test_consensus_and_action_conviction_follow_formula_and_thresholds():
@@ -34,6 +105,18 @@ def test_consensus_and_action_conviction_follow_formula_and_thresholds():
     assert low_action.action_conviction < 0.65
     assert low_action.execution_authorized is False
     assert low_action.reason_code == "low_action_conviction_no_execution"
+
+
+def test_consensus_counts_neutral_direction_as_its_own_direction():
+    result = ConsensusCalculator().calculate(
+        AnalystMemoFactory().fixture_memos(
+            direction_scores=[0, 0, 1, -1],
+            confidences=[1.0, 1.0, 1.0, 1.0],
+            evidence_qualities=[1.0, 1.0, 1.0, 1.0],
+        )
+    )
+
+    assert result.dominant_direction_share == 0.5
 
 
 def test_wi007_analysis_reports_have_contract_payloads():

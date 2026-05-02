@@ -76,6 +76,47 @@ def test_sensitive_log_and_cost_token_paths_have_separate_severity_semantics():
     assert runtime.cost_observations[0]["p0_pass_fail_relevant"] is False
 
 
+def test_recovery_validation_moves_incident_to_monitoring_but_keeps_resume_blocked():
+    runtime = DevOpsIncidentRuntime()
+    incident = runtime.handle_signal(
+        HealthSignal(
+            check_type="source_health",
+            subject="market-primary",
+            usage="execution_core",
+            metrics={"critical_field_missing": True, "primary_failed": True, "fallback_failed": True},
+            affected_workflows=["wf-1"],
+            evidence_refs=["data-request-1"],
+        )
+    )
+
+    runtime.mark_recovery_validated(incident.incident_id)
+
+    assert runtime.incidents[incident.incident_id].status == "monitoring"
+    assert runtime.recovery_plans[incident.incident_id].technical_recovery_status == "validated"
+    assert runtime.recovery_plans[incident.incident_id].investment_resume_allowed is False
+
+
+def test_incident_cannot_close_before_recovery_validation():
+    runtime = DevOpsIncidentRuntime()
+    incident = runtime.handle_signal(
+        HealthSignal(
+            check_type="service_health",
+            subject="risk-engine",
+            usage="decision_core",
+            metrics={"timeout_rate": 0.12, "p95_latency_seconds": 12},
+            affected_workflows=["wf-2"],
+            evidence_refs=["service-call-1"],
+        )
+    )
+
+    try:
+        runtime.close_incident(incident.incident_id)
+    except ValueError as exc:
+        assert str(exc) == "recovery_validation_required"
+    else:
+        raise AssertionError("expected recovery_validation_required")
+
+
 def test_devops_incident_report_has_contract_and_tc_fields():
     report = DevOpsIncidentRuntime().build_devops_incident_report()
 

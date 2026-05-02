@@ -49,6 +49,56 @@ def test_decision_service_reopen_recommendation_for_missing_rationale_and_low_ac
     assert "missing_deviation_rationale" in guard.reason_codes
 
 
+def test_decision_service_rejects_memo_bound_to_other_packet():
+    service = DecisionService()
+    packet = service.assemble_packet(service.fixture_inputs())
+    memo = CIODecisionMemo(
+        decision="buy",
+        decision_packet_ref="decision-packet-other",
+        target_symbol="600000.SH",
+        target_weight=0.10,
+        price_range={"max": 12.5},
+        urgency="normal",
+        decision_rationale="wrong packet ref",
+        deviation_reason="",
+        evidence_refs=["memo-1"],
+    )
+
+    try:
+        service.validate_cio_memo(packet, memo, optimizer_target_weights={"600000.SH": 0.10})
+    except ValueError as exc:
+        assert str(exc) == "decision_packet_ref_mismatch"
+    else:
+        raise AssertionError("expected decision_packet_ref_mismatch")
+
+
+def test_portfolio_active_deviation_uses_target_symbol_and_zero_for_other_symbols():
+    service = DecisionService()
+    packet = service.assemble_packet(service.fixture_inputs())
+    memo = CIODecisionMemo(
+        decision="buy",
+        decision_packet_ref=packet.packet_id,
+        target_symbol="600000.SH",
+        target_weight=0.35,
+        price_range={"max": 12.5},
+        urgency="normal",
+        decision_rationale="集中提高目标持仓。",
+        deviation_reason="组合主动偏离用于风险预算再分配。",
+        evidence_refs=["memo-1", "optimizer-1"],
+    )
+
+    guard = service.validate_cio_memo(
+        packet,
+        memo,
+        optimizer_target_weights={"600000.SH": 0.10, "601398.SH": 0.15},
+    )
+
+    assert guard.single_name_deviation_pp == 25.0
+    assert guard.portfolio_active_deviation == 0.2
+    assert guard.major_deviation is True
+    assert guard.owner_exception_candidate_ref is not None
+
+
 def test_wi008_decision_reports_have_contract_payloads():
     reports = build_wi008_decision_reports()
 

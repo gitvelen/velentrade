@@ -30,3 +30,25 @@ def test_ic_context_package_and_chair_brief_are_complete_without_preset_decision
     text = " ".join([brief.decision_question, *brief.key_tensions, *brief.must_answer_questions])
     assert forbidden_words.isdisjoint(text.split())
     assert builder.resolve_evidence(package)["missing_refs"] == []
+
+
+def test_context_builder_marks_missing_sections_and_missing_evidence_refs():
+    builder = ICContextBuilder()
+
+    package = builder.build_context_package(
+        topic_id="topic-missing",
+        request_brief_ref="brief-1",
+        data_readiness_ref="data-ready-1",
+        market_state_ref="market-neutral",
+        service_result_refs=[],
+        portfolio_context_ref="portfolio-1",
+        risk_constraint_refs=[],
+        research_package_refs=[],
+        reflection_hit_refs=[],
+        context_snapshot_id="ctx-v1",
+    )
+    evidence = builder.resolve_evidence(package)
+
+    assert builder.missing_sections(package) == ["service_result_refs", "risk_constraint_refs", "research_package_refs"]
+    assert evidence["missing_refs"] == []
+    assert evidence["missing_sections"] == ["service_result_refs", "risk_constraint_refs", "research_package_refs"]
