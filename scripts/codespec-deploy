@@ -197,6 +197,155 @@ def run_browser_smoke(existing_task_count):
                 chrome_process.wait(timeout=10)
 
 
+def write_agent_artifact(workflow_id, stage, run_id, artifact_type, payload):
+    result = api_json("POST", "/api/gateway/artifacts", {
+        "workflow_id": workflow_id,
+        "attempt_no": 1,
+        "stage": stage,
+        "source_agent_run_id": run_id,
+        "context_snapshot_id": "ctx-v1",
+        "artifact_type": artifact_type,
+        "schema_version": "1.0.0",
+        "payload": payload,
+        "source_refs": payload.get("evidence_refs", []),
+        "idempotency_key": f"{workflow_id}-{stage}-{run_id}-{artifact_type}",
+    })["data"]
+    return result["object_id"]
+
+
+def write_service_artifact(workflow_id, stage, producer_service, artifact_type, payload):
+    result = api_json("POST", "/api/gateway/artifacts", {
+        "workflow_id": workflow_id,
+        "attempt_no": 1,
+        "stage": stage,
+        "producer_service": producer_service,
+        "context_snapshot_id": "ctx-v1",
+        "artifact_type": artifact_type,
+        "schema_version": "1.0.0",
+        "payload": payload,
+        "source_refs": payload.get("evidence_refs", []),
+        "idempotency_key": f"{workflow_id}-{stage}-{producer_service}-{artifact_type}",
+    })["data"]
+    return result["object_id"]
+
+
+def current_stage_version(workflow_id, stage):
+    workflow = api_json("GET", f"/api/workflows/{workflow_id}")["data"]
+    for item in workflow["stages"]:
+        if item["stage"] == stage:
+            return item["stage_version"]
+    raise SystemExit(f"missing workflow stage: {stage}")
+
+
+def complete_stage(workflow_id, stage, artifact_refs):
+    api_json("POST", f"/api/workflows/{workflow_id}/commands", {
+        "command_type": "start_stage",
+        "payload": {"stage": stage},
+        "client_seen_stage_version": current_stage_version(workflow_id, stage),
+    })
+    api_json("POST", f"/api/workflows/{workflow_id}/commands", {
+        "command_type": "complete_stage",
+        "payload": {"stage": stage, "artifact_refs": artifact_refs},
+        "client_seen_stage_version": current_stage_version(workflow_id, stage),
+    })
+
+
+def memo(role, direction_score):
+    return {
+        "role": role,
+        "direction": "positive",
+        "direction_score": direction_score,
+        "confidence": 0.82,
+        "hard_dissent": False,
+        "summary": f"{role} memo",
+        "evidence_refs": [f"evidence-{role}"],
+    }
+
+
+def run_full_investment_runtime(workflow_id, task_id):
+    data_readiness_ref = write_service_artifact(workflow_id, "S1", "data_collection_quality", "DataReadinessReport", {
+        "quality_band": "normal",
+        "decision_core_status": "pass",
+        "execution_core_status": "pass",
+        "lineage_refs": ["lineage-runtime-600000"],
+        "risk_constraints": ["risk-budget-runtime"],
+    })
+    macro_ref = write_agent_artifact(workflow_id, "S2", "run-macro_analyst", "AnalystMemo", memo("macro", 2))
+    fundamental_ref = write_agent_artifact(workflow_id, "S2", "run-fundamental_analyst", "AnalystMemo", memo("fundamental", 3))
+    quant_ref = write_agent_artifact(workflow_id, "S2", "run-quant_analyst", "AnalystMemo", memo("quant", 2))
+    event_ref = write_agent_artifact(workflow_id, "S2", "run-event_analyst", "AnalystMemo", memo("event", 1))
+    cio_ref = write_agent_artifact(workflow_id, "S4", "run-cio", "CIODecisionMemo", {
+        "decision": "buy",
+        "target_symbol": "600000.SH",
+        "target_weight": 0.10,
+        "decision_rationale": "four analyst memos converged and execution core is available",
+        "deviation_reason": "",
+    })
+    guard_ref = write_service_artifact(workflow_id, "S4", "risk_engine", "DecisionGuardResult", {
+        "major_deviation": False,
+        "low_action_conviction": False,
+        "retained_hard_dissent": False,
+        "reason_codes": [],
+        "owner_exception_candidate_ref": None,
+        "reopen_recommendation_ref": None,
+    })
+    risk_ref = write_agent_artifact(workflow_id, "S5", "run-risk_officer", "RiskReviewReport", {
+        "review_result": "approved",
+        "owner_exception_required": False,
+        "reason_codes": [],
+        "risk_summary": "risk accepted",
+    })
+    execution_ref = write_service_artifact(workflow_id, "S6", "trade_execution", "PaperExecutionReceipt", {
+        "paper_order_id": "paper-order-runtime-smoke",
+        "decision_memo_ref": cio_ref,
+        "pricing_method": "minute_vwap",
+        "fill_status": "filled",
+        "fill_price": 10.2,
+        "fill_quantity": 1000,
+        "fees": {"commission": 5},
+        "taxes": {"stamp_tax": 0},
+        "slippage": {"policy_bps": 5},
+        "t_plus_one_state": "locked_until_next_trading_day",
+    })
+    attribution_ref = write_service_artifact(workflow_id, "S7", "performance_attribution_evaluation", "AttributionReport", {
+        "status": "completed",
+        "period": "runtime-smoke",
+        "decision_quality": "pass",
+        "execution_quality": "pass",
+        "needs_cfo_interpretation": False,
+    })
+    cfo_ref = write_agent_artifact(workflow_id, "S7", "run-cfo", "CFOInterpretation", {
+        "summary_for_owner": "paper execution and attribution completed",
+        "attribution_ref": attribution_ref,
+        "recommended_followups": [],
+    })
+    debate_handoff_ref = api_json("POST", "/api/gateway/handoffs", {
+        "workflow_id": workflow_id,
+        "attempt_no": 1,
+        "from_stage": "S3",
+        "to_stage_or_agent": "S4",
+        "producer_agent_id_or_service": "cio",
+        "source_artifact_refs": [macro_ref, fundamental_ref, quant_ref, event_ref],
+        "summary": "debate converged without retained hard dissent",
+        "open_questions": [],
+        "blockers": [],
+        "decisions_made": ["enter_s4"],
+        "invalidated_artifacts": [],
+        "preserved_artifacts": [macro_ref, fundamental_ref, quant_ref, event_ref],
+        "idempotency_key": f"{workflow_id}-handoff-s3-s4",
+    })["data"]["object_id"]
+
+    complete_stage(workflow_id, "S0", [task_id])
+    complete_stage(workflow_id, "S1", [data_readiness_ref])
+    complete_stage(workflow_id, "S2", [macro_ref, fundamental_ref, quant_ref, event_ref])
+    complete_stage(workflow_id, "S3", [debate_handoff_ref])
+    complete_stage(workflow_id, "S4", [cio_ref, guard_ref])
+    complete_stage(workflow_id, "S5", [risk_ref])
+    complete_stage(workflow_id, "S6", [execution_ref])
+    complete_stage(workflow_id, "S7", [attribution_ref, cfo_ref])
+    return execution_ref
+
+
 wait_api_ready()
 frontend_html = http_text("/")
 if "<html" not in frontend_html or "root" not in frontend_html:
@@ -217,6 +366,7 @@ task = api_json("POST", f"/api/requests/briefs/{brief['brief_id']}/confirmation"
     "client_seen_version": 1
 })["data"]
 task_id = task["task_id"]
+workflow_id = task["workflow_id"]
 
 runner = api_json("POST", "/internal/agent-runner/runs/runtime-smoke-run/start", {
     "agent_run_id": "runtime-smoke-run",
@@ -239,11 +389,20 @@ runner = api_json("POST", "/internal/agent-runner/runs/runtime-smoke-run/start",
 if runner["status"] != "completed" or runner["business_fact_created"]:
     raise SystemExit(f"agent-runner smoke failed: {runner}")
 
+execution_ref = run_full_investment_runtime(workflow_id, task_id)
+
 subprocess.run(["docker", "compose", "restart", "api"], check=True, capture_output=True, text=True)
 wait_api_ready()
 persisted_tasks = api_json("GET", "/api/tasks")["data"]["task_center"]
 if task_id not in {item["task_id"] for item in persisted_tasks}:
     raise SystemExit("persisted_task_after_restart missing from /api/tasks")
+persisted_dossier = api_json("GET", f"/api/workflows/{workflow_id}/dossier")["data"]
+if persisted_dossier["stage_rail"][-1]["node_status"] != "completed":
+    raise SystemExit("full_investment_runtime_persisted missing completed S7")
+if persisted_dossier["paper_execution"]["status"] != "filled" or execution_ref not in persisted_dossier["evidence_map"]["artifact_refs"]:
+    raise SystemExit("full_investment_runtime_persisted missing PaperExecutionReceipt")
+if persisted_dossier["attribution"]["status"] != "completed":
+    raise SystemExit("full_investment_runtime_persisted missing attribution")
 browser_task_count = run_browser_smoke(len(persisted_tasks))
 PY
 
@@ -263,7 +422,7 @@ restart_reason: docker compose services launched for local runtime release
 smoke_test: pass
 runtime_ready: pass
 runtime_observed_revision: ${revision}
-runtime_ready_evidence: docker compose services are running; same_origin_frontend_served returned frontend index; /api/requests/briefs created a task; persisted_task_after_restart survived docker compose restart api; agent-runner internal endpoint returned completed fake_test result; browser_click_confirmed_task clicked 自由对话 -> 生成请求预览 -> 确认生成任务卡 in Chromium against the same compose API/static frontend runtime
+runtime_ready_evidence: docker compose services are running; same_origin_frontend_served returned frontend index; /api/requests/briefs created a task; run_full_investment_runtime completed S0-S7 with DataReadinessReport, four AnalystMemo artifacts, RiskReviewReport, PaperExecutionReceipt and AttributionReport; full_investment_runtime_persisted survived docker compose restart api; agent-runner internal endpoint returned completed fake_test result; browser_click_confirmed_task clicked 自由对话 -> 生成请求预览 -> 确认生成任务卡 in Chromium against the same compose API/static frontend runtime
 manual_verification_ready: pass
 EOF
   exit 0

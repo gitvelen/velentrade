@@ -21,3 +21,6 @@ def test_deploy_hook_supports_runtime_compose_release_mode():
     assert "确认生成任务卡" in script
     assert "browser_click_confirmed_task" in script
     assert "/internal/agent-runner/runs/runtime-smoke-run/start" in script
+    assert "run_full_investment_runtime" in script
+    assert "PaperExecutionReceipt" in script
+    assert "full_investment_runtime_persisted" in script
