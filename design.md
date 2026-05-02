@@ -394,6 +394,7 @@ environment_config:
 runtime_packaging:
 
 - 本地 runtime foundation 允许 `Dockerfile`、预构建本地镜像或 `wheelhouse/` 离线依赖目录，目标是让 docker compose 启动阶段只执行 migration 和服务入口，不再依赖容器启动时访问 PyPI。
+- `Dockerfile`、`.dockerignore`、`docker-compose.yml` 和 `wheelhouse/**` 由 WI-001 runtime foundation 拥有；非 WI-001 工作项不应把这些文件表述为“项目不引入 Dockerfile”的产品限制，只是在未被显式加入自身 `allowed_paths` 时不得修改。
 - `Dockerfile` 必须把 Python 包、Alembic 配置、migration、脚本和已构建的 `frontend/dist` 固化进 runtime image；若使用 `wheelhouse/`，只能作为依赖安装输入，不作为业务事实源。
 - `scripts/codespec-deploy` 在 `release_mode: runtime` 下必须先构建或复用 runtime image，再启动 postgres/redis/api/worker/beat/agent-runner 并执行 smoke。
 
