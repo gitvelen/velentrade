@@ -1350,6 +1350,19 @@ Design approved 前，`reviews/design-review.yaml` 必须记录 R8 cold-start dr
   residual_risk: Vite dev server now proxies /api to FastAPI for real dev-browser clicks; still no Playwright/browser-to-live-FastAPI automated run.
   reopen_required: false
 
+- acceptance_ref: ACC-006
+  run_id: RUN-WI004-BROWSER-LIVE-API-20260502
+  test_case_ref: TC-ACC-006-01
+  verification_type: automated
+  test_type: e2e
+  test_scope: branch-local-browser-api
+  completion_level: api_connected
+  executed_at: 2026-05-02
+  artifact_ref: python -m pytest tests/e2e/test_wi004_browser_live_api.py -q; npm --prefix frontend test; npm --prefix frontend run build; python -m pytest tests/e2e -q; python -m pytest tests/core tests/domain tests/security tests/requirements tests/agent_runner tests/model_gateway tests/api tests/worker tests/e2e -q
+  result: pass
+  residual_risk: Headless Chromium opens Vite, clicks 自由对话 -> 生成请求预览 -> 确认生成任务卡, and verifies /api/tasks via live FastAPI; this run still does not include PostgreSQL/Redis/Celery in the same browser flow.
+  reopen_required: false
+
 - acceptance_ref: ACC-001
   run_id: RUN-FULL-ACC001-20260430
   test_case_ref: TC-ACC-001-01
