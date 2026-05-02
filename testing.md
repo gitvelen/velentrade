@@ -1428,6 +1428,32 @@ Design approved 前，`reviews/design-review.yaml` 必须记录 R8 cold-start dr
   residual_risk: Headless Chromium opens Vite, clicks 自由对话 -> 生成请求预览 -> 确认生成任务卡, and verifies /api/tasks via live FastAPI; this run still does not include PostgreSQL/Redis/Celery in the same browser flow.
   reopen_required: false
 
+- acceptance_ref: ACC-006
+  run_id: RUN-WI004-ACC006-FEEDBACK-REPORT-NEGATIVE-20260502
+  test_case_ref: TC-ACC-006-01
+  verification_type: automated
+  test_type: regression
+  test_scope: branch-local-api-connected
+  completion_level: api_connected
+  executed_at: 2026-05-02
+  artifact_ref: npm --prefix frontend test; npm --prefix frontend run build; python -m pytest tests/e2e -q
+  result: pass
+  residual_risk: WI-004 report envelope now returns result=fail when guard_results or failures fail, and enabled UI buttons retain feedback handlers; Vitest/jsdom and static E2E do not replace Owner manual acceptance.
+  reopen_required: false
+
+- acceptance_ref: ACC-007
+  run_id: RUN-WI004-ACC007-TEAM-DRAFT-FEEDBACK-20260502
+  test_case_ref: TC-ACC-007-01
+  verification_type: automated
+  test_type: frontend
+  test_scope: branch-local-api-connected
+  completion_level: api_connected
+  executed_at: 2026-05-02
+  artifact_ref: npm --prefix frontend test; npm --prefix frontend run build; python -m pytest tests/e2e -q
+  result: pass
+  residual_risk: Partial /api/team responses are merged with the nine-agent official roster, and capability draft save shows submitting feedback while blocking duplicate clicks; still not Owner manual acceptance.
+  reopen_required: false
+
 - acceptance_ref: ACC-001
   run_id: RUN-FULL-ACC001-20260430
   test_case_ref: TC-ACC-001-01
