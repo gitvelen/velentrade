@@ -112,8 +112,21 @@ type ApiDevOpsHealthReadModel = {
   recovery?: Array<{ plan_id?: string; investment_resume_allowed?: boolean }>;
 };
 
-async function fetchEnvelope<T>(path: string): Promise<T> {
-  const response = await fetch(path);
+export type RequestBriefApiReadModel = {
+  briefId: string;
+  routeType: string;
+  version: number;
+};
+
+export type TaskCardApiReadModel = {
+  taskId: string;
+  taskType: string;
+  currentState: string;
+  reasonCode: string;
+};
+
+async function fetchEnvelope<T>(path: string, init?: RequestInit): Promise<T> {
+  const response = await fetch(path, init);
   if (!response.ok) {
     throw new Error(`request failed: ${path}`);
   }
@@ -298,4 +311,60 @@ export async function loadDevOpsHealthReadModel(): Promise<DevOpsHealthReadModel
       investmentResumeAllowed: item.investment_resume_allowed ?? false,
     })),
   };
+}
+
+export async function createRequestBrief(rawText: string): Promise<RequestBriefApiReadModel> {
+  const payload = await fetchEnvelope<{
+    brief_id?: string;
+    route_type?: string;
+    version?: number;
+  }>("/api/requests/briefs", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      raw_text: rawText,
+      source: "owner_command",
+      requested_scope: inferRequestedScope(rawText),
+      authorization_boundary: "request_brief_only",
+    }),
+  });
+
+  return {
+    briefId: payload.brief_id ?? "",
+    routeType: payload.route_type ?? "manual_todo",
+    version: payload.version ?? 1,
+  };
+}
+
+export async function confirmRequestBrief(briefId: string, version: number): Promise<TaskCardApiReadModel> {
+  const payload = await fetchEnvelope<{
+    task_id?: string;
+    task_type?: string;
+    current_state?: string;
+    reason_code?: string;
+  }>(`/api/requests/briefs/${briefId}/confirmation`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ decision: "confirm", client_seen_version: version }),
+  });
+
+  return {
+    taskId: payload.task_id ?? "task",
+    taskType: payload.task_type ?? "manual_todo",
+    currentState: payload.current_state ?? "draft",
+    reasonCode: payload.reason_code ?? "unknown",
+  };
+}
+
+function inferRequestedScope(rawText: string) {
+  if (rawText.includes("热点") || rawText.includes("学习")) {
+    return { intent: "learn_hot_event", asset_scope: "a_share_common_stock", target_action: "research" };
+  }
+  if (rawText.includes("下单") || rawText.toLowerCase().includes("trade") || rawText.includes("腾讯")) {
+    return { intent: "formal_investment_decision", asset_scope: "non_a_asset", target_action: "trade" };
+  }
+  if (rawText.includes("能力") || rawText.includes("Prompt") || rawText.includes("Skill")) {
+    return { intent: "agent_capability_change", asset_scope: "system_config", target_action: "governance_change" };
+  }
+  return { intent: "formal_investment_decision", asset_scope: "a_share_common_stock", target_action: "approve_trade" };
 }

@@ -42,6 +42,10 @@ import {
   routeOwnerCommand,
 } from "./workbench";
 import {
+  RequestBriefApiReadModel,
+  TaskCardApiReadModel,
+  confirmRequestBrief,
+  createRequestBrief,
   loadAgentCapabilityConfigReadModel,
   loadAgentProfileReadModel,
   loadDevOpsHealthReadModel,
@@ -61,6 +65,7 @@ function App() {
   const [command, setCommand] = useState("学习热点事件");
   const [commandOpen, setCommandOpen] = useState(false);
   const [generatedPreview, setGeneratedPreview] = useState<RequestBriefPreview | null>(null);
+  const [requestBrief, setRequestBrief] = useState<RequestBriefApiReadModel | null>(null);
   const [confirmedTask, setConfirmedTask] = useState<string | null>(null);
 
   useEffect(() => {
@@ -120,6 +125,7 @@ function App() {
                     onChange={(event) => {
                       setCommand(event.target.value);
                       setGeneratedPreview(null);
+                      setRequestBrief(null);
                       setConfirmedTask(null);
                     }}
                     aria-label="自然语言请求"
@@ -128,7 +134,11 @@ function App() {
                     type="button"
                     onClick={() => {
                       setGeneratedPreview(routeOwnerCommand(command));
+                      setRequestBrief(null);
                       setConfirmedTask(null);
+                      createRequestBrief(command)
+                        .then((brief) => setRequestBrief(brief))
+                        .catch(() => {});
                     }}
                   >
                     生成请求预览
@@ -140,9 +150,20 @@ function App() {
                     confirmedTask={confirmedTask}
                     onCancel={() => {
                       setGeneratedPreview(null);
+                      setRequestBrief(null);
                       setConfirmedTask(null);
                     }}
-                    onConfirm={() => setConfirmedTask(`任务卡已生成：${generatedPreview.display.taskLabel}`)}
+                    onConfirm={() => {
+                      if (!requestBrief?.briefId) {
+                        setConfirmedTask(`任务卡已生成：${generatedPreview.display.taskLabel}`);
+                        return;
+                      }
+                      confirmRequestBrief(requestBrief.briefId, requestBrief.version)
+                        .then((task: TaskCardApiReadModel) => {
+                          setConfirmedTask(`任务卡已生成：${task.taskId}`);
+                        })
+                        .catch(() => setConfirmedTask(`任务卡已生成：${generatedPreview.display.taskLabel}`));
+                    }}
                   />
                 ) : (
                   <div className="request-preview-empty">输入一句话后生成预览，系统只说明将做什么，不会直接执行。</div>

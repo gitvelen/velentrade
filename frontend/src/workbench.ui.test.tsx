@@ -91,6 +91,57 @@ describe("WI-004 workbench interactions", () => {
     expect(document.body.textContent).toContain("下一步：确认后生成研究任务卡");
   });
 
+  it("creates a request brief through the API and confirms it through the confirmation endpoint", async () => {
+    const fetchSpy = vi.fn(async (input: string | URL | Request, init?: RequestInit) => {
+      const href = typeof input === "string" ? input : input instanceof URL ? input.pathname : input.url;
+      if (href.endsWith("/api/requests/briefs")) {
+        expect(init?.method).toBe("POST");
+        return mockJsonResponse({
+          brief_id: "brief-api-1",
+          route_type: "research_task",
+          suggested_semantic_lead: "investment_researcher",
+          process_authority: "workflow_scheduling_center",
+          predicted_outputs: ["ResearchPackage", "MemoryCapture"],
+          forbidden_action_reason_code: null,
+          owner_confirmation_status: "draft",
+          version: 1,
+        });
+      }
+      if (href.endsWith("/api/requests/briefs/brief-api-1/confirmation")) {
+        expect(init?.method).toBe("POST");
+        return mockJsonResponse({
+          task_id: "task-api-1",
+          task_type: "research_task",
+          current_state: "ready",
+          reason_code: "request_brief_confirmed",
+        });
+      }
+      throw new Error(`unexpected fetch: ${href}`);
+    });
+    vi.stubGlobal("fetch", fetchSpy);
+
+    await bootWorkbench("/");
+
+    await act(async () => {
+      buttonByName("自由对话").click();
+    });
+    await act(async () => {
+      buttonByName("生成请求预览").click();
+    });
+    await flushAsyncWork();
+    await act(async () => {
+      buttonByName("确认生成任务卡").click();
+    });
+    await flushAsyncWork();
+
+    expect(fetchSpy).toHaveBeenCalledWith("/api/requests/briefs", expect.objectContaining({ method: "POST" }));
+    expect(fetchSpy).toHaveBeenCalledWith(
+      "/api/requests/briefs/brief-api-1/confirmation",
+      expect.objectContaining({ method: "POST" }),
+    );
+    expect(document.body.textContent).toContain("任务卡已生成：task-api-1");
+  });
+
   it("keeps vague owner commands in draft and asks concise clarification questions", async () => {
     await bootWorkbench("/");
 
