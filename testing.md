@@ -17,7 +17,7 @@
 当前状态：
 
 - `fixture_contract`: 已有 pytest/vitest/static/report fixture 证据，但不能声称真实系统完成。
-- `in_memory_domain`: WI-002 公开 HTTP CSV/JSON K 线 adapter、质量门、fallback/cache、execution_core 低质量阻断和 report guard 失败传播等 domain 行为已有自动化验证；Tencent 公开 A 股 K 线 live provider smoke 作为单独证据通过，但不作为 P0 自动化 pass 的唯一依据。
+- `in_memory_domain`: WI-002 公开 HTTP CSV/JSON K 线 adapter、质量门、fallback/cache、execution_core 低质量阻断和 report guard 失败传播等 domain 行为已有自动化验证；WI-003 P0 抢占最低分 active slot 与 report guard 失败传播已有自动化验证；Tencent 公开 A 股 K 线 live provider smoke 作为单独证据通过，但不作为 P0 自动化 pass 的唯一依据。
 - `api_connected`: 已完成 WI-001/WI-004 foundation 级证据；`FastAPI` app/router、`/api/team`、`/api/gateway/*`、`/api/collaboration/commands`、`/api/workflows/*`、`/api/knowledge/memory-items*`、`/api/tasks`、`/api/approvals`、`/api/governance/changes`、`/api/finance/overview`、`/api/devops/health` 已有自动化验证，但真实外部数据采集和跨 WI 浏览器到后端闭环仍未完成。
 - `db_persistent`: 已完成 WI-001 foundation 级证据；`Alembic`、PostgreSQL schema、seed、Postgres smoke、API->DB mirror、Task/Workflow/WorkflowStage 持久化恢复已有自动化验证。WI-002 已完成公开 A 股 K 线 Source Registry seed、PostgreSQL DataRequest/DataLineage/DataQualityReport 落库 smoke；live provider 定时采集缓存仍未接入。
 - `integrated_runtime`: WI-001/WI-004 RequestBrief -> Task foundation slice 已完成；同一 `docker-compose` RUN 已验证 PostgreSQL migration、Redis/Celery 服务、FastAPI endpoint、same-origin frontend、Chromium 浏览器点击、agent-runner 和 API restart 后持久化。全 V1 投资/数据/执行闭环仍未完成，不能外推为所有 WI 的 integrated_runtime。
@@ -867,6 +867,32 @@ Design approved 前，`reviews/design-review.yaml` 必须记录 R8 cold-start dr
   artifact_ref: tests/domain/investment/context/test_wi003_context_package.py
   result: pass
   residual_risk: none
+  reopen_required: false
+
+- acceptance_ref: ACC-013
+  run_id: RUN-WI003-ACC013-P0-PREEMPTION-20260502
+  test_case_ref: TC-ACC-013-01
+  verification_type: automated
+  test_type: regression
+  test_scope: branch-local
+  completion_level: in_memory_domain
+  executed_at: 2026-05-02
+  artifact_ref: python -m pytest tests/domain/investment/intake tests/domain/investment/topic_queue tests/domain/investment/context -q; python -m compileall src/velentrade
+  result: pass
+  residual_risk: P0 抢占按最低 priority_score 选择 P1/P2 active slot victim，并保留 waiting audit/artifact refs；仍未进入跨 WI runtime/browser/API 集成。
+  reopen_required: false
+
+- acceptance_ref: ACC-014
+  run_id: RUN-WI003-ACC014-REPORT-NEGATIVE-20260502
+  test_case_ref: TC-ACC-014-01
+  verification_type: automated
+  test_type: regression
+  test_scope: branch-local
+  completion_level: in_memory_domain
+  executed_at: 2026-05-02
+  artifact_ref: python -m pytest tests/domain/investment/intake tests/domain/investment/topic_queue tests/domain/investment/context -q; python -m compileall src/velentrade
+  result: pass
+  residual_risk: WI-003 report envelope 在 guard_results 或 failures 出现 fail 时输出 result=fail，避免常量 pass 自证；仍未进入跨 WI runtime/browser/API 集成。
   reopen_required: false
 
 - acceptance_ref: ACC-006
