@@ -13,7 +13,7 @@ from velentrade.domain.collaboration.models import (
 from velentrade.domain.gateway.authority import AuthorityGateway, DirectBusinessWrite
 from velentrade.domain.memory.models import MemoryCapture
 from velentrade.domain.scope.registry import build_scope_boundary_report, validate_service_registry
-from velentrade.domain.verification.reports import build_wi001_reports, validate_report_contract
+from velentrade.domain.verification.reports import _envelope, build_wi001_reports, validate_report_contract
 
 
 def test_scope_and_service_registry_exclude_forbidden_capabilities():
@@ -29,6 +29,14 @@ def test_scope_and_service_registry_exclude_forbidden_capabilities():
     assert len(service_report["allowed_services"]) == 8
     assert service_report["forbidden_role_scan"]["forbidden_found"] == []
     assert "performance_analyst" in service_report["forbidden_role_scan"]["blocked_roles"]
+
+
+def test_scope_and_service_registry_reports_fail_when_forbidden_entries_are_found():
+    scope_report = build_scope_boundary_report(forbidden_found=["real_broker_api"])
+    service_report = validate_service_registry(forbidden_found=["performance_analyst"])
+
+    assert scope_report["result"] == "fail"
+    assert service_report["result"] == "fail"
 
 
 def test_agent_profiles_are_complete_and_team_read_model_has_nine_agents():
@@ -188,3 +196,23 @@ def test_wi001_reports_satisfy_frozen_report_contract():
         assert validate_report_contract(name, report) == []
         assert report["result"] == "pass"
         assert report["failures"] == []
+
+
+def test_wi001_report_envelope_marks_fail_when_guard_or_failures_fail():
+    report = _envelope(
+        "scope_boundary_report.json",
+        {"scope_registry": {"formal_investment_scope": "a_share_common_stock"}},
+        guard_results=[
+            {
+                "guard": "forbidden_entry_scan",
+                "input_ref": "scope",
+                "expected": "none",
+                "actual": "real_broker_api",
+                "result": "fail",
+            }
+        ],
+        failures=[{"code": "forbidden_scope_entry", "message": "real broker API appeared in scope"}],
+    )
+
+    assert report["result"] == "fail"
+    assert report["failures"][0]["code"] == "forbidden_scope_entry"
