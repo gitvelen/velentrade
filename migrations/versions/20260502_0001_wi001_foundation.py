@@ -133,6 +133,192 @@ def upgrade() -> None:
         sa.PrimaryKeyConstraint("manual_todo_id"),
     )
     op.create_table(
+        "governance_change",
+        sa.Column("change_id", sa.String(), nullable=False),
+        sa.Column("change_type", sa.String(), nullable=False),
+        sa.Column("impact_level", sa.String(), nullable=False),
+        sa.Column("state", sa.String(), nullable=False),
+        sa.Column("proposal_ref", sa.String(), nullable=False),
+        sa.Column("context_snapshot_id", sa.String(), nullable=True),
+        sa.Column("effective_scope", sa.String(), nullable=False),
+        sa.Column("state_reason", sa.Text(), nullable=True),
+        sa.Column("target_version_refs", postgresql.JSONB(astext_type=sa.Text()), nullable=True),
+        sa.Column("rollback_plan_ref", sa.String(), nullable=True),
+        sa.Column("created_at", sa.DateTime(timezone=True), nullable=False),
+        sa.Column("updated_at", sa.DateTime(timezone=True), nullable=False),
+        sa.Column("decided_at", sa.DateTime(timezone=True), nullable=True),
+        sa.Column("effective_at", sa.DateTime(timezone=True), nullable=True),
+        sa.PrimaryKeyConstraint("change_id"),
+    )
+    op.create_table(
+        "data_domain_registry",
+        sa.Column("domain_id", sa.String(), nullable=False),
+        sa.Column("display_name", sa.String(), nullable=False),
+        sa.Column("status", sa.String(), nullable=False),
+        sa.Column("payload", postgresql.JSONB(astext_type=sa.Text()), nullable=False),
+        sa.Column("created_at", sa.DateTime(timezone=True), nullable=False),
+        sa.PrimaryKeyConstraint("domain_id"),
+    )
+    op.create_table(
+        "data_source_registry",
+        sa.Column("source_id", sa.String(), nullable=False),
+        sa.Column("data_domain", sa.String(), nullable=False),
+        sa.Column("usage_scope", sa.String(), nullable=False),
+        sa.Column("priority", sa.String(), nullable=False),
+        sa.Column("status", sa.String(), nullable=False),
+        sa.Column("license_summary", sa.Text(), nullable=False),
+        sa.Column("rate_limit", postgresql.JSONB(astext_type=sa.Text()), nullable=False),
+        sa.Column("adapter_kind", sa.String(), nullable=False),
+        sa.Column("payload", postgresql.JSONB(astext_type=sa.Text()), nullable=False),
+        sa.Column("created_at", sa.DateTime(timezone=True), nullable=False),
+        sa.PrimaryKeyConstraint("source_id"),
+    )
+    op.create_table(
+        "data_request",
+        sa.Column("request_id", sa.String(), nullable=False),
+        sa.Column("trace_id", sa.String(), nullable=False),
+        sa.Column("data_domain", sa.String(), nullable=False),
+        sa.Column("symbol_or_scope", sa.String(), nullable=False),
+        sa.Column("time_range", postgresql.JSONB(astext_type=sa.Text()), nullable=True),
+        sa.Column("required_usage", sa.String(), nullable=False),
+        sa.Column("freshness_requirement", sa.String(), nullable=False),
+        sa.Column("required_fields", postgresql.JSONB(astext_type=sa.Text()), nullable=False),
+        sa.Column("requesting_stage", sa.String(), nullable=False),
+        sa.Column("requesting_agent_or_service", sa.String(), nullable=False),
+        sa.Column("created_at", sa.DateTime(timezone=True), nullable=False),
+        sa.PrimaryKeyConstraint("request_id"),
+    )
+    op.create_table(
+        "data_lineage",
+        sa.Column("lineage_id", sa.String(), nullable=False),
+        sa.Column("request_id", sa.String(), nullable=False),
+        sa.Column("source_id", sa.String(), nullable=False),
+        sa.Column("source_ref", sa.String(), nullable=False),
+        sa.Column("payload", postgresql.JSONB(astext_type=sa.Text()), nullable=False),
+        sa.Column("created_at", sa.DateTime(timezone=True), nullable=False),
+        sa.PrimaryKeyConstraint("lineage_id"),
+    )
+    op.create_table(
+        "data_quality_report",
+        sa.Column("report_id", sa.String(), nullable=False),
+        sa.Column("request_id", sa.String(), nullable=False),
+        sa.Column("quality_score", sa.Float(), nullable=False),
+        sa.Column("quality_band", sa.String(), nullable=False),
+        sa.Column("critical_field_results", postgresql.JSONB(astext_type=sa.Text()), nullable=False),
+        sa.Column("decision_core_status", sa.String(), nullable=False),
+        sa.Column("execution_core_status", sa.String(), nullable=False),
+        sa.Column("created_at", sa.DateTime(timezone=True), nullable=False),
+        sa.PrimaryKeyConstraint("report_id"),
+    )
+    op.create_table(
+        "data_conflict_report",
+        sa.Column("conflict_id", sa.String(), nullable=False),
+        sa.Column("request_id", sa.String(), nullable=False),
+        sa.Column("severity", sa.String(), nullable=False),
+        sa.Column("field_results", postgresql.JSONB(astext_type=sa.Text()), nullable=False),
+        sa.Column("resolution", sa.Text(), nullable=True),
+        sa.Column("created_at", sa.DateTime(timezone=True), nullable=False),
+        sa.PrimaryKeyConstraint("conflict_id"),
+    )
+    op.create_table(
+        "market_state",
+        sa.Column("market_state_id", sa.String(), nullable=False),
+        sa.Column("effective_date", sa.String(), nullable=False),
+        sa.Column("state", sa.String(), nullable=False),
+        sa.Column("payload", postgresql.JSONB(astext_type=sa.Text()), nullable=False),
+        sa.Column("created_at", sa.DateTime(timezone=True), nullable=False),
+        sa.PrimaryKeyConstraint("market_state_id"),
+    )
+    for result_table_name in ("factor_result", "valuation_result", "portfolio_optimization_result", "risk_engine_result"):
+        op.create_table(
+            result_table_name,
+            sa.Column("result_id", sa.String(), nullable=False),
+            sa.Column("workflow_id", sa.String(), nullable=True),
+            sa.Column("input_artifact_refs", postgresql.JSONB(astext_type=sa.Text()), nullable=False),
+            sa.Column("payload", postgresql.JSONB(astext_type=sa.Text()), nullable=False),
+            sa.Column("created_at", sa.DateTime(timezone=True), nullable=False),
+            sa.PrimaryKeyConstraint("result_id"),
+        )
+    op.create_table(
+        "paper_account",
+        sa.Column("account_id", sa.String(), nullable=False),
+        sa.Column("base_currency", sa.String(), nullable=False),
+        sa.Column("cash", sa.Float(), nullable=False),
+        sa.Column("total_value", sa.Float(), nullable=False),
+        sa.Column("payload", postgresql.JSONB(astext_type=sa.Text()), nullable=False),
+        sa.Column("created_at", sa.DateTime(timezone=True), nullable=False),
+        sa.PrimaryKeyConstraint("account_id"),
+    )
+    op.create_table(
+        "paper_order",
+        sa.Column("paper_order_id", sa.String(), nullable=False),
+        sa.Column("workflow_id", sa.String(), nullable=False),
+        sa.Column("decision_memo_ref", sa.String(), nullable=False),
+        sa.Column("symbol", sa.String(), nullable=False),
+        sa.Column("side", sa.String(), nullable=False),
+        sa.Column("target_quantity_or_weight", sa.Float(), nullable=False),
+        sa.Column("price_range", postgresql.JSONB(astext_type=sa.Text()), nullable=False),
+        sa.Column("urgency", sa.String(), nullable=False),
+        sa.Column("execution_core_snapshot_ref", sa.String(), nullable=False),
+        sa.Column("status", sa.String(), nullable=False),
+        sa.Column("created_at", sa.DateTime(timezone=True), nullable=False),
+        sa.PrimaryKeyConstraint("paper_order_id"),
+    )
+    op.create_table(
+        "paper_execution_receipt",
+        sa.Column("receipt_id", sa.String(), nullable=False),
+        sa.Column("paper_order_id", sa.String(), nullable=False),
+        sa.Column("pricing_method", sa.String(), nullable=False),
+        sa.Column("execution_window", postgresql.JSONB(astext_type=sa.Text()), nullable=False),
+        sa.Column("fill_status", sa.String(), nullable=False),
+        sa.Column("fill_price", sa.Float(), nullable=True),
+        sa.Column("fill_quantity", sa.Float(), nullable=True),
+        sa.Column("fees", postgresql.JSONB(astext_type=sa.Text()), nullable=False),
+        sa.Column("taxes", postgresql.JSONB(astext_type=sa.Text()), nullable=False),
+        sa.Column("slippage", postgresql.JSONB(astext_type=sa.Text()), nullable=False),
+        sa.Column("t_plus_one_state", sa.String(), nullable=False),
+        sa.Column("created_at", sa.DateTime(timezone=True), nullable=False),
+        sa.PrimaryKeyConstraint("receipt_id"),
+    )
+    op.create_table(
+        "session",
+        sa.Column("session_id", sa.String(), nullable=False),
+        sa.Column("owner_role", sa.String(), nullable=False),
+        sa.Column("status", sa.String(), nullable=False),
+        sa.Column("created_at", sa.DateTime(timezone=True), nullable=False),
+        sa.Column("expires_at", sa.DateTime(timezone=True), nullable=True),
+        sa.PrimaryKeyConstraint("session_id"),
+    )
+    op.create_table(
+        "user_auth",
+        sa.Column("user_id", sa.String(), nullable=False),
+        sa.Column("owner_role", sa.String(), nullable=False),
+        sa.Column("auth_provider", sa.String(), nullable=False),
+        sa.Column("status", sa.String(), nullable=False),
+        sa.Column("created_at", sa.DateTime(timezone=True), nullable=False),
+        sa.PrimaryKeyConstraint("user_id"),
+    )
+    op.create_table(
+        "sensitive_field_access_event",
+        sa.Column("event_id", sa.String(), nullable=False),
+        sa.Column("actor", sa.String(), nullable=False),
+        sa.Column("field_ref", sa.String(), nullable=False),
+        sa.Column("access_decision", sa.String(), nullable=False),
+        sa.Column("reason_code", sa.String(), nullable=False),
+        sa.Column("created_at", sa.DateTime(timezone=True), nullable=False),
+        sa.PrimaryKeyConstraint("event_id"),
+    )
+    op.create_table(
+        "security_finding",
+        sa.Column("finding_id", sa.String(), nullable=False),
+        sa.Column("severity", sa.String(), nullable=False),
+        sa.Column("finding_type", sa.String(), nullable=False),
+        sa.Column("status", sa.String(), nullable=False),
+        sa.Column("payload", postgresql.JSONB(astext_type=sa.Text()), nullable=False),
+        sa.Column("created_at", sa.DateTime(timezone=True), nullable=False),
+        sa.PrimaryKeyConstraint("finding_id"),
+    )
+    op.create_table(
         "collaboration_session",
         sa.Column("session_id", sa.String(), nullable=False),
         sa.Column("workflow_id", sa.String(), nullable=False),
@@ -452,6 +638,25 @@ def downgrade() -> None:
     op.drop_table("collaboration_command")
     op.drop_table("agent_run")
     op.drop_table("collaboration_session")
+    op.drop_table("security_finding")
+    op.drop_table("sensitive_field_access_event")
+    op.drop_table("user_auth")
+    op.drop_table("session")
+    op.drop_table("paper_execution_receipt")
+    op.drop_table("paper_order")
+    op.drop_table("paper_account")
+    op.drop_table("risk_engine_result")
+    op.drop_table("portfolio_optimization_result")
+    op.drop_table("valuation_result")
+    op.drop_table("factor_result")
+    op.drop_table("market_state")
+    op.drop_table("data_conflict_report")
+    op.drop_table("data_quality_report")
+    op.drop_table("data_lineage")
+    op.drop_table("data_request")
+    op.drop_table("data_source_registry")
+    op.drop_table("data_domain_registry")
+    op.drop_table("governance_change")
     op.drop_table("manual_todo")
     op.drop_table("approval_record")
     op.drop_table("reopen_event")

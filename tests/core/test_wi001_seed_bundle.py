@@ -44,8 +44,26 @@ def test_seed_bundle_covers_runtime_profiles_and_official_agents():
 
     assert len(bundle["skill_packages"]) == len(bundle["skill_package_versions"])
     assert all(row["version"] == "1.0.0" for row in bundle["skill_package_versions"])
+    assert {row["domain_id"] for row in bundle["data_domains"]} == {
+        "a_share_market",
+        "corporate_announcement",
+        "macro_calendar",
+    }
+    assert bundle["data_sources"][0]["adapter_kind"] == "fixture_contract"
+    assert bundle["paper_account"]["cash"] == 1_000_000
+    assert bundle["owner_session"]["owner_role"] == "owner"
 
 
 def test_db_metadata_includes_seeded_runtime_registry_tables():
     table_names = set(Base.metadata.tables)
-    assert {"model_profile", "tool_profile", "skill_package", "skill_package_version"}.issubset(table_names)
+    assert {
+        "model_profile",
+        "tool_profile",
+        "skill_package",
+        "skill_package_version",
+        "data_domain_registry",
+        "data_source_registry",
+        "paper_account",
+        "session",
+        "user_auth",
+    }.issubset(table_names)

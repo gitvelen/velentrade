@@ -131,6 +131,208 @@ Table(
 )
 
 Table(
+    "governance_change",
+    Base.metadata,
+    Column("change_id", String, primary_key=True),
+    Column("change_type", String, nullable=False),
+    Column("impact_level", String, nullable=False),
+    Column("state", String, nullable=False),
+    Column("proposal_ref", String, nullable=False),
+    Column("context_snapshot_id", String, nullable=True),
+    Column("effective_scope", String, nullable=False),
+    Column("state_reason", Text, nullable=True),
+    Column("target_version_refs", JSONB, nullable=True),
+    Column("rollback_plan_ref", String, nullable=True),
+    Column("created_at", DateTime(timezone=True), nullable=False),
+    Column("updated_at", DateTime(timezone=True), nullable=False),
+    Column("decided_at", DateTime(timezone=True), nullable=True),
+    Column("effective_at", DateTime(timezone=True), nullable=True),
+)
+
+Table(
+    "data_domain_registry",
+    Base.metadata,
+    Column("domain_id", String, primary_key=True),
+    Column("display_name", String, nullable=False),
+    Column("status", String, nullable=False),
+    Column("payload", JSONB, nullable=False),
+    Column("created_at", DateTime(timezone=True), nullable=False),
+)
+
+Table(
+    "data_source_registry",
+    Base.metadata,
+    Column("source_id", String, primary_key=True),
+    Column("data_domain", String, nullable=False),
+    Column("usage_scope", String, nullable=False),
+    Column("priority", String, nullable=False),
+    Column("status", String, nullable=False),
+    Column("license_summary", Text, nullable=False),
+    Column("rate_limit", JSONB, nullable=False),
+    Column("adapter_kind", String, nullable=False),
+    Column("payload", JSONB, nullable=False),
+    Column("created_at", DateTime(timezone=True), nullable=False),
+)
+
+Table(
+    "data_request",
+    Base.metadata,
+    Column("request_id", String, primary_key=True),
+    Column("trace_id", String, nullable=False),
+    Column("data_domain", String, nullable=False),
+    Column("symbol_or_scope", String, nullable=False),
+    Column("time_range", JSONB, nullable=True),
+    Column("required_usage", String, nullable=False),
+    Column("freshness_requirement", String, nullable=False),
+    Column("required_fields", JSONB, nullable=False),
+    Column("requesting_stage", String, nullable=False),
+    Column("requesting_agent_or_service", String, nullable=False),
+    Column("created_at", DateTime(timezone=True), nullable=False),
+)
+
+Table(
+    "data_lineage",
+    Base.metadata,
+    Column("lineage_id", String, primary_key=True),
+    Column("request_id", String, nullable=False),
+    Column("source_id", String, nullable=False),
+    Column("source_ref", String, nullable=False),
+    Column("payload", JSONB, nullable=False),
+    Column("created_at", DateTime(timezone=True), nullable=False),
+)
+
+Table(
+    "data_quality_report",
+    Base.metadata,
+    Column("report_id", String, primary_key=True),
+    Column("request_id", String, nullable=False),
+    Column("quality_score", Float, nullable=False),
+    Column("quality_band", String, nullable=False),
+    Column("critical_field_results", JSONB, nullable=False),
+    Column("decision_core_status", String, nullable=False),
+    Column("execution_core_status", String, nullable=False),
+    Column("created_at", DateTime(timezone=True), nullable=False),
+)
+
+Table(
+    "data_conflict_report",
+    Base.metadata,
+    Column("conflict_id", String, primary_key=True),
+    Column("request_id", String, nullable=False),
+    Column("severity", String, nullable=False),
+    Column("field_results", JSONB, nullable=False),
+    Column("resolution", Text, nullable=True),
+    Column("created_at", DateTime(timezone=True), nullable=False),
+)
+
+Table(
+    "market_state",
+    Base.metadata,
+    Column("market_state_id", String, primary_key=True),
+    Column("effective_date", String, nullable=False),
+    Column("state", String, nullable=False),
+    Column("payload", JSONB, nullable=False),
+    Column("created_at", DateTime(timezone=True), nullable=False),
+)
+
+for result_table_name in ("factor_result", "valuation_result", "portfolio_optimization_result", "risk_engine_result"):
+    Table(
+        result_table_name,
+        Base.metadata,
+        Column("result_id", String, primary_key=True),
+        Column("workflow_id", String, nullable=True),
+        Column("input_artifact_refs", JSONB, nullable=False),
+        Column("payload", JSONB, nullable=False),
+        Column("created_at", DateTime(timezone=True), nullable=False),
+    )
+
+Table(
+    "paper_account",
+    Base.metadata,
+    Column("account_id", String, primary_key=True),
+    Column("base_currency", String, nullable=False),
+    Column("cash", Float, nullable=False),
+    Column("total_value", Float, nullable=False),
+    Column("payload", JSONB, nullable=False),
+    Column("created_at", DateTime(timezone=True), nullable=False),
+)
+
+Table(
+    "paper_order",
+    Base.metadata,
+    Column("paper_order_id", String, primary_key=True),
+    Column("workflow_id", String, nullable=False),
+    Column("decision_memo_ref", String, nullable=False),
+    Column("symbol", String, nullable=False),
+    Column("side", String, nullable=False),
+    Column("target_quantity_or_weight", Float, nullable=False),
+    Column("price_range", JSONB, nullable=False),
+    Column("urgency", String, nullable=False),
+    Column("execution_core_snapshot_ref", String, nullable=False),
+    Column("status", String, nullable=False),
+    Column("created_at", DateTime(timezone=True), nullable=False),
+)
+
+Table(
+    "paper_execution_receipt",
+    Base.metadata,
+    Column("receipt_id", String, primary_key=True),
+    Column("paper_order_id", String, nullable=False),
+    Column("pricing_method", String, nullable=False),
+    Column("execution_window", JSONB, nullable=False),
+    Column("fill_status", String, nullable=False),
+    Column("fill_price", Float, nullable=True),
+    Column("fill_quantity", Float, nullable=True),
+    Column("fees", JSONB, nullable=False),
+    Column("taxes", JSONB, nullable=False),
+    Column("slippage", JSONB, nullable=False),
+    Column("t_plus_one_state", String, nullable=False),
+    Column("created_at", DateTime(timezone=True), nullable=False),
+)
+
+Table(
+    "session",
+    Base.metadata,
+    Column("session_id", String, primary_key=True),
+    Column("owner_role", String, nullable=False),
+    Column("status", String, nullable=False),
+    Column("created_at", DateTime(timezone=True), nullable=False),
+    Column("expires_at", DateTime(timezone=True), nullable=True),
+)
+
+Table(
+    "user_auth",
+    Base.metadata,
+    Column("user_id", String, primary_key=True),
+    Column("owner_role", String, nullable=False),
+    Column("auth_provider", String, nullable=False),
+    Column("status", String, nullable=False),
+    Column("created_at", DateTime(timezone=True), nullable=False),
+)
+
+Table(
+    "sensitive_field_access_event",
+    Base.metadata,
+    Column("event_id", String, primary_key=True),
+    Column("actor", String, nullable=False),
+    Column("field_ref", String, nullable=False),
+    Column("access_decision", String, nullable=False),
+    Column("reason_code", String, nullable=False),
+    Column("created_at", DateTime(timezone=True), nullable=False),
+)
+
+Table(
+    "security_finding",
+    Base.metadata,
+    Column("finding_id", String, primary_key=True),
+    Column("severity", String, nullable=False),
+    Column("finding_type", String, nullable=False),
+    Column("status", String, nullable=False),
+    Column("payload", JSONB, nullable=False),
+    Column("created_at", DateTime(timezone=True), nullable=False),
+)
+
+Table(
     "collaboration_session",
     Base.metadata,
     Column("session_id", String, primary_key=True),

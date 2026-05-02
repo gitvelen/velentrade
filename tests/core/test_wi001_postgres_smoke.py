@@ -83,7 +83,7 @@ def test_postgres_migration_and_seed_smoke():
                     text(
                         "select table_name from information_schema.tables "
                         "where table_schema = 'public' and table_name in "
-                        "('artifact','task_envelope','workflow','workflow_stage','memory_item','context_snapshot','model_profile','tool_profile','skill_package','skill_package_version')"
+                        "('artifact','task_envelope','workflow','workflow_stage','governance_change','data_request','data_quality_report','paper_order','session','memory_item','context_snapshot','model_profile','tool_profile','skill_package','skill_package_version')"
                     )
                 )
             }
@@ -92,6 +92,11 @@ def test_postgres_migration_and_seed_smoke():
                 "task_envelope",
                 "workflow",
                 "workflow_stage",
+                "governance_change",
+                "data_request",
+                "data_quality_report",
+                "paper_order",
+                "session",
                 "memory_item",
                 "context_snapshot",
                 "model_profile",
@@ -104,8 +109,16 @@ def test_postgres_migration_and_seed_smoke():
             model_profile_count = connection.execute(text("select count(*) from model_profile")).scalar_one()
             tool_profile_count = connection.execute(text("select count(*) from tool_profile")).scalar_one()
             skill_package_count = connection.execute(text("select count(*) from skill_package")).scalar_one()
+            data_domain_count = connection.execute(text("select count(*) from data_domain_registry")).scalar_one()
+            data_source_count = connection.execute(text("select count(*) from data_source_registry")).scalar_one()
+            paper_account_count = connection.execute(text("select count(*) from paper_account")).scalar_one()
+            session_count = connection.execute(text("select count(*) from session")).scalar_one()
 
         assert context_snapshot_count == 1
         assert model_profile_count == 1
         assert tool_profile_count == 1
         assert skill_package_count >= 1
+        assert data_domain_count == 3
+        assert data_source_count == 3
+        assert paper_account_count == 1
+        assert session_count == 1

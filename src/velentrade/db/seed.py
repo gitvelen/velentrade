@@ -92,6 +92,89 @@ def build_wi001_seed_bundle() -> dict:
         "created_at": now,
         "effective_from": now,
     }
+    data_domains = [
+        {
+            "domain_id": "a_share_market",
+            "display_name": "A 股行情",
+            "status": "active",
+            "payload": {"required_fields": ["symbol", "trade_date", "close", "volume"]},
+            "created_at": now,
+        },
+        {
+            "domain_id": "corporate_announcement",
+            "display_name": "上市公司公告",
+            "status": "active",
+            "payload": {"required_fields": ["symbol", "published_at", "title", "source_url"]},
+            "created_at": now,
+        },
+        {
+            "domain_id": "macro_calendar",
+            "display_name": "宏观日历",
+            "status": "active",
+            "payload": {"required_fields": ["event_date", "indicator", "actual_or_forecast"]},
+            "created_at": now,
+        },
+    ]
+    data_sources = [
+        {
+            "source_id": "fixture-a-share-daily",
+            "data_domain": "a_share_market",
+            "usage_scope": "decision_core",
+            "priority": "T4",
+            "status": "fixture_only",
+            "license_summary": "fixture contract only; real vendor adapter remains out of scope for WI-002",
+            "rate_limit": {"requests_per_minute": 0},
+            "adapter_kind": "fixture_contract",
+            "payload": {"completion_level": "fixture_contract"},
+            "created_at": now,
+        },
+        {
+            "source_id": "fixture-announcement",
+            "data_domain": "corporate_announcement",
+            "usage_scope": "research",
+            "priority": "T4",
+            "status": "fixture_only",
+            "license_summary": "fixture contract only; real vendor adapter remains out of scope for WI-002",
+            "rate_limit": {"requests_per_minute": 0},
+            "adapter_kind": "fixture_contract",
+            "payload": {"completion_level": "fixture_contract"},
+            "created_at": now,
+        },
+        {
+            "source_id": "fixture-macro-calendar",
+            "data_domain": "macro_calendar",
+            "usage_scope": "research",
+            "priority": "T4",
+            "status": "fixture_only",
+            "license_summary": "fixture contract only; real vendor adapter remains out of scope for WI-002",
+            "rate_limit": {"requests_per_minute": 0},
+            "adapter_kind": "fixture_contract",
+            "payload": {"completion_level": "fixture_contract"},
+            "created_at": now,
+        },
+    ]
+    paper_account = {
+        "account_id": "paper-account-v1",
+        "base_currency": "CNY",
+        "cash": 1_000_000,
+        "total_value": 1_000_000,
+        "payload": {"positions": [], "completion_level": "db_persistent"},
+        "created_at": now,
+    }
+    owner_session = {
+        "session_id": "owner-session-v1",
+        "owner_role": "owner",
+        "status": "active",
+        "created_at": now,
+        "expires_at": None,
+    }
+    owner_auth = {
+        "user_id": "owner",
+        "owner_role": "owner",
+        "auth_provider": "local_v1",
+        "status": "active",
+        "created_at": now,
+    }
 
     return {
         "context_snapshot": context_snapshot,
@@ -100,6 +183,11 @@ def build_wi001_seed_bundle() -> dict:
         "tool_profiles": tool_profile_rows,
         "skill_packages": skill_package_rows,
         "skill_package_versions": skill_package_version_rows,
+        "data_domains": data_domains,
+        "data_sources": data_sources,
+        "paper_account": paper_account,
+        "owner_session": owner_session,
+        "owner_auth": owner_auth,
     }
 
 
@@ -128,4 +216,24 @@ def apply_wi001_seed(engine: Engine) -> None:
         connection.execute(
             tables["skill_package_version"].insert(),
             bundle["skill_package_versions"],
+        )
+        connection.execute(
+            tables["data_domain_registry"].insert(),
+            bundle["data_domains"],
+        )
+        connection.execute(
+            tables["data_source_registry"].insert(),
+            bundle["data_sources"],
+        )
+        connection.execute(
+            tables["paper_account"].insert(),
+            [bundle["paper_account"]],
+        )
+        connection.execute(
+            tables["session"].insert(),
+            [bundle["owner_session"]],
+        )
+        connection.execute(
+            tables["user_auth"].insert(),
+            [bundle["owner_auth"]],
         )

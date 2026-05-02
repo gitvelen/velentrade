@@ -19,6 +19,25 @@ def test_sqlalchemy_metadata_contains_wi001_foundation_tables_and_columns():
         "reopen_event",
         "approval_record",
         "manual_todo",
+        "governance_change",
+        "data_domain_registry",
+        "data_source_registry",
+        "data_request",
+        "data_lineage",
+        "data_quality_report",
+        "data_conflict_report",
+        "market_state",
+        "factor_result",
+        "valuation_result",
+        "portfolio_optimization_result",
+        "risk_engine_result",
+        "paper_account",
+        "paper_order",
+        "paper_execution_receipt",
+        "session",
+        "user_auth",
+        "sensitive_field_access_event",
+        "security_finding",
         "collaboration_session",
         "agent_run",
         "collaboration_command",
@@ -81,6 +100,34 @@ def test_sqlalchemy_metadata_contains_wi001_foundation_tables_and_columns():
         "stage_version",
     }.issubset(workflow_stage_columns)
 
+    data_request_columns = set(Base.metadata.tables["data_request"].columns.keys())
+    assert {
+        "request_id",
+        "trace_id",
+        "data_domain",
+        "symbol_or_scope",
+        "required_usage",
+        "freshness_requirement",
+        "required_fields",
+        "requesting_stage",
+        "requesting_agent_or_service",
+        "created_at",
+    }.issubset(data_request_columns)
+
+    governance_change_columns = set(Base.metadata.tables["governance_change"].columns.keys())
+    assert {
+        "change_id",
+        "change_type",
+        "impact_level",
+        "state",
+        "proposal_ref",
+        "context_snapshot_id",
+        "effective_scope",
+        "state_reason",
+        "created_at",
+        "updated_at",
+    }.issubset(governance_change_columns)
+
 
 def test_alembic_is_configured_with_a_wi001_foundation_revision():
     config = Config(str(Path("alembic.ini")))
@@ -95,5 +142,8 @@ def test_alembic_is_configured_with_a_wi001_foundation_revision():
     assert "artifact" in text
     assert "task_envelope" in text
     assert "workflow_stage" in text
+    assert "data_request" in text
+    assert "governance_change" in text
+    assert "paper_order" in text
     assert "collaboration_session" in text
     assert "memory_item" in text
