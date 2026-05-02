@@ -187,7 +187,10 @@ class DevOpsIncidentRuntime:
         return _report_envelope(payload)
 
     def _build_degradation(self, signal: HealthSignal, incident: IncidentReport) -> DegradationPlan:
-        auto_allowed = signal.usage in {"display", "research"} or signal.check_type in {"source_health", "service_health"}
+        auto_allowed = incident.severity in {"P2", "P3"} and (
+            signal.usage in {"display", "research"}
+            or (signal.check_type == "service_health" and signal.usage not in {"decision_core", "execution_core", "risk"})
+        )
         return DegradationPlan(
             plan_id=new_id("degradation"),
             incident_ref=incident.incident_id,
@@ -301,7 +304,16 @@ def _routine_checks() -> list[dict[str, Any]]:
     ]
 
 
-def _report_envelope(payload: dict[str, Any]) -> dict[str, Any]:
+def _report_envelope(
+    payload: dict[str, Any],
+    guard_results: list[dict[str, Any]] | None = None,
+    failures: list[dict[str, Any]] | None = None,
+) -> dict[str, Any]:
+    guard_results = guard_results or [
+        {"guard": "investment_resume_allowed_false", "input_ref": "recovery_plan", "expected": "false", "actual": "false", "result": "pass"}
+    ]
+    failures = failures or []
+    result = "fail" if failures or any(guard.get("result") != "pass" for guard in guard_results) else "pass"
     report = {
         "report_id": "devops_incident_report.json",
         "generated_at": utc_now(),
@@ -310,18 +322,18 @@ def _report_envelope(payload: dict[str, Any]) -> dict[str, Any]:
         "work_item_refs": ["WI-006"],
         "test_case_refs": ["TC-ACC-029-01"],
         "fixture_refs": ["FX-DEVOPS-INCIDENTS"],
-        "result": "pass",
+        "result": result,
         "checked_requirements": ["REQ-029"],
         "checked_acceptances": ["ACC-029"],
         "checked_invariants": ["INV-DEVOPS-NO-BUSINESS-RESUME"],
         "artifact_refs": [],
-        "failures": [],
+        "failures": failures,
         "residual_risk": [],
         "schema_version": "1.0.0",
         "checked_fields": sorted(payload),
         "fixture_inputs": {"fixture": "WI-006 deterministic incident fixture"},
         "actual_outputs": {"payload_keys": sorted(payload)},
-        "guard_results": [{"guard": "investment_resume_allowed_false", "input_ref": "recovery_plan", "expected": "false", "actual": "false", "result": "pass"}],
+        "guard_results": guard_results,
     }
     report.update(payload)
     return report

@@ -1,4 +1,4 @@
-from velentrade.domain.devops.incident import DevOpsIncidentRuntime, HealthSignal
+from velentrade.domain.devops.incident import DevOpsIncidentRuntime, HealthSignal, _report_envelope
 
 
 def test_devops_incident_runtime_classifies_health_and_never_resumes_investment():
@@ -42,6 +42,26 @@ def test_devops_incident_runtime_classifies_health_and_never_resumes_investment(
     assert runtime.recovery_plans[source.incident_id].investment_resume_allowed is False
     assert runtime.risk_notifications[source.incident_id].recommended_hold_or_reopen in {"hold", "reopen"}
     assert runtime.block_risk_relaxation_attempt("risk_hard_blocker") == "blocked:risk_relaxation_requires_risk_or_governance"
+
+
+def test_execution_core_source_failure_degradation_is_not_auto_allowed():
+    runtime = DevOpsIncidentRuntime()
+
+    incident = runtime.handle_signal(
+        HealthSignal(
+            check_type="source_health",
+            subject="market-primary",
+            usage="execution_core",
+            metrics={"critical_field_missing": True, "primary_failed": True, "fallback_failed": True},
+            affected_workflows=["wf-1"],
+            evidence_refs=["data-request-1"],
+        )
+    )
+
+    plan = runtime.degradation_plans[incident.incident_id]
+    assert plan.auto_allowed is False
+    assert plan.business_risk_requires_risk_review is True
+    assert plan.decision_or_execution_blocking_effect == "blocked"
 
 
 def test_sensitive_log_and_cost_token_paths_have_separate_severity_semantics():
@@ -140,3 +160,22 @@ def test_devops_incident_report_has_contract_and_tc_fields():
     }
     assert report["investment_resume_denied_until_guard"] is True
     assert report["cost_observability_only"] is True
+
+
+def test_devops_report_fails_when_guard_or_failure_fails():
+    report = _report_envelope(
+        {"probe": "negative"},
+        guard_results=[
+            {
+                "guard": "investment_resume_allowed_false",
+                "input_ref": "recovery_plan",
+                "expected": "false",
+                "actual": "true",
+                "result": "fail",
+            }
+        ],
+        failures=[{"code": "devops_resumed_investment", "message": "DevOps recovery directly resumed execution"}],
+    )
+
+    assert report["result"] == "fail"
+    assert report["failures"][0]["code"] == "devops_resumed_investment"
