@@ -18,8 +18,13 @@ import {
 } from "lucide-react";
 
 import {
+  AgentProfileReadModel,
+  CapabilityConfigReadModel,
+  KnowledgeReadModel,
   RequestBriefPreview,
   ResolvedWorkbenchRoute,
+  TeamReadModel,
+  TraceDebugReadModel,
   buildApprovalRecordReadModel,
   buildFinanceOverviewReadModel,
   buildGovernanceReadModel,
@@ -33,6 +38,13 @@ import {
   resolveWorkbenchRoute,
   routeOwnerCommand,
 } from "./workbench";
+import {
+  loadAgentCapabilityConfigReadModel,
+  loadAgentProfileReadModel,
+  loadKnowledgeReadModel,
+  loadTeamReadModel,
+  loadTraceDebugReadModel,
+} from "./api";
 import "./styles.css";
 
 type Navigate = (href: string) => void;
@@ -277,7 +289,7 @@ function InvestmentDossierPage({ route, onNavigate }: { route: ResolvedWorkbench
 }
 
 function TraceDebugPage({ route, onNavigate }: { route: ResolvedWorkbenchRoute; onNavigate: Navigate }) {
-  const trace = buildTraceDebugReadModel();
+  const trace = useTraceDebugReadModel(route.params.workflowId ?? "wf-001");
   const returnHref = route.query.returnTo ?? "/investment/wf-001";
   const returnLabel = getTraceReturnLabel(returnHref);
   return (
@@ -291,6 +303,7 @@ function TraceDebugPage({ route, onNavigate }: { route: ResolvedWorkbenchRoute; 
       </div>
       <MiniList icon={<Bot />} title="AgentRun 树" items={trace.agentRunTree.map((run) => `${run.runId} · ${run.stage} · ${run.profileVersion}`)} />
       <MiniList icon={<GitBranch />} title="CollaborationCommand" items={trace.commands.map((command) => `${command.commandType} · ${command.admission} · ${command.reasonCode}`)} />
+      <MiniList icon={<FileSearch />} title="CollaborationEvent" items={trace.events.map((event) => `${event.eventType} · ${event.summary}`)} />
       <MiniList icon={<LockKeyhole />} title="Context 注入" items={trace.contextInjectionRecords.map((record) => `${record.contextSnapshotId} · ${record.redactionStatus} · ${record.whyIncluded}`)} />
       <MiniList icon={<Layers3 />} title="Handoff" items={trace.handoffs.map((handoff) => `${handoff.from} -> ${handoff.to} · ${handoff.blockers.join("/")}`)} />
     </section>
@@ -310,7 +323,7 @@ function FinancePage() {
 }
 
 function KnowledgePage({ onNavigate }: { onNavigate: Navigate }) {
-  const knowledge = buildKnowledgeReadModel();
+  const knowledge = useKnowledgeReadModel();
   return (
     <section className="page-grid knowledge-grid">
       <h1 className="sr-only">知识</h1>
@@ -327,7 +340,7 @@ function KnowledgePage({ onNavigate }: { onNavigate: Navigate }) {
 
 function GovernancePage({ route, onNavigate }: { route: ResolvedWorkbenchRoute; onNavigate: Navigate }) {
   const governance = buildGovernanceReadModel();
-  const team = buildTeamReadModel();
+  const team = useTeamReadModel();
   const selectedPanel = getGovernancePanel(route.query);
   const taskCenter = route.query.task === "manual"
     ? governance.taskCenter.filter((task) => task.taskType === "manual_todo")
@@ -406,7 +419,7 @@ function GovernancePage({ route, onNavigate }: { route: ResolvedWorkbenchRoute; 
 }
 
 function AgentTeamPage({ onNavigate }: { onNavigate: Navigate }) {
-  const team = buildTeamReadModel();
+  const team = useTeamReadModel();
   return (
     <section className="page-grid team-grid">
       <div className="section-header">
@@ -430,8 +443,7 @@ function AgentTeamPage({ onNavigate }: { onNavigate: Navigate }) {
 }
 
 function AgentProfilePage({ agentId, onNavigate }: { agentId: string; onNavigate: Navigate }) {
-  const team = buildTeamReadModel();
-  const profile = team.agentProfileReadModels.find((item) => item.agentId === agentId) ?? team.agentProfileReadModels[0];
+  const profile = useAgentProfileReadModel(agentId);
   return (
     <section className="page-grid profile-grid">
       <div className="section-header with-actions">
@@ -448,8 +460,8 @@ function AgentProfilePage({ agentId, onNavigate }: { agentId: string; onNavigate
 }
 
 function AgentConfigPage({ agentId, onNavigate }: { agentId: string; onNavigate: Navigate }) {
-  const team = buildTeamReadModel();
-  const config = team.capabilityConfigReadModel;
+  const team = useTeamReadModel();
+  const config = useAgentCapabilityConfigReadModel(agentId);
   const draft = team.capabilityDraftSubmission;
   const [saved, setSaved] = useState(false);
   return (
@@ -517,6 +529,108 @@ function ApprovalDetailPage({ onNavigate }: { onNavigate: Navigate }) {
       <MiniList icon={<GitBranch />} title="证据引用" items={approval.evidenceRefs} />
     </section>
   );
+}
+
+function useTeamReadModel() {
+  const [team, setTeam] = useState<TeamReadModel>(() => buildTeamReadModel());
+
+  useEffect(() => {
+    let cancelled = false;
+    loadTeamReadModel()
+      .then((payload) => {
+        if (!cancelled) {
+          setTeam(payload);
+        }
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  return team;
+}
+
+function useAgentProfileReadModel(agentId: string) {
+  const fallback = buildTeamReadModel().agentProfileReadModels.find((item) => item.agentId === agentId)
+    ?? buildTeamReadModel().agentProfileReadModels[0];
+  const [profile, setProfile] = useState<AgentProfileReadModel>(fallback);
+
+  useEffect(() => {
+    let cancelled = false;
+    loadAgentProfileReadModel(agentId)
+      .then((payload) => {
+        if (!cancelled) {
+          setProfile(payload);
+        }
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, [agentId]);
+
+  return profile;
+}
+
+function useAgentCapabilityConfigReadModel(agentId: string) {
+  const [config, setConfig] = useState<CapabilityConfigReadModel>(() => buildTeamReadModel().capabilityConfigReadModel);
+
+  useEffect(() => {
+    let cancelled = false;
+    loadAgentCapabilityConfigReadModel(agentId)
+      .then((payload) => {
+        if (!cancelled) {
+          setConfig(payload);
+        }
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, [agentId]);
+
+  return config;
+}
+
+function useKnowledgeReadModel() {
+  const [knowledge, setKnowledge] = useState<KnowledgeReadModel>(() => buildKnowledgeReadModel());
+
+  useEffect(() => {
+    let cancelled = false;
+    loadKnowledgeReadModel()
+      .then((payload) => {
+        if (!cancelled) {
+          setKnowledge(payload);
+        }
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  return knowledge;
+}
+
+function useTraceDebugReadModel(workflowId: string) {
+  const [trace, setTrace] = useState<TraceDebugReadModel>(() => buildTraceDebugReadModel());
+
+  useEffect(() => {
+    let cancelled = false;
+    loadTraceDebugReadModel(workflowId)
+      .then((payload) => {
+        if (!cancelled) {
+          setTrace(payload);
+        }
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, [workflowId]);
+
+  return trace;
 }
 
 function NotFoundPage({ onNavigate }: { onNavigate: Navigate }) {

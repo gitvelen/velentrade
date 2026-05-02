@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { act } from "react";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 async function bootWorkbench(path: string) {
   vi.resetModules();
@@ -47,9 +47,28 @@ function setInputValue(input: HTMLInputElement, value: string) {
   input.dispatchEvent(new Event("input", { bubbles: true }));
 }
 
+function mockJsonResponse(data: unknown) {
+  return {
+    ok: true,
+    json: async () => ({ data, meta: { trace_id: "trace-1", generated_at: "2026-05-02T00:00:00Z" } }),
+  } as Response;
+}
+
+async function flushAsyncWork() {
+  await act(async () => {
+    await Promise.resolve();
+    await Promise.resolve();
+  });
+}
+
 describe("WI-004 workbench interactions", () => {
   beforeEach(() => {
     (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    vi.restoreAllMocks();
   });
 
   it("generates a simple request preview only after the owner clicks the preview button", async () => {
@@ -227,5 +246,172 @@ describe("WI-004 workbench interactions", () => {
     expect(window.location.search).toBe("?change=default-context");
     expect(document.querySelector('[data-panel="changes"]')).not.toBeNull();
     expect(document.body.textContent).toContain("默认上下文提案");
+  });
+
+  it("loads agent team cards from /api/team when the read model endpoint is available", async () => {
+    vi.stubGlobal("fetch", vi.fn(async (input: string | URL | Request) => {
+      const href = typeof input === "string" ? input : input instanceof URL ? input.pathname : input.url;
+      if (href.endsWith("/api/team")) {
+        return mockJsonResponse({
+          team_health: {
+            healthy_agent_count: 1,
+            active_agent_run_count: 1,
+            pending_draft_count: 0,
+            failed_or_denied_count: 0,
+            last_quality_window: "live",
+          },
+          agent_cards: [
+            {
+              agent_id: "macro_analyst",
+              display_name: "API 宏观分析员",
+              profile_version: "2.1.0",
+              skill_package_version: "macro-skill@2.1.0",
+              prompt_version: "2.0.0",
+              context_snapshot_version: "ctx-api",
+              recent_quality_score: 0.97,
+              failure_count: 0,
+              denied_action_count: 0,
+              config_draft_entry: "governance_draft_only",
+              weakness_tags: [],
+            },
+          ],
+          capability_drafts: [],
+          quality_alerts: [],
+          governance_links: ["/governance/team/macro_analyst/config"],
+        });
+      }
+      throw new Error(`unexpected fetch: ${href}`);
+    }));
+
+    await bootWorkbench("/governance/team");
+    await flushAsyncWork();
+
+    expect(document.body.textContent).toContain("API 宏观分析员");
+    expect(document.body.textContent).toContain("2.1.0");
+    expect(document.body.textContent).not.toContain("Macro Analyst");
+  });
+
+  it("loads agent profile and capability config from /api/team endpoints when available", async () => {
+    vi.stubGlobal("fetch", vi.fn(async (input: string | URL | Request) => {
+      const href = typeof input === "string" ? input : input instanceof URL ? input.pathname : input.url;
+      if (href.endsWith("/api/team/macro_analyst")) {
+        return mockJsonResponse({
+          agent_id: "macro_analyst",
+          display_name: "API 宏观分析员",
+          capability_summary: "只读 API 画像",
+          can_do: ["读取 API 资料", "提交 API 产物"],
+          cannot_do: ["热改运行中任务", "直接写业务库"],
+          quality_metrics: {
+            schema_pass_rate: 0.98,
+            evidence_quality: 0.93,
+          },
+          denied_actions: [],
+          config_draft_entry: "governance_draft_only",
+        });
+      }
+      if (href.endsWith("/api/team/macro_analyst/capability-config")) {
+        return mockJsonResponse({
+          agent_id: "macro_analyst",
+          editable_fields: [
+            { field: "default_model_profile" },
+            { field: "default_tool_profile_id" },
+          ],
+          forbidden_direct_update_reason: "governance_draft_only",
+          effective_scope_options: ["new_task", "new_attempt"],
+        });
+      }
+      throw new Error(`unexpected fetch: ${href}`);
+    }));
+
+    await bootWorkbench("/governance/team/macro_analyst");
+    await flushAsyncWork();
+
+    expect(document.body.textContent).toContain("API 宏观分析员");
+    expect(document.body.textContent).toContain("读取 API 资料");
+    expect(document.body.textContent).toContain("热改运行中任务");
+
+    await bootWorkbench("/governance/team/macro_analyst/config");
+    await flushAsyncWork();
+
+    expect(document.body.textContent).toContain("default_model_profile");
+    expect(document.body.textContent).toContain("governance_draft_only");
+  });
+
+  it("falls back to fixture team data when /api/team is unavailable", async () => {
+    vi.stubGlobal("fetch", vi.fn(async () => {
+      throw new Error("api unavailable");
+    }));
+
+    await bootWorkbench("/governance/team");
+    await flushAsyncWork();
+
+    expect(document.body.textContent).toContain("CIO");
+    expect(document.body.textContent).toContain("Quant Analyst");
+  });
+
+  it("loads knowledge memory summaries from /api/knowledge/memory-items when available", async () => {
+    vi.stubGlobal("fetch", vi.fn(async (input: string | URL | Request) => {
+      const href = typeof input === "string" ? input : input instanceof URL ? input.pathname : input.url;
+      if (href.endsWith("/api/knowledge/memory-items")) {
+        return mockJsonResponse([
+          {
+            memory_id: "memory-api-1",
+            title: "API 研究笔记",
+            relations: [{ target_ref: "artifact-api-1", relation_type: "supports" }],
+            why_included: "api_context",
+            current_version_id: "ctx-api-1",
+            sensitivity: "public_internal",
+          },
+        ]);
+      }
+      throw new Error(`unexpected fetch: ${href}`);
+    }));
+
+    await bootWorkbench("/knowledge");
+    await flushAsyncWork();
+
+    expect(document.body.textContent).toContain("API 研究笔记");
+    expect(document.body.textContent).toContain("memory-api-1 支撑 artifact-api-1");
+  });
+
+  it("loads trace runs, events and handoffs from workflow read endpoints when available", async () => {
+    vi.stubGlobal("fetch", vi.fn(async (input: string | URL | Request) => {
+      const href = typeof input === "string" ? input : input instanceof URL ? input.pathname : input.url;
+      if (href.endsWith("/api/workflows/wf-1/agent-runs")) {
+        return mockJsonResponse([
+          {
+            agent_run_id: "run-api-1",
+            stage: "S2",
+            profile_version: "api-profile@2.0.0",
+          },
+        ]);
+      }
+      if (href.endsWith("/api/workflows/wf-1/collaboration-events")) {
+        return mockJsonResponse([
+          {
+            event_type: "handoff_created",
+            payload: {},
+            summary: "API 交接事件",
+          },
+        ]);
+      }
+      if (href.endsWith("/api/workflows/wf-1/handoffs")) {
+        return mockJsonResponse([
+          {
+            from_stage: "S2",
+            to_stage_or_agent: "S3",
+            blockers: ["api blocker"],
+          },
+        ]);
+      }
+      throw new Error(`unexpected fetch: ${href}`);
+    }));
+
+    await bootWorkbench("/investment/wf-1/trace");
+    await flushAsyncWork();
+
+    expect(document.body.textContent).toContain("run-api-1");
+    expect(document.body.textContent).toContain("handoff_created · API 交接事件");
+    expect(document.body.textContent).toContain("S2 -> S3 · api blocker");
   });
 });

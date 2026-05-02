@@ -51,6 +51,85 @@ export type RequestBriefPreview = {
   };
 };
 
+export type TeamHealth = {
+  healthyAgentCount: number;
+  activeAgentRunCount: number;
+  pendingDraftCount: number;
+  failedOrDeniedCount: number;
+};
+
+export type TeamAgentCard = {
+  agentId: string;
+  displayName: string;
+  role: string;
+  profileVersion: string;
+  skillPackageVersion: string;
+  promptVersion: string;
+  contextSnapshotVersion: string;
+  recentQualityScore: number;
+  failureCount: number;
+  deniedActionCount: number;
+  configDraftEntry: string;
+  weaknessTags: string[];
+};
+
+export type AgentProfileReadModel = {
+  agentId: string;
+  displayName: string;
+  capabilitySummary: string;
+  canDo: string[];
+  cannotDo: string[];
+  qualityMetrics: {
+    schemaPassRate: number;
+    evidenceQuality: number;
+  };
+  cfoAttributionRefs: string[];
+  deniedActions: Array<{ reasonCode: string }>;
+};
+
+export type CapabilityConfigReadModel = {
+  agentId: string;
+  editableFields: string[];
+  forbiddenDirectUpdateReason: string;
+  effectiveScopeOptions: string[];
+};
+
+export type CapabilityDraftSubmission = {
+  draftId: string;
+  state: string;
+  impactLevel: string;
+  governanceChangeRef: string;
+  ownerApprovalRef: string;
+  effectiveScope: string;
+};
+
+export type TeamReadModel = {
+  teamHealth: TeamHealth;
+  agentCards: TeamAgentCard[];
+  agentProfileReadModels: AgentProfileReadModel[];
+  capabilityConfigReadModel: CapabilityConfigReadModel;
+  capabilityDraftSubmission: CapabilityDraftSubmission;
+  hotPatchDenials: Array<{ reasonCode: string; actionVisible: boolean }>;
+};
+
+export type TraceDebugReadModel = {
+  workflowId: string;
+  agentRunTree: Array<{ runId: string; parentRunId: string | null; stage: string; profileVersion: string; contextSlice: string }>;
+  commands: Array<{ commandType: string; admission: string; receiver: string; reasonCode: string }>;
+  events: Array<{ eventType: string; summary: string }>;
+  handoffs: Array<{ from: string; to: string; blockers: string[]; openQuestions: string[] }>;
+  contextInjectionRecords: Array<{ contextSnapshotId: string; whyIncluded: string; redactionStatus: string }>;
+  rawTranscriptDefaultCollapsed: boolean;
+};
+
+export type KnowledgeReadModel = {
+  memoryCollections: Array<{ collectionId: string; title: string; resultCount: number }>;
+  memoryResults: Array<{ memoryId: string; title: string; relationSummary: string; sensitivity: string }>;
+  relationGraph: Array<{ sourceMemoryId: string; targetRef: string; relationType: string }>;
+  contextInjectionInspector: Array<{ contextSnapshotId: string; whyIncluded: string; redactionStatus: string }>;
+  defaultContextProposalPath: string;
+};
+
 export type Report = Record<string, unknown> & {
   report_id: string;
   result: "pass" | "fail";
@@ -394,7 +473,7 @@ export function buildInvestmentDossierReadModel() {
   };
 }
 
-export function buildTraceDebugReadModel() {
+export function buildTraceDebugReadModel(): TraceDebugReadModel {
   return {
     workflowId: "wf-001",
     agentRunTree: [
@@ -466,7 +545,7 @@ export function buildApprovalRecordReadModel() {
   };
 }
 
-export function buildTeamReadModel() {
+export function buildTeamReadModel(): TeamReadModel {
   const agentCards = agentIds.map((agentId, index) => ({
     agentId,
     displayName: agentNames[agentId],
@@ -527,7 +606,7 @@ export function buildFinanceOverviewReadModel() {
   };
 }
 
-export function buildKnowledgeReadModel() {
+export function buildKnowledgeReadModel(): KnowledgeReadModel {
   return {
     memoryCollections: [{ collectionId: "collection-1", title: "半导体资料", resultCount: 12 }],
     memoryResults: [{ memoryId: "memory-1", title: "政策跟踪", relationSummary: "supports research-1", sensitivity: "public_internal" }],
