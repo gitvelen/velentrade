@@ -1753,6 +1753,19 @@ Design approved 前，`reviews/design-review.yaml` 必须记录 R8 cold-start dr
   residual_risk: none
   reopen_required: false
 
+- acceptance_ref: ACC-009
+  run_id: RUN-WI002-ACC009-PUBLIC-DATA-20260502
+  test_case_ref: TC-ACC-009-01
+  verification_type: automated
+  test_type: integration
+  test_scope: branch-local
+  completion_level: in_memory_domain
+  executed_at: 2026-05-02
+  artifact_ref: python -m pytest tests/domain/data/test_wi002_public_source_adapter.py -q; python -m pytest tests/domain/workflow tests/domain/data tests/domain/services tests/domain/governance tests/worker -q; python -m pytest tests/core tests/domain tests/security tests/requirements tests/agent_runner tests/model_gateway tests/api tests/worker tests/e2e -q; python -m compileall src/velentrade
+  result: pass
+  residual_risk: "公开 HTTP CSV adapter 已实现真实 HTTP fetch/CSV parse/registry/fallback/cache/critical field guard；自动化使用本地假传输，不声明外网 live provider 可用。"
+  reopen_required: false
+
 <!-- CODESPEC:TESTING:RISKS -->
 ## 4. 残留风险与返工判断
 
@@ -1761,5 +1774,5 @@ Design approved 前，`reviews/design-review.yaml` 必须记录 R8 cold-start dr
 - notes:
   - 本阶段已追加 WI-001/WI-004 的 `api_connected` 与 `db_persistent` 级实现证据；历史 `RUN-FULL-*` 仍仅为 `fixture_contract`。
   - Implementation 阶段必须按 `contracts/verification-report-schemas.md` 生成可复核 report artifact。
-  - 真实外部数据源 adapter、live browser -> FastAPI -> PostgreSQL/Redis/Celery 跨 WI 闭环和 Owner 人工验收仍未完成。
+  - 公开 HTTP CSV 数据源 adapter 已达到 `in_memory_domain` 自动化验证；外网 live provider smoke、live browser -> FastAPI -> PostgreSQL/Redis/Celery 跨 WI 闭环和 Owner 人工验收仍未完成。
   - 若后续任何 P0 自动化不可行，必须回到 Requirement 或 review 明确记录例外理由。
