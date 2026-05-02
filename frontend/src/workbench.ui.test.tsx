@@ -142,6 +142,44 @@ describe("WI-004 workbench interactions", () => {
     expect(document.body.textContent).toContain("任务卡已生成：task-api-1");
   });
 
+  it("does not claim a task card was generated when confirmation fails", async () => {
+    vi.stubGlobal("fetch", vi.fn(async (input: string | URL | Request) => {
+      const href = typeof input === "string" ? input : input instanceof URL ? input.pathname : input.url;
+      if (href.endsWith("/api/requests/briefs")) {
+        return mockJsonResponse({
+          brief_id: "brief-api-fail",
+          route_type: "research_task",
+          suggested_semantic_lead: "investment_researcher",
+          process_authority: "workflow_scheduling_center",
+          predicted_outputs: ["ResearchPackage"],
+          owner_confirmation_status: "draft",
+          version: 1,
+        });
+      }
+      if (href.endsWith("/api/requests/briefs/brief-api-fail/confirmation")) {
+        return { ok: false, json: async () => ({ error: { code: "SERVICE_UNAVAILABLE" } }) } as Response;
+      }
+      throw new Error(`unexpected fetch: ${href}`);
+    }));
+
+    await bootWorkbench("/");
+
+    await act(async () => {
+      buttonByName("自由对话").click();
+    });
+    await act(async () => {
+      buttonByName("生成请求预览").click();
+    });
+    await flushAsyncWork();
+    await act(async () => {
+      buttonByName("确认生成任务卡").click();
+    });
+    await flushAsyncWork();
+
+    expect(document.body.textContent).toContain("任务卡生成失败，请重试");
+    expect(document.body.textContent).not.toContain("任务卡已生成：热点研究");
+  });
+
   it("links confirmed investment tasks to the live investment dossier read model", async () => {
     vi.stubGlobal("fetch", vi.fn(async (input: string | URL | Request, init?: RequestInit) => {
       const href = typeof input === "string" ? input : input instanceof URL ? input.pathname : input.url;

@@ -64,7 +64,7 @@ import {
 import "./styles.css";
 
 type Navigate = (href: string) => void;
-type ConfirmedTaskFeedback = { label: string; href?: string };
+type ConfirmedTaskFeedback = { label: string; href?: string; status: "success" | "error" };
 
 function App() {
   const shell = buildShellReadModel();
@@ -177,9 +177,10 @@ function App() {
                           setConfirmedTask({
                             label: `任务卡已生成：${task.taskId}`,
                             href: task.workflowId ? `/investment/${task.workflowId}` : undefined,
+                            status: "success",
                           });
                         })
-                        .catch(() => setConfirmedTask({ label: `任务卡已生成：${generatedPreview.display.taskLabel}` }));
+                        .catch(() => setConfirmedTask({ label: "任务卡生成失败，请重试", status: "error" }));
                     }}
                     onNavigate={navigate}
                     requestBriefStatus={requestBriefStatus}
@@ -859,9 +860,9 @@ function RequestPreviewCard({
         <button type="button" className="ghost-button" onClick={onCancel}>{preview.status === "preview" ? "取消" : "继续编辑"}</button>
       </div>
       {confirmedTask ? (
-        <p className="panel-note">
-          {confirmedTask.label} · 等待后端确认后刷新状态
-          {confirmedTask.href ? (
+        <p className={`panel-note ${confirmedTask.status === "error" ? "danger" : ""}`.trim()}>
+          {confirmedTask.label}{confirmedTask.status === "success" ? " · 等待后端确认后刷新状态" : " · 未创建任务卡"}
+          {confirmedTask.status === "success" && confirmedTask.href ? (
             <>
               {" · "}
               <WorkbenchLink className="inline-action" href={confirmedTask.href} onNavigate={onNavigate}>打开投资档案</WorkbenchLink>
