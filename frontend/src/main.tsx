@@ -22,6 +22,7 @@ import {
   CapabilityConfigReadModel,
   DevOpsHealthReadModel,
   FinanceOverviewReadModel,
+  InvestmentDossierReadModel,
   KnowledgeReadModel,
   RequestBriefPreview,
   ResolvedWorkbenchRoute,
@@ -51,6 +52,7 @@ import {
   loadAgentProfileReadModel,
   loadDevOpsHealthReadModel,
   loadFinanceOverviewReadModel,
+  loadInvestmentDossierReadModel,
   loadKnowledgeReadModel,
   loadTeamReadModel,
   loadTraceDebugReadModel,
@@ -270,7 +272,7 @@ function InvestmentQueuePage({ onNavigate }: { onNavigate: Navigate }) {
 }
 
 function InvestmentDossierPage({ route, onNavigate }: { route: ResolvedWorkbenchRoute; onNavigate: Navigate }) {
-  const dossier = buildInvestmentDossierReadModel();
+  const dossier = useInvestmentDossierReadModel(route.params.workflowId ?? "wf-001");
   const selectedStage = getSelectedStage(route.query.stage, dossier.workflow.currentStage);
   const stageView = getStageView(selectedStage);
   return (
@@ -690,6 +692,26 @@ function useTraceDebugReadModel(workflowId: string) {
   }, [workflowId]);
 
   return trace;
+}
+
+function useInvestmentDossierReadModel(workflowId: string) {
+  const [dossier, setDossier] = useState<InvestmentDossierReadModel>(() => buildInvestmentDossierReadModel());
+
+  useEffect(() => {
+    let cancelled = false;
+    loadInvestmentDossierReadModel(workflowId)
+      .then((payload) => {
+        if (!cancelled) {
+          setDossier(payload);
+        }
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, [workflowId]);
+
+  return dossier;
 }
 
 function useFinanceOverviewReadModel() {

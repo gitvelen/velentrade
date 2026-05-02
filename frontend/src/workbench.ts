@@ -112,6 +112,34 @@ export type TeamReadModel = {
   hotPatchDenials: Array<{ reasonCode: string; actionVisible: boolean }>;
 };
 
+export type InvestmentDossierReadModel = {
+  workflow: {
+    workflowId: string;
+    title: string;
+    currentStage: string;
+    state: string;
+  };
+  stageRail: Array<{
+    stage: string;
+    nodeStatus: string;
+    reasonCode: string | null;
+    artifactCount: number;
+  }>;
+  chairBrief: {
+    decisionQuestion: string;
+    keyTensions: string[];
+    noPresetDecisionAttestation: boolean;
+  };
+  analystStanceMatrix: Array<{
+    role: string;
+    direction: string;
+    confidence: number;
+    hardDissent: boolean;
+  }>;
+  forbiddenActions: Record<string, { actionVisible: boolean; reasonCode: string }>;
+  traceRoute: string;
+};
+
 export type TraceDebugReadModel = {
   workflowId: string;
   agentRunTree: Array<{ runId: string; parentRunId: string | null; stage: string; profileVersion: string; contextSlice: string }>;
@@ -456,7 +484,7 @@ export function buildInvestmentQueueReadModel() {
   };
 }
 
-export function buildInvestmentDossierReadModel() {
+export function buildInvestmentDossierReadModel(): InvestmentDossierReadModel {
   return {
     workflow: { workflowId: "wf-001", title: "浦发银行 A 股研究", currentStage: "S3", state: "blocked" },
     stageRail: ["S0", "S1", "S2", "S3", "S4", "S5", "S6", "S7"].map((stage, index) => ({

@@ -219,6 +219,47 @@ describe("WI-004 workbench interactions", () => {
     expect(document.body.textContent).toContain("只切换查看阶段，不推进流程");
   });
 
+  it("loads investment dossier stage rail and summary from the workflow dossier API", async () => {
+    vi.stubGlobal("fetch", vi.fn(async (input: string | URL | Request) => {
+      const href = typeof input === "string" ? input : input instanceof URL ? input.pathname : input.url;
+      if (href.endsWith("/api/workflows/workflow-api-1/dossier")) {
+        return mockJsonResponse({
+          workflow: {
+            workflow_id: "workflow-api-1",
+            title: "API 投资档案",
+            current_stage: "S1",
+            state: "running",
+          },
+          stage_rail: [
+            { stage: "S0", node_status: "completed", reason_code: null, artifact_count: 1 },
+            { stage: "S1", node_status: "running", reason_code: null, artifact_count: 0 },
+            { stage: "S2", node_status: "not_started", reason_code: null, artifact_count: 0 },
+          ],
+          chair_brief: {
+            decision_question: "API 决策问题",
+            key_tensions: ["数据完整性"],
+            no_preset_decision_attestation: true,
+          },
+          analyst_stance_matrix: [
+            { role: "API Analyst", direction: "观察", confidence: 0.88, hard_dissent: false },
+          ],
+          forbidden_actions: {
+            execution_core_blocked_no_trade: { action_visible: false, reason_code: "execution_core_blocked_no_trade" },
+          },
+        });
+      }
+      throw new Error(`unexpected fetch: ${href}`);
+    }));
+
+    await bootWorkbench("/investment/workflow-api-1");
+    await flushAsyncWork();
+
+    expect(document.body.textContent).toContain("API 投资档案");
+    expect(document.body.textContent).toContain("API 决策问题");
+    expect(document.body.textContent).toContain("API Analyst");
+    expect(buttonByName("S1").getAttribute("aria-pressed")).toBe("true");
+  });
+
   it("switches governance panels and keeps query-driven task filters visible", async () => {
     await bootWorkbench("/governance");
 

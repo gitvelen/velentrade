@@ -3,11 +3,13 @@ import {
   CapabilityConfigReadModel,
   DevOpsHealthReadModel,
   FinanceOverviewReadModel,
+  InvestmentDossierReadModel,
   KnowledgeReadModel,
   TeamReadModel,
   TraceDebugReadModel,
   buildDevOpsHealthReadModel,
   buildFinanceOverviewReadModel,
+  buildInvestmentDossierReadModel,
   buildKnowledgeReadModel,
   buildTeamReadModel,
   buildTraceDebugReadModel,
@@ -110,6 +112,39 @@ type ApiDevOpsHealthReadModel = {
   routine_checks?: Array<{ check_id?: string; status?: string }>;
   incidents?: Array<{ incident_id?: string; status?: string; incident_type?: string }>;
   recovery?: Array<{ plan_id?: string; investment_resume_allowed?: boolean }>;
+};
+
+type ApiInvestmentDossierReadModel = {
+  workflow?: {
+    workflow_id?: string;
+    title?: string;
+    current_stage?: string;
+    state?: string;
+  };
+  stage_rail?: Array<{
+    stage?: string;
+    node_status?: string;
+    reason_code?: string | null;
+    artifact_count?: number;
+  }>;
+  chair_brief?: {
+    decision_question?: string;
+    key_tensions?: string[];
+    no_preset_decision_attestation?: boolean;
+  };
+  analyst_stance_matrix?: Array<{
+    role?: string;
+    direction?: string;
+    direction_score?: number;
+    confidence?: number;
+    hard_dissent?: boolean;
+  }>;
+  forbidden_actions?: Record<string, {
+    action_visible?: boolean;
+    actionVisible?: boolean;
+    reason_code?: string;
+    reasonCode?: string;
+  }>;
 };
 
 export type RequestBriefApiReadModel = {
@@ -281,6 +316,52 @@ export async function loadTraceDebugReadModel(workflowId: string): Promise<Trace
           openQuestions: item.open_questions ?? [],
         }))
       : fallback.handoffs,
+  };
+}
+
+export async function loadInvestmentDossierReadModel(workflowId: string): Promise<InvestmentDossierReadModel> {
+  const fallback = buildInvestmentDossierReadModel();
+  const payload = await fetchEnvelope<ApiInvestmentDossierReadModel>(`/api/workflows/${workflowId}/dossier`);
+  const forbiddenActions = Object.fromEntries(
+    Object.entries(payload.forbidden_actions ?? fallback.forbiddenActions).map(([key, value]) => [
+      key,
+      {
+        actionVisible: value.action_visible ?? value.actionVisible ?? false,
+        reasonCode: value.reason_code ?? value.reasonCode ?? key,
+      },
+    ]),
+  );
+
+  return {
+    workflow: {
+      workflowId: payload.workflow?.workflow_id ?? workflowId,
+      title: payload.workflow?.title ?? fallback.workflow.title,
+      currentStage: payload.workflow?.current_stage ?? fallback.workflow.currentStage,
+      state: payload.workflow?.state ?? fallback.workflow.state,
+    },
+    stageRail: (payload.stage_rail ?? []).length
+      ? (payload.stage_rail ?? []).map((stage) => ({
+          stage: stage.stage ?? "S0",
+          nodeStatus: stage.node_status ?? "not_started",
+          reasonCode: stage.reason_code ?? null,
+          artifactCount: stage.artifact_count ?? 0,
+        }))
+      : fallback.stageRail,
+    chairBrief: {
+      decisionQuestion: payload.chair_brief?.decision_question ?? fallback.chairBrief.decisionQuestion,
+      keyTensions: payload.chair_brief?.key_tensions ?? fallback.chairBrief.keyTensions,
+      noPresetDecisionAttestation: payload.chair_brief?.no_preset_decision_attestation ?? fallback.chairBrief.noPresetDecisionAttestation,
+    },
+    analystStanceMatrix: (payload.analyst_stance_matrix ?? []).length
+      ? (payload.analyst_stance_matrix ?? []).map((row) => ({
+          role: row.role ?? "Analyst",
+          direction: row.direction ?? String(row.direction_score ?? "待定"),
+          confidence: row.confidence ?? 0,
+          hardDissent: row.hard_dissent ?? false,
+        }))
+      : fallback.analystStanceMatrix,
+    forbiddenActions,
+    traceRoute: `/investment/${workflowId}/trace`,
   };
 }
 
