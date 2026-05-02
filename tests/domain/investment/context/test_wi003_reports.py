@@ -18,6 +18,9 @@ def test_wi003_reports_include_contract_payload_fields():
             "active_ic_slots",
             "global_workflows",
             "preemption_events",
+            "preemption_tie_break",
+            "duplicate_topic_auto_check",
+            "a_share_scope_symbols",
             "gate_checks",
         },
         "ic_context_package_report.json": {
@@ -44,6 +47,9 @@ def test_wi003_reports_include_contract_payload_fields():
         "research_package",
         "research_task",
     }
+    assert reports["topic_queue_report.json"]["duplicate_topic_auto_check"] == "duplicate_topic_active"
+    assert reports["topic_queue_report.json"]["a_share_scope_symbols"]["430047.BJ"] is True
+    assert reports["topic_queue_report.json"]["preemption_tie_break"]["preempted_topic_id"] == "topic-p2-same"
 
 
 def test_wi003_report_envelope_marks_fail_when_guard_or_failures_fail():

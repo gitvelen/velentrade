@@ -54,11 +54,11 @@ def _envelope(
     return report
 
 
-def _proposal(topic_id: str, source_type: str = "owner", priority: str | None = None) -> TopicProposal:
+def _proposal(topic_id: str, source_type: str = "owner", priority: str | None = None, symbol: str = "600000.SH") -> TopicProposal:
     return TopicProposal(
         topic_proposal_id=topic_id,
         source_type=source_type,
-        symbol="600000.SH",
+        symbol=symbol,
         raw_trigger_ref=f"raw-{topic_id}",
         supporting_evidence_refs=[f"evidence-{topic_id}"],
         requested_priority=priority,
@@ -92,22 +92,32 @@ def _queue_report() -> dict[str, Any]:
     high = TopicScore(5, 5, 4, 4)
     medium = TopicScore(3, 4, 2, 2)
     entries = [
-        queue.submit(_proposal("topic-1", priority="P1"), high, True, True),
-        queue.submit(_proposal("topic-2", priority="P2"), medium, True, True),
-        queue.submit(_proposal("topic-3", priority="P1"), medium, True, True),
+        queue.submit(_proposal("topic-1", priority="P1", symbol="600000.SH"), high, True, True),
+        queue.submit(_proposal("topic-2", priority="P2", symbol="600001.SH"), medium, True, True),
+        queue.submit(_proposal("topic-3", priority="P1", symbol="600002.SH"), medium, True, True),
     ]
     rejected = queue.submit(TopicProposal("topic-bad", "owner", "AAPL", "raw-bad", ["evidence-bad"], "P1", "research-bad", "owner"), high, True, True)
-    p0 = queue.submit(_proposal("topic-p0", priority="P0"), high, True, True, p0_trigger="holding_risk")
+    p0 = queue.submit(_proposal("topic-p0", priority="P0", symbol="600003.SH"), high, True, True, p0_trigger="holding_risk")
+    duplicate = queue.submit(_proposal("topic-duplicate", priority="P1", symbol="600000.SH"), high, True, True)
+    bj_entry = TopicQueue().submit(_proposal("topic-bj", priority="P1", symbol="430047.BJ"), high, True, True)
+    tie_queue = TopicQueue()
+    tie_queue.submit(_proposal("topic-p1-same", priority="P1", symbol="600010.SH"), medium, True, True)
+    tie_queue.submit(_proposal("topic-p2-same", priority="P2", symbol="600011.SH"), medium, True, True)
+    tie_queue.submit(_proposal("topic-p1-high", priority="P1", symbol="600012.SH"), high, True, True)
+    tie_queue.submit(_proposal("topic-p0-tie", priority="P0", symbol="600013.SH"), high, True, True, p0_trigger="holding_risk")
     return _envelope(
         "topic_queue_report.json",
         {
-            "hard_gate_results": {entry.topic_id: entry.hard_gate_results for entry in [*entries, rejected, p0]},
+            "hard_gate_results": {entry.topic_id: entry.hard_gate_results for entry in [*entries, rejected, p0, duplicate, bj_entry]},
             "priority_score_components": high.as_dict(),
             "priority_weighted_totals": {entry.topic_id: entry.priority_scores.get("weighted_total", 0) for entry in queue.entries.values()},
             "active_ic_slots": len(queue.active_entries()),
             "global_workflows": queue.global_workflow_count,
             "preemption_events": queue.preemption_events,
+            "preemption_tie_break": tie_queue.preemption_events[0],
             "preempted_workflow_waiting_audit": [entry.waiting_audit for entry in queue.entries.values() if entry.waiting_audit],
+            "duplicate_topic_auto_check": duplicate.rejected_reason,
+            "a_share_scope_symbols": {"430047.BJ": bj_entry.hard_gate_results["a_share_common_stock"]},
             "gate_checks": {"max_active_ic": queue.max_active_ic, "max_global_workflows": queue.max_global_workflows, "rejected_reason": rejected.rejected_reason},
         },
     )

@@ -30,6 +30,9 @@ class TopicScore:
             "risk_urgency": self.risk_urgency,
             "portfolio_relevance": self.portfolio_relevance,
         }
+        for field_name, value in components.items():
+            if value < 0 or value > 5:
+                raise ValueError(f"{field_name} must be within 0..5")
         weighted = sum(components[key] * weight for key, weight in WEIGHTS.items())
         return {**components, "weighted_total": weighted}
 
@@ -56,13 +59,19 @@ class TopicQueue:
         duplicate_symbols: set[str] | None = None,
     ) -> TopicQueueEntry:
         scores = score.as_dict()
+        active_or_queued_symbols = {
+            entry.symbol
+            for entry in self.entries.values()
+            if entry.formal_ic_status in {"active", "queued"}
+        }
+        duplicate_symbol_set = active_or_queued_symbols | set(duplicate_symbols or set())
         hard_gates = {
-            "a_share_common_stock": proposal.symbol.endswith(".SH") or proposal.symbol.endswith(".SZ"),
+            "a_share_common_stock": proposal.symbol.endswith((".SH", ".SZ", ".BJ")),
             "request_brief_complete": request_brief_complete,
             "decision_core_available": decision_core_available,
             "research_package_non_empty": bool(proposal.research_package_ref),
             "compliance_execution_clear": compliance_execution_clear,
-            "topic_not_duplicate": proposal.symbol not in set(duplicate_symbols or set()),
+            "topic_not_duplicate": proposal.symbol not in duplicate_symbol_set,
             "supporting_evidence_not_direct": True,
             "priority_scored": True,
             "global_workflow_slot_available": self.global_workflow_count < self.max_global_workflows,
@@ -108,7 +117,7 @@ class TopicQueue:
                     self._defer_for_preemption(victim, proposal.topic_proposal_id)
                     entry = self._entry(proposal, hard_gates, scores, "active")
                     self.entries[entry.topic_id] = entry
-                    self.global_workflow_count = min(self.max_global_workflows, max(self.global_workflow_count, len(self.active_entries())))
+                    self.global_workflow_count = min(self.max_global_workflows, self.global_workflow_count + 1)
                     return entry
             entry = self._entry(proposal, hard_gates, scores, "queued", "topic_concurrency_full")
             self.entries[entry.topic_id] = entry
@@ -162,4 +171,4 @@ class TopicQueue:
 
     @staticmethod
     def _preemption_rank(item: TopicQueueEntry) -> tuple[float, int, str]:
-        return (item.priority_scores["weighted_total"], PRIORITY_ORDER.get(item.requested_priority, 3), item.created_at)
+        return (item.priority_scores["weighted_total"], -PRIORITY_ORDER.get(item.requested_priority, 3), item.created_at)
