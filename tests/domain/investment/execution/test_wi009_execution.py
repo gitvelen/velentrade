@@ -66,6 +66,28 @@ def test_non_a_asset_symbol_cannot_create_paper_execution():
     assert receipt.fill_price is None
 
 
+def test_exchange_suffixed_non_numeric_symbol_cannot_create_paper_execution():
+    service = PaperExecutionService()
+    order = PaperOrder("order-fake-a", "wf-1", "memo-1", "AAPL.SH", "buy", 10_000, {"max_price": 10.5}, "normal", "exec-core-fake-a")
+
+    receipt = service.execute(order, ExecutionCoreSnapshot.pass_with_bars(_bars()))
+
+    assert receipt.fill_status == "blocked"
+    assert receipt.reason_code == "non_a_asset_no_paper_execution"
+    assert receipt.fill_price is None
+
+
+def test_non_positive_order_quantity_is_blocked_before_pricing():
+    service = PaperExecutionService()
+    order = PaperOrder("order-zero-qty", "wf-1", "memo-1", "600000.SH", "buy", 0, {"max_price": 10.5}, "normal", "exec-core-zero-qty")
+
+    receipt = service.execute(order, ExecutionCoreSnapshot.pass_with_bars(_bars()))
+
+    assert receipt.fill_status == "blocked"
+    assert receipt.reason_code == "invalid_order_quantity"
+    assert receipt.fill_price is None
+
+
 def test_invalid_order_side_or_urgency_is_blocked_before_pricing():
     service = PaperExecutionService()
     invalid_side = PaperOrder("order-invalid-side", "wf-1", "memo-1", "600000.SH", "short", 1_000, {"min_price": 9.5}, "normal", "exec-core-invalid")
@@ -152,6 +174,7 @@ def test_paper_execution_report_has_contract_payload():
         "vwap_or_twap_calculation",
         "price_range_check",
         "invalid_price_check",
+        "invalid_order_checks",
         "fill_status",
         "fees",
         "taxes",
@@ -163,6 +186,8 @@ def test_paper_execution_report_has_contract_payload():
     assert report["cache_execution_authorization_block"] == "cache_execution_authorization_denied"
     assert report["selected_window_bar_counts"] == {"urgent": 3, "normal": 3, "low": 3}
     assert report["invalid_price_check"] == {"fill_status": "unfilled", "reason_code": "no_valid_minute_price"}
+    assert report["invalid_order_checks"]["invalid_quantity"] == "invalid_order_quantity"
+    assert report["invalid_order_checks"]["fake_a_share_symbol"] == "non_a_asset_no_paper_execution"
 
 
 def test_paper_execution_report_fails_when_guard_or_failure_fails():

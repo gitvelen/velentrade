@@ -89,6 +89,8 @@ class PaperExecutionService:
         window = window_by_urgency[order.urgency]
         if order.side not in {"buy", "sell"}:
             return self._receipt(order, window, "blocked", None, 0, "invalid_order_side", snapshot, "not_applicable")
+        if order.target_quantity_or_weight <= 0:
+            return self._receipt(order, window, "blocked", None, 0, "invalid_order_quantity", snapshot, "not_applicable")
         if not _is_a_share_symbol(order.symbol):
             return self._receipt(order, window, "blocked", None, 0, "non_a_asset_no_paper_execution", snapshot)
         if snapshot.status != "pass" or not snapshot.bars:
@@ -226,4 +228,5 @@ def _floor_quantity(quantity: float) -> float:
 
 
 def _is_a_share_symbol(symbol: str) -> bool:
-    return symbol.endswith((".SH", ".SZ", ".BJ"))
+    code, separator, exchange = symbol.partition(".")
+    return separator == "." and len(code) == 6 and code.isdigit() and exchange in {"SH", "SZ", "BJ"}
