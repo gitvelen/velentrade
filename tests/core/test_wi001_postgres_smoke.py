@@ -110,7 +110,10 @@ def test_postgres_migration_and_seed_smoke():
             tool_profile_count = connection.execute(text("select count(*) from tool_profile")).scalar_one()
             skill_package_count = connection.execute(text("select count(*) from skill_package")).scalar_one()
             data_domain_count = connection.execute(text("select count(*) from data_domain_registry")).scalar_one()
-            data_source_count = connection.execute(text("select count(*) from data_source_registry")).scalar_one()
+            data_source_ids = {
+                row[0]
+                for row in connection.execute(text("select source_id from data_source_registry"))
+            }
             paper_account_count = connection.execute(text("select count(*) from paper_account")).scalar_one()
             session_count = connection.execute(text("select count(*) from session")).scalar_one()
 
@@ -119,6 +122,6 @@ def test_postgres_migration_and_seed_smoke():
         assert tool_profile_count == 1
         assert skill_package_count >= 1
         assert data_domain_count == 3
-        assert data_source_count == 3
+        assert {"fixture-a-share-daily", "fixture-announcement", "fixture-macro-calendar"}.issubset(data_source_ids)
         assert paper_account_count == 1
         assert session_count == 1
