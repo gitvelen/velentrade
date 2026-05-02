@@ -2182,6 +2182,19 @@ Design approved 前，`reviews/design-review.yaml` 必须记录 R8 cold-start dr
   residual_risk: AgentRunDispatcher now records completed AgentRun results and returns the original result for duplicate agent_run_id without invoking runner again or appending duplicate artifacts. This is in-memory dispatcher idempotency, not a distributed exactly-once runtime guarantee.
   reopen_required: false
 
+- acceptance_ref: ACC-008
+  run_id: RUN-WI002-ACC008-HTTP-RUNNER-TIMEOUT-20260502
+  test_case_ref: TC-ACC-008-01
+  verification_type: automated
+  test_type: regression
+  test_scope: branch-local
+  completion_level: in_memory_domain
+  executed_at: 2026-05-02
+  artifact_ref: python -m pytest tests/worker/test_wi002_http_runner.py -q; python -m pytest tests/worker -q
+  result: pass
+  residual_risk: RunnerHttpClient maps socket TimeoutError to timed_out/budget_timeout with no artifact payloads so the dispatcher records runner_timeout_no_artifact instead of crashing or fabricating output. This is HTTP client timeout behavior, not an end-to-end distributed timeout load test.
+  reopen_required: false
+
 <!-- CODESPEC:TESTING:RISKS -->
 ## 4. 残留风险与返工判断
 
