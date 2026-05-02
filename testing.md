@@ -1269,7 +1269,7 @@ Design approved 前，`reviews/design-review.yaml` 必须记录 R8 cold-start dr
   executed_at: 2026-05-02
   artifact_ref: python -m pytest tests/core/test_wi001_db_foundation.py tests/core/test_wi001_postgres_smoke.py tests/core/test_wi001_seed_bundle.py -q
   result: pass
-  residual_risk: Seeded data_source_registry entries are fixture_contract only; real vendor adapters remain unimplemented/out_of_scope for WI-002.
+  residual_risk: Seeded data_source_registry entries are fixture_contract only; WI-002 has public HTTP adapter in domain tests, but no live provider smoke is claimed.
   reopen_required: false
 
 - acceptance_ref: ACC-005
@@ -1283,6 +1283,19 @@ Design approved 前，`reviews/design-review.yaml` 必须记录 R8 cold-start dr
   artifact_ref: python -m pytest tests/api/test_wi001_api_db_persistence.py -q
   result: pass
   residual_risk: Proves Task/Workflow/WorkflowStage persistence and recovery through API; does not prove full S0-S7 investment semantics.
+  reopen_required: false
+
+- acceptance_ref: ACC-005
+  run_id: RUN-WI001-RUNTIME-DB-ENV-20260502
+  test_case_ref: TC-ACC-005-01
+  verification_type: automated
+  test_type: integration
+  test_scope: branch-local-runtime-hook
+  completion_level: db_persistent
+  executed_at: 2026-05-02
+  artifact_ref: bash -n scripts/codespec-deploy; python -m pytest tests/core/test_wi001_deploy_hook_runtime.py tests/api/test_wi001_api_foundation.py::test_build_app_factory_uses_database_url_env -q; python -m pytest tests/core tests/domain tests/security tests/requirements tests/agent_runner tests/model_gateway tests/api tests/worker tests/e2e -q; python -m compileall src/velentrade
+  result: pass
+  residual_risk: API factory now reads VELENTRADE_DATABASE_URL and deploy hook runtime smoke will verify RequestBrief persistence across API restart plus agent-runner endpoint, but docker compose runtime hook was not executed in this branch-local run.
   reopen_required: false
 
 - acceptance_ref: ACC-006
