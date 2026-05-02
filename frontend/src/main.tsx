@@ -72,6 +72,7 @@ function App() {
   const [commandOpen, setCommandOpen] = useState(false);
   const [generatedPreview, setGeneratedPreview] = useState<RequestBriefPreview | null>(null);
   const [requestBrief, setRequestBrief] = useState<RequestBriefApiReadModel | null>(null);
+  const [requestBriefStatus, setRequestBriefStatus] = useState<"idle" | "syncing" | "ready" | "failed">("idle");
   const [confirmedTask, setConfirmedTask] = useState<string | null>(null);
 
   useEffect(() => {
@@ -132,6 +133,7 @@ function App() {
                       setCommand(event.target.value);
                       setGeneratedPreview(null);
                       setRequestBrief(null);
+                      setRequestBriefStatus("idle");
                       setConfirmedTask(null);
                     }}
                     aria-label="自然语言请求"
@@ -141,10 +143,14 @@ function App() {
                     onClick={() => {
                       setGeneratedPreview(routeOwnerCommand(command));
                       setRequestBrief(null);
+                      setRequestBriefStatus("syncing");
                       setConfirmedTask(null);
                       createRequestBrief(command)
-                        .then((brief) => setRequestBrief(brief))
-                        .catch(() => {});
+                        .then((brief) => {
+                          setRequestBrief(brief);
+                          setRequestBriefStatus("ready");
+                        })
+                        .catch(() => setRequestBriefStatus("failed"));
                     }}
                   >
                     生成请求预览
@@ -157,11 +163,11 @@ function App() {
                     onCancel={() => {
                       setGeneratedPreview(null);
                       setRequestBrief(null);
+                      setRequestBriefStatus("idle");
                       setConfirmedTask(null);
                     }}
                     onConfirm={() => {
                       if (!requestBrief?.briefId) {
-                        setConfirmedTask(`任务卡已生成：${generatedPreview.display.taskLabel}`);
                         return;
                       }
                       confirmRequestBrief(requestBrief.briefId, requestBrief.version)
@@ -170,6 +176,8 @@ function App() {
                         })
                         .catch(() => setConfirmedTask(`任务卡已生成：${generatedPreview.display.taskLabel}`));
                     }}
+                    requestBriefStatus={requestBriefStatus}
+                    canConfirm={Boolean(requestBrief?.briefId)}
                   />
                 ) : (
                   <div className="request-preview-empty">输入一句话后生成预览，系统只说明将做什么，不会直接执行。</div>
@@ -794,11 +802,15 @@ function RequestPreviewCard({
   confirmedTask,
   onCancel,
   onConfirm,
+  requestBriefStatus,
+  canConfirm,
 }: {
   preview: RequestBriefPreview;
   confirmedTask: string | null;
   onCancel: () => void;
   onConfirm: () => void;
+  requestBriefStatus: "idle" | "syncing" | "ready" | "failed";
+  canConfirm: boolean;
 }) {
   const boundary = preview.taskType === "research_task" ? "不会进入审批或交易" : preview.display.boundaryLabel;
   const needsClarification = preview.status !== "preview";
@@ -815,8 +827,10 @@ function RequestPreviewCard({
         </ul>
       ) : null}
       {preview.status === "blocked_draft" ? <span>原因：{formatReason(preview.reasonCode)}</span> : null}
+      {requestBriefStatus === "syncing" ? <p className="panel-note">正在同步请求预览，稍后即可确认。</p> : null}
+      {requestBriefStatus === "failed" ? <p className="panel-note danger">请求预览同步失败，请重试生成预览。</p> : null}
       <div className="command-actions">
-        {preview.status === "preview" ? <button type="button" onClick={onConfirm}>确认生成任务卡</button> : null}
+        {preview.status === "preview" ? <button type="button" disabled={!canConfirm} onClick={onConfirm}>确认生成任务卡</button> : null}
         <button type="button" className="ghost-button" onClick={onCancel}>{preview.status === "preview" ? "取消" : "继续编辑"}</button>
       </div>
       {confirmedTask ? <p className="panel-note">{confirmedTask} · 等待后端确认后刷新状态</p> : null}
