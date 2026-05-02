@@ -14,6 +14,12 @@ def build_wi008_decision_reports() -> dict[str, dict[str, Any]]:
     guard = service.validate_cio_memo(packet, memo, {"600000.SH": 0.10})
     low_packet = service.assemble_packet({**service.fixture_inputs(), "action_conviction": 0.50})
     low_guard = service.validate_cio_memo(low_packet, CIODecisionMemo("buy", low_packet.packet_id, "600000.SH", 0.20, {}, "normal", "low action", "", ["memo-1"]), {"600000.SH": 0.10})
+    execution_blocked_packet = service.assemble_packet({**service.fixture_inputs(), "execution_feasibility": {"execution_core_status": "blocked", "reason_code": "minute_bar_stale"}})
+    execution_blocked_guard = service.validate_cio_memo(
+        execution_blocked_packet,
+        CIODecisionMemo("buy", execution_blocked_packet.packet_id, "600000.SH", 0.16, {"max": 12.5}, "normal", "blocked execution core", "optimizer deviation justified", ["memo-1"]),
+        {"600000.SH": 0.10},
+    )
     reports = {
         "decision_service_report.json": _envelope(
             "decision_service_report.json",
@@ -29,7 +35,13 @@ def build_wi008_decision_reports() -> dict[str, dict[str, Any]]:
                 "portfolio_active_deviation": guard.portfolio_active_deviation,
                 "exception_candidate_or_reopen": {"exception": guard.owner_exception_candidate_ref, "reopen": low_guard.reopen_recommendation_ref},
                 "forbidden_service_authority_check": service.forbidden_service_authority_check(),
-                "failure_path_cases": {"low_action": low_guard.reason_codes, "missing_deviation_rationale": "missing_deviation_rationale" in low_guard.reason_codes},
+                "failure_path_cases": {
+                    "low_action": low_guard.reason_codes,
+                    "missing_deviation_rationale": "missing_deviation_rationale" in low_guard.reason_codes,
+                    "execution_core_blocked": execution_blocked_guard.reason_codes,
+                    "execution_core_reopen": execution_blocked_guard.reopen_recommendation_ref is not None,
+                    "execution_core_exception_candidate": execution_blocked_guard.owner_exception_candidate_ref,
+                },
                 "view_projection_results": [{"view": "InvestmentDossierReadModel.decision_service", "expected": "visible", "actual": "visible", "result": "pass"}],
                 "runbook_trace": [{"step": "assemble_packet", "actor": "decision_service", "input_ref": "S3", "output_ref": packet.packet_id, "result": "pass"}],
             },

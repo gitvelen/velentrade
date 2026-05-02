@@ -81,6 +81,33 @@ def test_decision_service_data_quality_blocker_recommends_reopen():
     assert guard.owner_exception_candidate_ref is None
 
 
+def test_execution_core_blocked_recommends_reopen_without_owner_exception_candidate():
+    service = DecisionService()
+    packet = service.assemble_packet(
+        {
+            **service.fixture_inputs(),
+            "execution_feasibility": {"execution_core_status": "blocked", "reason_code": "minute_bar_stale"},
+        }
+    )
+    memo = CIODecisionMemo(
+        decision="buy",
+        decision_packet_ref=packet.packet_id,
+        target_symbol="600000.SH",
+        target_weight=0.16,
+        price_range={"max": 12.5},
+        urgency="normal",
+        decision_rationale="尝试在 execution_core blocked 时买入。",
+        deviation_reason="偏离优化器但没有执行核心可用性。",
+        evidence_refs=["memo-1", "optimizer-1"],
+    )
+
+    guard = service.validate_cio_memo(packet, memo, optimizer_target_weights={"600000.SH": 0.10})
+
+    assert "execution_core_blocked_no_execution" in guard.reason_codes
+    assert guard.reopen_recommendation_ref is not None
+    assert guard.owner_exception_candidate_ref is None
+
+
 def test_decision_service_rejects_memo_bound_to_other_packet():
     service = DecisionService()
     packet = service.assemble_packet(service.fixture_inputs())
@@ -140,6 +167,9 @@ def test_wi008_decision_reports_have_contract_payloads():
         assert report["work_item_refs"] == ["WI-008"]
         assert report["failures"] == []
     assert reports["decision_service_report.json"]["forbidden_service_authority_check"]["service_can_transition_workflow"] is False
+    assert "execution_core_blocked_no_execution" in reports["decision_service_report.json"]["failure_path_cases"]["execution_core_blocked"]
+    assert reports["decision_service_report.json"]["failure_path_cases"]["execution_core_reopen"] is True
+    assert reports["decision_service_report.json"]["failure_path_cases"]["execution_core_exception_candidate"] is None
 
 
 def test_decision_report_fails_when_guard_or_failure_fails():
