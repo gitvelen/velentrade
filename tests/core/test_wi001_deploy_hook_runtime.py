@@ -17,4 +17,7 @@ def test_deploy_hook_supports_runtime_compose_release_mode():
     assert "docker compose restart api" in script
     assert "persisted_task_after_restart" in script
     assert "same_origin_frontend_served" in script
+    assert "chromium-browser" in script
+    assert "确认生成任务卡" in script
+    assert "browser_click_confirmed_task" in script
     assert "/internal/agent-runner/runs/runtime-smoke-run/start" in script

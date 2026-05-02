@@ -287,3 +287,58 @@ def test_api_writes_are_mirrored_into_postgres():
             "workflow": 1,
             "workflow_stage": 8,
         }
+
+
+def test_task_center_merges_persisted_tasks_after_runtime_restart():
+    with _postgres_container() as database_url:
+        config = Config("alembic.ini")
+        config.set_main_option("sqlalchemy.url", database_url)
+        command.upgrade(config, "head")
+
+        first_client = TestClient(build_app(ApiRuntime(database_url=database_url)))
+        first_brief_response = first_client.post(
+            "/api/requests/briefs",
+            json={
+                "raw_text": "第一次研究任务",
+                "source": "owner_command",
+                "requested_scope": {
+                    "intent": "formal_investment_decision",
+                    "asset_scope": "a_share_common_stock",
+                    "target_action": "approve_trade",
+                },
+            },
+        )
+        first_brief = first_brief_response.json()["data"]
+        first_task_response = first_client.post(
+            f"/api/requests/briefs/{first_brief['brief_id']}/confirmation",
+            json={"decision": "confirm", "client_seen_version": 1},
+        )
+        first_task_id = first_task_response.json()["data"]["task_id"]
+
+        restarted_client = TestClient(build_app(ApiRuntime(database_url=database_url)))
+        assert [item["task_id"] for item in restarted_client.get("/api/tasks").json()["data"]["task_center"]] == [
+            first_task_id
+        ]
+
+        second_brief_response = restarted_client.post(
+            "/api/requests/briefs",
+            json={
+                "raw_text": "第二次研究任务",
+                "source": "owner_command",
+                "requested_scope": {
+                    "intent": "formal_investment_decision",
+                    "asset_scope": "a_share_common_stock",
+                    "target_action": "approve_trade",
+                },
+            },
+        )
+        second_brief = second_brief_response.json()["data"]
+        second_task_response = restarted_client.post(
+            f"/api/requests/briefs/{second_brief['brief_id']}/confirmation",
+            json={"decision": "confirm", "client_seen_version": 1},
+        )
+        second_task_id = second_task_response.json()["data"]["task_id"]
+
+        task_ids = [item["task_id"] for item in restarted_client.get("/api/tasks").json()["data"]["task_center"]]
+
+        assert task_ids == [first_task_id, second_task_id]

@@ -27,9 +27,13 @@ if [ "$release_mode" = "runtime" ]; then
 
   python - <<'PY'
 import json
+import socket
 import subprocess
+import tempfile
 import time
-from urllib import error, request
+from urllib import error, parse, request
+
+import websocket
 
 API_BASE = "http://127.0.0.1:8000"
 RUNNER_BASE = "http://127.0.0.1:8100"
@@ -64,6 +68,133 @@ def wait_api_ready():
             last_error = exc
             time.sleep(2)
     raise SystemExit(f"api runtime did not become ready: {last_error}")
+
+
+def free_port():
+    with socket.socket() as sock:
+        sock.bind(("127.0.0.1", 0))
+        return int(sock.getsockname()[1])
+
+
+def wait_http(url, timeout_seconds=30):
+    deadline = time.time() + timeout_seconds
+    last_error = None
+    while time.time() < deadline:
+        try:
+            with request.urlopen(url, timeout=2) as response:
+                if response.status < 500:
+                    return
+        except (error.URLError, TimeoutError, ConnectionError) as exc:
+            last_error = exc
+            time.sleep(0.5)
+    raise SystemExit(f"{url} did not become ready: {last_error}")
+
+
+class ChromePage:
+    def __init__(self, ws_url):
+        self.ws = websocket.create_connection(ws_url, timeout=5, suppress_origin=True)
+        self.next_id = 0
+
+    def close(self):
+        self.ws.close()
+
+    def command(self, method, params=None):
+        self.next_id += 1
+        message_id = self.next_id
+        self.ws.send(json.dumps({"id": message_id, "method": method, "params": params or {}}))
+        while True:
+            payload = json.loads(self.ws.recv())
+            if payload.get("id") == message_id:
+                if "error" in payload:
+                    raise RuntimeError(payload["error"])
+                return payload.get("result", {})
+
+    def evaluate(self, expression):
+        result = self.command(
+            "Runtime.evaluate",
+            {"expression": expression, "awaitPromise": True, "returnByValue": True},
+        )
+        return result.get("result", {}).get("value")
+
+
+def open_chrome_page(chrome_debug_port, url):
+    wait_http(f"http://127.0.0.1:{chrome_debug_port}/json/version")
+    new_tab = request.Request(
+        f"http://127.0.0.1:{chrome_debug_port}/json/new?{parse.quote(url, safe='')}",
+        method="PUT",
+    )
+    with request.urlopen(new_tab, timeout=5) as response:
+        payload = json.loads(response.read().decode("utf-8"))
+    return ChromePage(payload["webSocketDebuggerUrl"])
+
+
+def wait_for_expression(page, expression, timeout_seconds=30):
+    deadline = time.time() + timeout_seconds
+    last_value = None
+    while time.time() < deadline:
+        last_value = page.evaluate(expression)
+        if last_value:
+            return last_value
+        time.sleep(0.25)
+    raise SystemExit(f"expression did not become truthy: {expression}; last={last_value!r}")
+
+
+def run_browser_smoke(existing_task_count):
+    chrome_debug_port = free_port()
+    with tempfile.TemporaryDirectory(prefix="velentrade-chrome-") as profile_dir:
+        chrome_process = subprocess.Popen(
+            [
+                "chromium-browser",
+                "--headless",
+                "--disable-gpu",
+                "--disable-dev-shm-usage",
+                "--no-sandbox",
+                f"--remote-debugging-port={chrome_debug_port}",
+                f"--user-data-dir={profile_dir}",
+                "about:blank",
+            ],
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+            text=True,
+        )
+        page = None
+        try:
+            page = open_chrome_page(chrome_debug_port, API_BASE)
+            wait_for_expression(page, "document.body && document.body.innerText.includes('自由对话')")
+            page.evaluate("[...document.querySelectorAll('button')].find((item) => item.innerText.includes('自由对话')).click()")
+            wait_for_expression(page, "document.body.innerText.includes('输入一句话后生成预览')")
+            page.evaluate(
+                """
+                const input = document.querySelector('input[aria-label="自然语言请求"]');
+                const setter = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, 'value').set;
+                setter.call(input, '学习热点事件');
+                input.dispatchEvent(new Event('input', { bubbles: true }));
+                """
+            )
+            page.evaluate("[...document.querySelectorAll('button')].find((item) => item.innerText.includes('生成请求预览')).click()")
+            wait_for_expression(page, "document.body.innerText.includes('确认生成任务卡')")
+            wait_for_expression(
+                page,
+                "(() => { const button = [...document.querySelectorAll('button')].find((item) => item.innerText.includes('确认生成任务卡')); return button && !button.disabled; })()",
+            )
+            page.evaluate("[...document.querySelectorAll('button')].find((item) => item.innerText.includes('确认生成任务卡')).click()")
+            wait_for_expression(page, "document.body.innerText.includes('任务卡已生成：')")
+            task_count = wait_for_expression(
+                page,
+                "fetch('/api/tasks').then((response) => response.json()).then((payload) => payload.data.task_center.length)",
+            )
+            if int(task_count) <= existing_task_count:
+                raise SystemExit("browser_click_confirmed_task did not create a new persisted task")
+            return task_count
+        finally:
+            if page is not None:
+                page.close()
+            chrome_process.terminate()
+            try:
+                chrome_process.wait(timeout=10)
+            except subprocess.TimeoutExpired:
+                chrome_process.kill()
+                chrome_process.wait(timeout=10)
 
 
 wait_api_ready()
@@ -113,6 +244,7 @@ wait_api_ready()
 persisted_tasks = api_json("GET", "/api/tasks")["data"]["task_center"]
 if task_id not in {item["task_id"] for item in persisted_tasks}:
     raise SystemExit("persisted_task_after_restart missing from /api/tasks")
+browser_task_count = run_browser_smoke(len(persisted_tasks))
 PY
 
   running_services="$(docker compose ps --status running --services)"
@@ -131,7 +263,7 @@ restart_reason: docker compose services launched for local runtime release
 smoke_test: pass
 runtime_ready: pass
 runtime_observed_revision: ${revision}
-runtime_ready_evidence: docker compose services are running; same_origin_frontend_served returned frontend index; /api/requests/briefs created a task; persisted_task_after_restart survived docker compose restart api; agent-runner internal endpoint returned completed fake_test result
+runtime_ready_evidence: docker compose services are running; same_origin_frontend_served returned frontend index; /api/requests/briefs created a task; persisted_task_after_restart survived docker compose restart api; agent-runner internal endpoint returned completed fake_test result; browser_click_confirmed_task clicked 自由对话 -> 生成请求预览 -> 确认生成任务卡 in Chromium against the same compose API/static frontend runtime
 manual_verification_ready: pass
 EOF
   exit 0

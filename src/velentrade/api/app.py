@@ -635,11 +635,14 @@ def build_app(runtime: ApiRuntime | None = None) -> FastAPI:
 
     @app.get("/api/tasks")
     def get_tasks():
-        tasks = [_task_read_model(task) for task in api_runtime.workflow.tasks.values()]
-        if not tasks and api_runtime.gateway.store is not None:
-            tasks = api_runtime.gateway.store.list_task_read_models()
+        tasks_by_id = {}
+        if api_runtime.gateway.store is not None:
+            for task in api_runtime.gateway.store.list_task_read_models():
+                tasks_by_id[task["task_id"]] = task
+        for task in api_runtime.workflow.tasks.values():
+            tasks_by_id[task.task_id] = _task_read_model(task)
         return _success({
-            "task_center": tasks,
+            "task_center": list(tasks_by_id.values()),
         })
 
     @app.get("/api/workflows/{workflow_id}")
