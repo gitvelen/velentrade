@@ -21,6 +21,8 @@ def test_finance_profile_blocks_non_a_assets_from_trade_and_projects_manual_todo
     assert service.request_trade("fund", "fund-001").allowed is False
     assert service.request_trade("gold", "gold-001").reason_code == "non_a_asset_no_trade"
     assert service.request_trade("a_share", "600000.SH").allowed is True
+    assert service.request_trade("a_share", "AAPL.SH").allowed is False
+    assert service.request_trade("a_share", "AAPL.SH").reason_code == "non_a_asset_no_trade"
     assert {todo.asset_type for todo in service.manual_todos} == {"real_estate", "tax", "major_expense"}
     assert service.finance_overview()["sensitive_data_notice"]["allowed_cleartext_roles"] == ["cfo", "finance_service"]
 

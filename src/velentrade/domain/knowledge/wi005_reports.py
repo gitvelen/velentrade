@@ -54,6 +54,7 @@ def build_wi005_knowledge_reports() -> dict[str, dict[str, Any]]:
         [
             {"title": "持仓公司公告", "symbol": "600000.SH", "holding": True, "severity": "high"},
             {"title": "非持仓正面机会", "symbol": "000001.SZ", "positive": True, "severity": "medium"},
+            {"title": "黄金持仓波动", "symbol": "GOLD.CNY", "holding": True, "severity": "high"},
         ],
         "## 研究摘要\n可复用但不得绕过 IC hard gate。",
     )

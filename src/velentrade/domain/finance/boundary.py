@@ -99,7 +99,7 @@ class FinanceProfileService:
         return profile
 
     def request_trade(self, asset_type: str, asset_ref: str) -> GuardDecision:
-        if asset_type != "a_share":
+        if asset_type != "a_share" or not _is_a_share_symbol(asset_ref):
             return GuardDecision(
                 False,
                 "COMMAND_NOT_ALLOWED",
@@ -132,15 +132,20 @@ class FinanceProfileService:
         profile = self._build_fixture_profile()
         fund_denial = self.request_trade("fund", "fund-fixture")
         gold_denial = self.request_trade("gold", "gold-fixture")
+        fake_a_share_denial = self.request_trade("a_share", "AAPL.SH")
         payload = {
             "asset_registry": [asset["asset_type"] for asset in profile.assets + profile.liabilities],
             "fund_gold_quotes": {"fund": "auto_quote_ref", "gold": "auto_quote_ref"},
             "real_estate_manual_valuation": {"source": "manual", "todo_present": True},
-            "non_a_asset_trade_denials": [fund_denial.details | {"reason_code": fund_denial.reason_code}, gold_denial.details | {"reason_code": gold_denial.reason_code}],
+            "non_a_asset_trade_denials": [
+                fund_denial.details | {"reason_code": fund_denial.reason_code},
+                gold_denial.details | {"reason_code": gold_denial.reason_code},
+                fake_a_share_denial.details | {"reason_code": fake_a_share_denial.reason_code},
+            ],
             "asset_profiles": profile.assets + profile.liabilities,
             "market_data_links": {"fund": ["quote-fund-1"], "gold": ["quote-gold-1"]},
             "manual_valuation": [todo.__dict__ for todo in self.manual_todos if todo.asset_type == "real_estate"],
-            "blocked_trade_tasks": [fund_denial.details, gold_denial.details],
+            "blocked_trade_tasks": [fund_denial.details, gold_denial.details, fake_a_share_denial.details],
             "manual_todo_tasks": [todo.__dict__ for todo in self.manual_todos],
         }
         return _report_envelope("finance_asset_boundary_report.json", "TC-ACC-023-01", "ACC-023", "REQ-023", payload)
@@ -160,6 +165,11 @@ class FinanceProfileService:
             tax_reminders=["annual_tax"],
             major_expenses=["tuition"],
         )
+
+
+def _is_a_share_symbol(symbol: str) -> bool:
+    code, separator, exchange = symbol.partition(".")
+    return separator == "." and len(code) == 6 and code.isdigit() and exchange in {"SH", "SZ", "BJ"}
 
 
 def _report_envelope(

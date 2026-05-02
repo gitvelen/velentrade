@@ -10,6 +10,7 @@ def test_researcher_capture_organize_and_proposals_are_gateway_bound():
         news_items=[
             {"title": "持仓公司公告", "symbol": "600000.SH", "holding": True, "severity": "high"},
             {"title": "非持仓机会", "symbol": "000001.SZ", "positive": True, "severity": "medium"},
+            {"title": "黄金持仓波动", "symbol": "GOLD.CNY", "holding": True, "severity": "high"},
         ],
         research_material="## 观察\n现金流改善，但证据仍需验证。",
     )
@@ -17,6 +18,8 @@ def test_researcher_capture_organize_and_proposals_are_gateway_bound():
     assert outputs.daily_brief[0]["priority"] == "P0"
     assert outputs.daily_brief[1]["priority"] == "P1"
     assert outputs.daily_brief[1]["supporting_evidence_only"] is True
+    assert outputs.daily_brief[2]["priority"] == "P1"
+    assert outputs.daily_brief[2]["supporting_evidence_only"] is True
     assert outputs.memory_capture.payload["title"]
     assert outputs.memory_capture.payload["tags"]
     assert outputs.memory_organize_suggestion.requires_gateway_write is True

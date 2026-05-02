@@ -120,7 +120,7 @@ class ResearcherWorkflow:
 
 
 def _brief_item(item: dict[str, Any]) -> dict[str, Any]:
-    priority = "P0" if item.get("holding") and item.get("severity") == "high" else "P1"
+    priority = "P0" if item.get("holding") and item.get("severity") == "high" and _is_a_share_symbol(item.get("symbol", "")) else "P1"
     return {
         "brief_id": new_id("brief"),
         "priority": priority,
@@ -128,6 +128,11 @@ def _brief_item(item: dict[str, Any]) -> dict[str, Any]:
         "symbol": item.get("symbol"),
         "supporting_evidence_only": priority != "P0",
     }
+
+
+def _is_a_share_symbol(symbol: str) -> bool:
+    code, separator, exchange = symbol.partition(".")
+    return separator == "." and len(code) == 6 and code.isdigit() and exchange in {"SH", "SZ", "BJ"}
 
 
 def _proposal(proposal_type: str, diff_ref: str, memory_refs: list[str], impact_level: str) -> KnowledgePromptSkillProposal:
