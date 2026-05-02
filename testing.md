@@ -1827,4 +1827,5 @@ Design approved 前，`reviews/design-review.yaml` 必须记录 R8 cold-start dr
   - 本阶段已追加 WI-001/WI-004 的 `api_connected` 与 `db_persistent` 级实现证据；历史 `RUN-FULL-*` 仍仅为 `fixture_contract`。
   - Implementation 阶段必须按 `contracts/verification-report-schemas.md` 生成可复核 report artifact。
   - 公开 HTTP CSV 数据源 adapter 已达到 `in_memory_domain` 自动化验证；外网 live provider smoke、live browser -> FastAPI -> PostgreSQL/Redis/Celery 跨 WI 闭环和 Owner 人工验收仍未完成。
+  - 2026-05-02 手工尝试 docker compose runtime smoke；postgres/redis 可启动，但 api/worker/beat/agent-runner 仍在容器启动时从 PyPI 安装依赖，`files.pythonhosted.org` 下载超时导致 runtime smoke 不可稳定完成。已追加 pip timeout/retry/cache 缓解，但若要可靠通过 integrated runtime，需要允许 Dockerfile/预构建镜像或本地 wheelhouse，不能继续声称 compose runtime 已完成。
   - 若后续任何 P0 自动化不可行，必须回到 Requirement 或 review 明确记录例外理由。
