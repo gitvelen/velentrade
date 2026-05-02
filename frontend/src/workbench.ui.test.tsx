@@ -91,6 +91,28 @@ describe("WI-004 workbench interactions", () => {
     expect(document.body.textContent).toContain("下一步：确认后生成研究任务卡");
   });
 
+  it("disables duplicate request preview clicks while syncing with the API", async () => {
+    vi.stubGlobal("fetch", vi.fn(async (input: string | URL | Request) => {
+      const href = typeof input === "string" ? input : input instanceof URL ? input.pathname : input.url;
+      if (href.endsWith("/api/requests/briefs")) {
+        return await new Promise<Response>(() => {});
+      }
+      throw new Error(`unexpected fetch: ${href}`);
+    }));
+
+    await bootWorkbench("/");
+
+    await act(async () => {
+      buttonByName("自由对话").click();
+    });
+    await act(async () => {
+      buttonByName("生成请求预览").click();
+    });
+
+    expect(buttonByName("正在生成预览").disabled).toBe(true);
+    expect(document.body.textContent).toContain("正在同步请求预览");
+  });
+
   it("creates a request brief through the API and confirms it through the confirmation endpoint", async () => {
     const fetchSpy = vi.fn(async (input: string | URL | Request, init?: RequestInit) => {
       const href = typeof input === "string" ? input : input instanceof URL ? input.pathname : input.url;

@@ -142,6 +142,7 @@ function App() {
                   />
                   <button
                     type="button"
+                    disabled={requestBriefStatus === "syncing"}
                     onClick={() => {
                       setGeneratedPreview(routeOwnerCommand(command));
                       setRequestBrief(null);
@@ -155,7 +156,7 @@ function App() {
                         .catch(() => setRequestBriefStatus("failed"));
                     }}
                   >
-                    生成请求预览
+                    {requestBriefStatus === "syncing" ? "正在生成预览" : "生成请求预览"}
                   </button>
                 </div>
                 {generatedPreview ? (
