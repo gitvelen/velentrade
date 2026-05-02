@@ -2143,6 +2143,32 @@ Design approved 前，`reviews/design-review.yaml` 必须记录 R8 cold-start dr
   residual_risk: Celery registers scheduled data collection requests, executes collect_data_request through Redis worker, loads Source Registry from PostgreSQL, persists DataRequest/DataLineage/DataQualityReport, and restores latest successful lineage as cache when provider fetch fails. Automated transport remains fake/local and does not claim external provider availability.
   reopen_required: false
 
+- acceptance_ref: ACC-008
+  run_id: RUN-WI002-ACC008-STAGE-GUARD-REOPEN-20260502
+  test_case_ref: TC-ACC-008-01
+  verification_type: automated
+  test_type: regression
+  test_scope: branch-local
+  completion_level: in_memory_domain
+  executed_at: 2026-05-02
+  artifact_ref: python -m pytest tests/domain/workflow tests/domain/data tests/domain/services tests/domain/governance tests/worker -q; python -m compileall src/velentrade/domain/workflow src/velentrade/domain/data src/velentrade/domain/services src/velentrade/domain/governance src/velentrade/worker
+  result: pass
+  residual_risk: WorkflowRuntime now blocks completion of non-running stages, records stage_not_running in s0_s7_workflow_report, and request_reopen moves workflow to a new attempt at target stage with preserved upstream stages skipped. Still in-memory domain; not a browser/API/PostgreSQL S0-S7 runtime chain.
+  reopen_required: false
+
+- acceptance_ref: ACC-008
+  run_id: RUN-WI002-ACC008-CELERY-CLEANUP-20260502
+  test_case_ref: TC-ACC-008-01
+  verification_type: automated
+  test_type: regression
+  test_scope: branch-local
+  completion_level: db_persistent
+  executed_at: 2026-05-02
+  artifact_ref: python -m pytest tests/domain/workflow tests/domain/data tests/domain/services tests/domain/governance tests/worker -q
+  result: pass
+  residual_risk: Celery Redis/Postgres smoke now releases AsyncResult with get/forget and detaches the Redis backend before Redis teardown, removing ignored AsyncResult backend cleanup exceptions from the WI-002 verification output. This is test/runtime cleanup evidence, not a new business capability.
+  reopen_required: false
+
 <!-- CODESPEC:TESTING:RISKS -->
 ## 4. 残留风险与返工判断
 
