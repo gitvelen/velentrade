@@ -1155,6 +1155,19 @@ Design approved 前，`reviews/design-review.yaml` 必须记录 R8 cold-start dr
   residual_risk: Analysis and debate report envelopes now fail when hard-dissent guard evidence or failures fail; still uses deterministic in-memory fixtures.
   reopen_required: false
 
+- acceptance_ref: ACC-016
+  run_id: RUN-WI007-ACC016-FOUR-ROLE-GUARD-20260502
+  test_case_ref: TC-ACC-016-01
+  verification_type: automated
+  test_type: regression
+  test_scope: branch-local
+  completion_level: in_memory_domain
+  executed_at: 2026-05-02
+  artifact_ref: python -m pytest tests/domain/investment/analysis tests/domain/investment/debate -q; python -m compileall src/velentrade
+  result: pass
+  residual_risk: ConsensusCalculator now rejects missing or duplicate official Analyst roles before calculating consensus/action conviction, preventing one-to-three memo inputs from producing false high consensus; still not a live AgentRun/CIO/Risk runtime integration.
+  reopen_required: false
+
 - acceptance_ref: ACC-018
   run_id: RUN-WI008-ACC018-20260430
   test_case_ref: TC-ACC-018-01
