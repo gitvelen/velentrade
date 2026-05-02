@@ -1207,6 +1207,19 @@ Design approved 前，`reviews/design-review.yaml` 必须记录 R8 cold-start dr
   residual_risk: Risk/Owner exception report envelope now fails when rejected-risk no-override guard evidence or failures fail; still uses deterministic in-memory fixtures.
   reopen_required: false
 
+- acceptance_ref: ACC-018
+  run_id: RUN-WI008-ACC018-EXECUTION-CORE-GUARD-20260502
+  test_case_ref: TC-ACC-018-01
+  verification_type: automated
+  test_type: regression
+  test_scope: branch-local
+  completion_level: in_memory_domain
+  executed_at: 2026-05-02
+  artifact_ref: python -m pytest tests/domain/decision tests/domain/investment/risk tests/domain/investment/owner_exception -q; python -m compileall src/velentrade
+  result: pass
+  residual_risk: DecisionGuardResult now turns execution_feasibility.execution_core_status blocked into execution_core_blocked_no_execution and reopen recommendation while suppressing Owner exception candidates; still not connected to cross-WI workflow/API/browser S4-S6 runtime.
+  reopen_required: false
+
 - acceptance_ref: ACC-020
   run_id: RUN-WI009-ACC020-20260430
   test_case_ref: TC-ACC-020-01
