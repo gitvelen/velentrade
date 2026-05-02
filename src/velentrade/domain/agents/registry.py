@@ -187,3 +187,121 @@ def build_team_read_model() -> dict:
         "quality_alerts": [],
         "governance_links": ["/api/governance/changes"],
     }
+
+
+def build_agent_profile_read_model(agent_id: str) -> dict:
+    profiles = build_agent_capability_profiles()
+    if agent_id not in profiles:
+        raise KeyError(agent_id)
+    profile = profiles[agent_id]
+    return {
+        "agent_id": profile.agent_id,
+        "display_name": profile.display_name,
+        "role": profile.role,
+        "status": profile.status,
+        "capability_summary": profile.mission,
+        "can_do": list(profile.write_policy.artifact_types) + list(profile.write_policy.command_types),
+        "cannot_do": list(profile.default_context_policy.denied) + list(profile.authority.forbidden_actions),
+        "read_permissions": {
+            "db_read_views": list(profile.tool_policy.db_read_views),
+            "file_scopes": list(profile.tool_policy.file_scopes),
+        },
+        "write_permissions": {
+            "artifact_types": list(profile.write_policy.artifact_types),
+            "command_types": list(profile.write_policy.command_types),
+            "comment_types": list(profile.write_policy.comment_types),
+            "proposal_types": list(profile.write_policy.proposal_types),
+        },
+        "service_permissions": list(profile.tool_policy.service_result_read),
+        "tool_permissions": {
+            "network_policy": list(profile.tool_policy.network_policy),
+            "terminal_policy": list(profile.tool_policy.terminal_policy),
+            "skill_packages": list(profile.tool_policy.skill_packages),
+        },
+        "collaboration_commands": list(profile.write_policy.command_types),
+        "sop_refs": list(profile.sop),
+        "rubric_refs": list(profile.evaluation_policy.metrics),
+        "escalation_rules": [
+            {"condition": policy.condition, "command_or_target": policy.command_or_target}
+            for policy in profile.escalation_policy
+        ],
+        "failure_policy": [
+            {"code": policy.code, "handling": policy.handling}
+            for policy in profile.failure_policy
+        ],
+        "profile_version": profile.profile_version,
+        "skill_package_version": profile.default_skill_packages[0],
+        "prompt_version": "1.0.0",
+        "context_snapshot_version": "ctx-v1",
+        "model_route": profile.default_model_profile,
+        "budget_tokens": 8000,
+        "timeout_seconds": 180,
+        "recent_artifacts": [
+            {"artifact_type": profile.output_contracts[0].artifact_type, "status": "fixture"}
+        ],
+        "quality_metrics": {
+            "schema_pass_rate": 1.0,
+            "evidence_quality": 1.0,
+            "role_boundary_pass": 1.0,
+        },
+        "failure_records": [],
+        "denied_actions": [
+            {"reason_code": "direct_write_denied", "action": "direct_business_db_write"}
+        ],
+        "active_agent_runs": [],
+        "config_draft_entry": "governance_draft_only",
+    }
+
+
+def build_agent_capability_config_read_model(agent_id: str) -> dict:
+    profiles = build_agent_capability_profiles()
+    if agent_id not in profiles:
+        raise KeyError(agent_id)
+    profile = profiles[agent_id]
+    return {
+        "agent_id": profile.agent_id,
+        "editable_fields": [
+            {
+                "field": "default_model_profile",
+                "current_value_ref": profile.default_model_profile,
+                "allowed_values": ["high_reasoning", "balanced", "fast_summary", "diagnostic", "fake_test"],
+                "requires_high_impact_if_changed": False,
+                "validation_required": True,
+            },
+            {
+                "field": "default_tool_profile_id",
+                "current_value_ref": profile.default_tool_profile_id,
+                "allowed_values": ["readonly-basic"],
+                "requires_high_impact_if_changed": True,
+                "validation_required": True,
+            },
+            {
+                "field": "default_skill_packages",
+                "current_value_ref": list(profile.default_skill_packages),
+                "allowed_values": list(profile.default_skill_packages),
+                "requires_high_impact_if_changed": True,
+                "validation_required": True,
+            },
+        ],
+        "current_effective_versions": {
+            "profile_version": profile.profile_version,
+            "prompt_version": "1.0.0",
+            "context_snapshot_version": "ctx-v1",
+            "model_route": profile.default_model_profile,
+            "tool_profile_id": profile.default_tool_profile_id,
+        },
+        "draft_schema": {
+            "change_set": "object",
+            "diff_summary": "string",
+            "impact_level": "low|medium|high",
+            "effective_scope": "new_task|new_attempt",
+        },
+        "impact_policy_preview": {
+            "new_task_or_attempt_only": True,
+            "hot_patch_denied": True,
+        },
+        "validation_plan_options": ["schema_validation", "permission_check", "owner_approval_if_high_impact"],
+        "rollback_refs": [],
+        "effective_scope_options": ["new_task", "new_attempt"],
+        "forbidden_direct_update_reason": "governance_draft_only",
+    }

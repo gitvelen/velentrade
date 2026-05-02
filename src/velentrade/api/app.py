@@ -1,0 +1,301 @@
+from __future__ import annotations
+
+from dataclasses import asdict, is_dataclass
+from typing import Any
+
+from fastapi import FastAPI
+from fastapi.responses import JSONResponse
+
+from velentrade.db.session import build_engine
+from velentrade.db.store import SqlAlchemyGatewayMirror
+from velentrade.domain.agents.registry import (
+    build_agent_capability_profiles,
+    build_agent_capability_config_read_model,
+    build_agent_profile_read_model,
+    build_team_read_model,
+)
+from velentrade.domain.collaboration.models import AgentRun, CollaborationCommand, HandoffPacket
+from velentrade.domain.common import new_id, utc_now
+from velentrade.domain.gateway.authority import AuthorityGateway
+from velentrade.domain.memory.models import MemoryCapture
+
+from .schemas import (
+    CollaborationCommandRequest,
+    CreateMemoryItemRequest,
+    GatewayArtifactWriteRequest,
+    GatewayEventWriteRequest,
+    GatewayHandoffWriteRequest,
+    GatewayMemoryWriteRequest,
+    MemoryRelationWriteRequest,
+)
+
+
+def _serialize(value: Any) -> Any:
+    if is_dataclass(value):
+        return asdict(value)
+    if isinstance(value, list):
+        return [_serialize(item) for item in value]
+    if isinstance(value, dict):
+        return {key: _serialize(item) for key, item in value.items()}
+    return value
+
+
+def _success(payload: Any) -> dict[str, Any]:
+    return {
+        "data": _serialize(payload),
+        "meta": {"trace_id": new_id("trace"), "generated_at": utc_now()},
+    }
+
+
+def _error(status_code: int, code: str, message: str, *, reason_code: str | None = None) -> JSONResponse:
+    return JSONResponse(
+        status_code=status_code,
+        content={
+            "error": {
+                "code": code,
+                "message": message,
+                "trace_id": new_id("trace"),
+                "retryable": False,
+                "reason_code": reason_code,
+                "details": None,
+            }
+        },
+    )
+
+
+class ApiRuntime:
+    def __init__(self, database_url: str | None = None) -> None:
+        self.profiles = build_agent_capability_profiles()
+        store = SqlAlchemyGatewayMirror(build_engine(database_url)) if database_url else None
+        self.gateway = AuthorityGateway(self.profiles, store=store)
+        self.agent_runs = {
+            f"run-{agent_id}": AgentRun.fake(
+                agent_run_id=f"run-{agent_id}",
+                agent_id=agent_id,
+                workflow_id="wf-1",
+                allowed_command_types=profile.write_policy.command_types,
+                output_artifact_schema=profile.output_contracts[0].artifact_type,
+            )
+            for agent_id, profile in self.profiles.items()
+        }
+        self.owner_memory_counter = 0
+
+    def require_run(self, run_id: str) -> AgentRun | None:
+        return self.agent_runs.get(run_id)
+
+    def next_owner_capture_run(self) -> AgentRun:
+        self.owner_memory_counter += 1
+        run_id = f"run-owner-memory-{self.owner_memory_counter}"
+        run = AgentRun.fake(
+            agent_run_id=run_id,
+            agent_id="investment_researcher",
+            workflow_id="wf-owner-memory",
+            allowed_command_types=["propose_knowledge_promotion"],
+            output_artifact_schema="ResearchPackage",
+            stage="capture",
+        )
+        self.agent_runs[run_id] = run
+        return run
+
+
+def build_app(runtime: ApiRuntime | None = None) -> FastAPI:
+    app = FastAPI(title="velentrade-api", version="0.1.0")
+    api_runtime = runtime or ApiRuntime()
+
+    @app.get("/api/team")
+    def get_team() -> dict[str, Any]:
+        return _success(build_team_read_model())
+
+    @app.get("/api/team/{agent_id}")
+    def get_agent_profile(agent_id: str):
+        try:
+            return _success(build_agent_profile_read_model(agent_id))
+        except KeyError:
+            return _error(404, "NOT_FOUND", f"Unknown agent: {agent_id}")
+
+    @app.get("/api/team/{agent_id}/capability-config")
+    def get_agent_capability_config(agent_id: str):
+        try:
+            return _success(build_agent_capability_config_read_model(agent_id))
+        except KeyError:
+            return _error(404, "NOT_FOUND", f"Unknown agent: {agent_id}")
+
+    @app.post("/api/collaboration/commands")
+    def create_collaboration_command(request: CollaborationCommandRequest):
+        run = api_runtime.require_run(request.source_agent_run_id)
+        if run is None:
+            return _error(404, "NOT_FOUND", "Unknown source_agent_run_id")
+        command = CollaborationCommand.request(
+            command_id=new_id("command"),
+            command_type=request.command_type,
+            workflow_id=request.workflow_id,
+            attempt_no=request.attempt_no,
+            stage=request.stage,
+            source_agent_run_id=request.source_agent_run_id,
+            source_agent_id=run.agent_id,
+            target_agent_id_or_service=request.target_agent_id_or_service,
+            payload=request.payload,
+            requested_admission_type=request.requested_admission_type,
+        )
+        result = api_runtime.gateway.append_command(run, command, idempotency_key=command.command_id)
+        if not result.accepted:
+            return _error(403, "COMMAND_NOT_ALLOWED", "Command is not allowed for this AgentRun.", reason_code=result.reason_code)
+        accepted = api_runtime.gateway.command_ledger[-1]
+        return _success(accepted)
+
+    @app.post("/api/gateway/artifacts")
+    def write_artifact(request: GatewayArtifactWriteRequest):
+        run = api_runtime.require_run(request.source_agent_run_id)
+        if run is None:
+            return _error(404, "NOT_FOUND", "Unknown source_agent_run_id")
+        result = api_runtime.gateway.append_artifact(
+            run,
+            artifact_type=request.artifact_type,
+            payload=request.payload,
+            idempotency_key=request.idempotency_key,
+            schema_version=request.schema_version,
+            source_refs=request.source_refs,
+        )
+        if not result.accepted:
+            return _error(403, "PERMISSION_DENIED", "Artifact type is not allowed.", reason_code=result.reason_code)
+        return _success(result)
+
+    @app.post("/api/gateway/events")
+    def write_event(request: GatewayEventWriteRequest):
+        run = api_runtime.require_run(request.source_agent_run_id)
+        if run is None:
+            return _error(404, "NOT_FOUND", "Unknown source_agent_run_id")
+        result = api_runtime.gateway.append_event(
+            run,
+            event_type=request.event_type,
+            payload=request.payload,
+            idempotency_key=request.idempotency_key,
+        )
+        return _success(result)
+
+    @app.post("/api/gateway/handoffs")
+    def write_handoff(request: GatewayHandoffWriteRequest):
+        handoff = HandoffPacket.create(
+            handoff_id=new_id("handoff"),
+            workflow_id=request.workflow_id,
+            attempt_no=request.attempt_no,
+            from_stage=request.from_stage,
+            to_stage_or_agent=request.to_stage_or_agent,
+            producer_agent_id_or_service=request.producer_agent_id_or_service,
+            source_artifact_refs=request.source_artifact_refs,
+            summary=request.summary,
+        )
+        if request.open_questions:
+            handoff = HandoffPacket(
+                **{
+                    **handoff.__dict__,
+                    "open_questions": request.open_questions,
+                    "blockers": request.blockers,
+                    "decisions_made": request.decisions_made,
+                    "invalidated_artifacts": request.invalidated_artifacts,
+                    "preserved_artifacts": request.preserved_artifacts,
+                }
+            )
+        result = api_runtime.gateway.append_handoff(handoff, idempotency_key=request.idempotency_key)
+        return _success(result)
+
+    @app.post("/api/gateway/memory-items")
+    def write_memory(request: GatewayMemoryWriteRequest):
+        run = api_runtime.require_run(request.source_agent_run_id)
+        if run is None:
+            return _error(404, "NOT_FOUND", "Unknown source_agent_run_id")
+        capture = MemoryCapture(
+            capture_id=new_id("capture"),
+            source_type=request.operation,
+            source_refs=request.source_refs,
+            content_markdown=request.content_markdown,
+            payload=request.payload or {},
+            suggested_memory_type="research_note",
+            sensitivity=request.sensitivity,
+            producer_agent_id=run.agent_id,
+        )
+        result = api_runtime.gateway.capture_memory(capture, idempotency_key=request.idempotency_key)
+        return _success(result)
+
+    @app.post("/api/knowledge/memory-items")
+    def create_memory_item(request: CreateMemoryItemRequest):
+        run = api_runtime.next_owner_capture_run()
+        capture = MemoryCapture(
+            capture_id=new_id("capture"),
+            source_type=request.source_type,
+            source_refs=request.source_refs,
+            content_markdown=request.content_markdown,
+            payload={"tags": request.tags},
+            suggested_memory_type=request.suggested_memory_type,
+            sensitivity=request.sensitivity,
+            producer_agent_id=run.agent_id,
+        )
+        api_runtime.gateway.capture_memory(capture, idempotency_key=f"owner-memory-{run.agent_run_id}")
+        memory = api_runtime.gateway.get_memory_read_model(api_runtime.gateway.memory_items[-1].memory_id)
+        return _success(memory)
+
+    @app.get("/api/artifacts/{artifact_id}")
+    def get_artifact(artifact_id: str):
+        artifact = next(
+            (item for item in api_runtime.gateway.artifact_ledger if item["artifact_id"] == artifact_id),
+            None,
+        )
+        if artifact is None and api_runtime.gateway.store is not None:
+            artifact = api_runtime.gateway.store.get_artifact(artifact_id)
+        if artifact is None:
+            return _error(404, "NOT_FOUND", f"Unknown artifact: {artifact_id}")
+        return _success(artifact)
+
+    @app.get("/api/workflows/{workflow_id}/agent-runs")
+    def get_agent_runs(workflow_id: str):
+        runs = [run for run in api_runtime.agent_runs.values() if run.workflow_id == workflow_id]
+        return _success(runs)
+
+    @app.get("/api/workflows/{workflow_id}/collaboration-events")
+    def get_collaboration_events(workflow_id: str):
+        events = [event for event in api_runtime.gateway.event_ledger if event.workflow_id == workflow_id]
+        if not events and api_runtime.gateway.store is not None:
+            events = api_runtime.gateway.store.list_events(workflow_id)
+        return _success(events)
+
+    @app.get("/api/workflows/{workflow_id}/handoffs")
+    def get_handoffs(workflow_id: str):
+        handoffs = [handoff for handoff in api_runtime.gateway.handoff_ledger if handoff.workflow_id == workflow_id]
+        if not handoffs and api_runtime.gateway.store is not None:
+            handoffs = api_runtime.gateway.store.list_handoffs(workflow_id)
+        return _success(handoffs)
+
+    @app.get("/api/knowledge/memory-items")
+    def list_memory_items():
+        memory_items = api_runtime.gateway.list_memory_read_models()
+        if not memory_items and api_runtime.gateway.store is not None:
+            memory_items = api_runtime.gateway.store.list_memory_read_models()
+        return _success(memory_items)
+
+    @app.get("/api/knowledge/memory-items/{memory_id}")
+    def get_memory_item(memory_id: str):
+        memory = api_runtime.gateway.get_memory_read_model(memory_id)
+        if memory is None and api_runtime.gateway.store is not None:
+            memory = api_runtime.gateway.store.get_memory_read_model(memory_id)
+        if memory is None:
+            return _error(404, "NOT_FOUND", f"Unknown memory item: {memory_id}")
+        return _success(memory)
+
+    @app.post("/api/knowledge/memory-items/{memory_id}/relations")
+    def create_memory_relation(memory_id: str, request: MemoryRelationWriteRequest):
+        try:
+            relation = api_runtime.gateway.append_memory_relation(
+                memory_id=memory_id,
+                target_ref=request.target_ref,
+                relation_type=request.relation_type,
+                reason=request.reason,
+                evidence_refs=request.evidence_refs,
+                client_seen_version_id=request.client_seen_version_id,
+            )
+        except KeyError:
+            return _error(404, "NOT_FOUND", f"Unknown memory item: {memory_id}")
+        except ValueError:
+            return _error(409, "CONFLICT", "Memory version mismatch.", reason_code="client_seen_version_mismatch")
+        return _success(relation)
+
+    return app

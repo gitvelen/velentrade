@@ -48,6 +48,40 @@ class MemoryVersion:
 
 
 @dataclass(frozen=True)
+class MemoryExtractionResult:
+    extraction_id: str
+    memory_version_id: str
+    extractor_version: str
+    title: str
+    tags: list[str]
+    mentions: list[str]
+    has_link: bool
+    has_task_list: bool
+    has_code: bool
+    has_incomplete_tasks: bool
+    symbol_refs: list[str]
+    artifact_refs: list[str]
+    agent_refs: list[str]
+    stage_refs: list[str]
+    source_refs: list[str]
+    sensitivity: str
+    status: str
+    created_at: str
+
+
+@dataclass(frozen=True)
+class MemoryRelation:
+    relation_id: str
+    source_memory_id: str
+    target_ref: str
+    relation_type: str
+    reason: str
+    evidence_refs: list[str]
+    created_by: str
+    created_at: str
+
+
+@dataclass(frozen=True)
 class ContextSlice:
     context_slice_id: str
     context_snapshot_id: str

@@ -99,7 +99,7 @@ def _data_report() -> dict[str, Any]:
     )
     normal = service.evaluate(base_request, 0.95, 0.95)
     degraded = service.evaluate(base_request, 0.75, 0.80)
-    blocked = service.evaluate(base_request, 0.50, 0.55, fallback_attempts=["primary", "backup"])
+    blocked = service.evaluate(base_request, 0.45, 0.45, fallback_attempts=["primary", "backup"])
     execution = service.evaluate(
         DataRequest(
             request_id="exec-report",
@@ -185,6 +185,11 @@ def _governance_report() -> dict[str, Any]:
     high = runtime.submit_change("chg-high", "agent_capability", "high", "proposal-high", {"agent_capability_versions": {"cio": "profile-v2"}}, "new_task", "rollback-high")
     runtime.triage(high.change_id)
     owner_pending = runtime.assess(high.change_id, ["schema", "fixture", "scope", "rollback", "snapshot"])
+    expired = runtime.submit_change("chg-expired", "prompt", "high", "proposal-expired", {"prompt_versions": {"cio": "prompt-v3"}}, "new_task", "rollback-expired")
+    canceled = runtime.submit_change("chg-canceled", "default_context", "high", "proposal-canceled", {"default_context_versions": ["default-v2"]}, "new_task", "rollback-canceled")
+    expired = runtime.expire(expired.change_id)
+    canceled = runtime.cancel(canceled.change_id)
+    activation_failed = runtime.activate(expired.change_id)
     return _envelope(
         "config_governance_report.json",
         {
@@ -192,10 +197,14 @@ def _governance_report() -> dict[str, Any]:
             "auto_validation": effective.auto_validation_refs,
             "transition_guards": ["schema", "fixture", "scope", "rollback", "snapshot"],
             "governance_states": {"low": effective.state, "high": owner_pending.state},
+            "governance_terminal_states": {"expired": expired.state, "canceled": canceled.state},
+            "timeout_no_effect": expired.context_snapshot_id is None,
+            "activation_failed_no_effect": activation_failed.context_snapshot_id is None,
             "context_snapshot_binding": effective.context_snapshot_id,
-            "default_context_bindings": base.default_context_versions,
-            "memory_collection_versions": base.memory_collection_versions,
-            "agent_capability_change_versions": runtime.context_snapshots[base.context_snapshot_id].agent_capability_versions,
+            "context_snapshot_hash": runtime.context_snapshots[effective.context_snapshot_id].content_hash,
+            "default_context_bindings": list(base.default_context_versions),
+            "memory_collection_versions": list(base.memory_collection_versions),
+            "agent_capability_change_versions": dict(runtime.context_snapshots[base.context_snapshot_id].agent_capability_versions),
             "effective_scope": effective.effective_scope,
             "in_flight_snapshot_unchanged": runtime.context_snapshots[base.context_snapshot_id].content_hash == base.content_hash,
         },

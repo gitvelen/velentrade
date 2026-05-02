@@ -1,0 +1,200 @@
+from __future__ import annotations
+
+from fastapi.testclient import TestClient
+
+from velentrade.api.app import build_app
+
+
+def test_team_and_agent_profile_endpoints_expose_wi001_read_models():
+    client = TestClient(build_app())
+
+    team_response = client.get("/api/team")
+    assert team_response.status_code == 200
+    team_payload = team_response.json()["data"]
+    assert team_payload["team_health"]["healthy_agent_count"] == 9
+    assert len(team_payload["agent_cards"]) == 9
+
+    profile_response = client.get("/api/team/macro_analyst")
+    assert profile_response.status_code == 200
+    profile_payload = profile_response.json()["data"]
+    assert profile_payload["agent_id"] == "macro_analyst"
+    assert profile_payload["display_name"] == "Macro Analyst"
+    assert "finance_sensitive_raw" in profile_payload["cannot_do"]
+    assert "request_data" in profile_payload["collaboration_commands"]
+    assert profile_payload["config_draft_entry"] == "governance_draft_only"
+
+    config_response = client.get("/api/team/macro_analyst/capability-config")
+    assert config_response.status_code == 200
+    config_payload = config_response.json()["data"]
+    assert config_payload["agent_id"] == "macro_analyst"
+    assert config_payload["forbidden_direct_update_reason"] == "governance_draft_only"
+    assert config_payload["effective_scope_options"] == ["new_task", "new_attempt"]
+
+
+def test_gateway_and_collaboration_endpoints_accept_append_only_requests():
+    client = TestClient(build_app())
+
+    command_response = client.post(
+        "/api/collaboration/commands",
+        json={
+            "command_type": "request_evidence",
+            "workflow_id": "wf-1",
+            "attempt_no": 1,
+            "stage": "S1",
+            "source_agent_run_id": "run-investment_researcher",
+            "target_agent_id_or_service": "macro_analyst",
+            "payload": {"question": "补充证据", "expected_answer_format": "bullet"},
+            "requested_admission_type": "auto_accept",
+        },
+    )
+    assert command_response.status_code == 200
+    command_payload = command_response.json()["data"]
+    assert command_payload["admission_status"] == "accepted"
+    assert command_payload["command_type"] == "request_evidence"
+
+    artifact_response = client.post(
+        "/api/gateway/artifacts",
+        json={
+            "workflow_id": "wf-1",
+            "attempt_no": 1,
+            "stage": "S1",
+            "source_agent_run_id": "run-investment_researcher",
+            "context_snapshot_id": "ctx-v1",
+            "artifact_type": "ResearchPackage",
+            "schema_version": "1.0.0",
+            "payload": {"summary": "资料包", "source_refs": ["src-1"]},
+            "source_refs": ["src-1"],
+            "idempotency_key": "artifact-1",
+        },
+    )
+    assert artifact_response.status_code == 200
+    artifact_payload = artifact_response.json()["data"]
+    assert artifact_payload["accepted"] is True
+    assert artifact_payload["object_type"] == "artifact"
+    artifact_id = artifact_payload["object_id"]
+
+    event_response = client.post(
+        "/api/gateway/events",
+        json={
+            "workflow_id": "wf-1",
+            "attempt_no": 1,
+            "stage": "S1",
+            "source_agent_run_id": "run-investment_researcher",
+            "event_type": "artifact_submitted",
+            "payload": {"artifact_type": "ResearchPackage"},
+            "idempotency_key": "event-1",
+        },
+    )
+    assert event_response.status_code == 200
+    assert event_response.json()["data"]["object_type"] == "event"
+
+    handoff_response = client.post(
+        "/api/gateway/handoffs",
+        json={
+            "workflow_id": "wf-1",
+            "attempt_no": 1,
+            "from_stage": "S1",
+            "to_stage_or_agent": "S2",
+            "producer_agent_id_or_service": "investment_researcher",
+            "source_artifact_refs": ["artifact-1"],
+            "summary": "交接到下一阶段",
+            "open_questions": [],
+            "blockers": [],
+            "decisions_made": [],
+            "invalidated_artifacts": [],
+            "preserved_artifacts": ["artifact-1"],
+            "idempotency_key": "handoff-1",
+        },
+    )
+    assert handoff_response.status_code == 200
+    assert handoff_response.json()["data"]["object_type"] == "handoff"
+
+    memory_response = client.post(
+        "/api/gateway/memory-items",
+        json={
+            "source_agent_run_id": "run-investment_researcher",
+            "context_snapshot_id": "ctx-v1",
+            "operation": "capture",
+            "content_markdown": "# 研究笔记\n- 只作背景",
+            "payload": {"symbol_refs": ["600000.SH"]},
+            "source_refs": ["artifact-1"],
+            "sensitivity": "public_internal",
+            "idempotency_key": "memory-1",
+        },
+    )
+    assert memory_response.status_code == 200
+    memory_payload = memory_response.json()["data"]
+    assert memory_payload["object_type"] == "memory_item"
+    memory_id = memory_payload["object_id"]
+
+    artifact_read_response = client.get(f"/api/artifacts/{artifact_id}")
+    assert artifact_read_response.status_code == 200
+    assert artifact_read_response.json()["data"]["artifact_type"] == "ResearchPackage"
+
+    agent_runs_response = client.get("/api/workflows/wf-1/agent-runs")
+    assert agent_runs_response.status_code == 200
+    run_ids = [item["agent_run_id"] for item in agent_runs_response.json()["data"]]
+    assert "run-investment_researcher" in run_ids
+
+    event_read_response = client.get("/api/workflows/wf-1/collaboration-events")
+    assert event_read_response.status_code == 200
+    event_types = [item["event_type"] for item in event_read_response.json()["data"]]
+    assert "artifact_submitted" in event_types
+
+    handoff_read_response = client.get("/api/workflows/wf-1/handoffs")
+    assert handoff_read_response.status_code == 200
+    summaries = [item["summary"] for item in handoff_read_response.json()["data"]]
+    assert "交接到下一阶段" in summaries
+
+    memory_list_response = client.get("/api/knowledge/memory-items")
+    assert memory_list_response.status_code == 200
+    memory_list_payload = memory_list_response.json()["data"]
+    assert any(item["memory_id"] == memory_id for item in memory_list_payload)
+
+    memory_detail_response = client.get(f"/api/knowledge/memory-items/{memory_id}")
+    assert memory_detail_response.status_code == 200
+    memory_detail_payload = memory_detail_response.json()["data"]
+    assert memory_detail_payload["memory_id"] == memory_id
+    assert memory_detail_payload["memory_type"] == "research_note"
+    assert memory_detail_payload["why_included"] == "fenced_background_context_only"
+    assert memory_detail_payload["promotion_state"] == "validated_context"
+
+    relation_response = client.post(
+        f"/api/knowledge/memory-items/{memory_id}/relations",
+        json={
+            "target_ref": artifact_id,
+            "relation_type": "supports",
+            "reason": "该笔记支持资料包结论",
+            "evidence_refs": [artifact_id],
+            "client_seen_version_id": memory_detail_payload["current_version_id"],
+        },
+    )
+    assert relation_response.status_code == 200
+    relation_payload = relation_response.json()["data"]
+    assert relation_payload["source_memory_id"] == memory_id
+    assert relation_payload["target_ref"] == artifact_id
+    assert relation_payload["relation_type"] == "supports"
+
+
+def test_owner_memory_capture_endpoint_creates_append_only_memory_item():
+    client = TestClient(build_app())
+
+    response = client.post(
+        "/api/knowledge/memory-items",
+        json={
+            "source_type": "owner_note",
+            "source_refs": ["note-1"],
+            "content_markdown": "# 老板观察\n- 继续跟踪这个方向",
+            "suggested_memory_type": "owner_observation",
+            "tags": ["follow_up"],
+            "sensitivity": "public_internal",
+            "client_seen_context_snapshot_id": "ctx-v1",
+        },
+    )
+
+    assert response.status_code == 200
+    payload = response.json()["data"]
+    assert payload["memory_type"] == "owner_observation"
+    assert payload["promotion_state"] == "validated_context"
+    assert payload["why_included"] == "fenced_background_context_only"
+    assert payload["source_refs"] == ["note-1"]

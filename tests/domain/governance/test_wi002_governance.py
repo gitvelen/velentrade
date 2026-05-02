@@ -1,3 +1,5 @@
+import pytest
+
 from velentrade.domain.governance.runtime import GovernanceRuntime
 
 
@@ -66,3 +68,66 @@ def test_governance_low_medium_auto_effective_high_requires_owner_and_snapshots_
     rejected = runtime.owner_decide(rejected.change_id, approved=False, approval_ref="approval-2")
     assert rejected.state == "rejected"
     assert rejected.context_snapshot_id is None
+
+
+def test_governance_expire_and_cancel_are_no_effect_terminal_states():
+    runtime = GovernanceRuntime()
+    runtime.create_context_snapshot(
+        snapshot_version="ctx-v1",
+        source_change_ref="baseline",
+        prompt_versions={"cio": "prompt-v1"},
+        skill_package_versions={"cio": "skill-v1"},
+        knowledge_item_versions=["knowledge-v1"],
+        memory_collection_versions=["collection-v1"],
+        default_context_versions=["default-v1"],
+        agent_capability_versions={"cio": "profile-v1"},
+        effective_scope="new_task",
+    )
+    expired = runtime.submit_change(
+        change_id="chg-expired",
+        change_type="prompt",
+        impact_level="high",
+        proposal_ref="proposal-expired",
+        target_version_refs={"prompt_versions": {"cio": "prompt-v2"}},
+        effective_scope="new_task",
+        rollback_plan_ref="rollback-expired",
+    )
+    canceled = runtime.submit_change(
+        change_id="chg-canceled",
+        change_type="default_context",
+        impact_level="high",
+        proposal_ref="proposal-canceled",
+        target_version_refs={"default_context_versions": ["default-v2"]},
+        effective_scope="new_task",
+        rollback_plan_ref="rollback-canceled",
+    )
+
+    expired = runtime.expire(expired.change_id)
+    canceled = runtime.cancel(canceled.change_id)
+
+    assert expired.state == "expired"
+    assert expired.context_snapshot_id is None
+    assert canceled.state == "canceled"
+    assert canceled.context_snapshot_id is None
+    assert runtime.activate(expired.change_id).state == "activation_failed"
+    assert runtime.activate(canceled.change_id).state == "activation_failed"
+
+
+def test_context_snapshot_version_maps_cannot_be_mutated_in_place():
+    runtime = GovernanceRuntime()
+    snapshot = runtime.create_context_snapshot(
+        snapshot_version="ctx-v1",
+        source_change_ref="baseline",
+        prompt_versions={"cio": "prompt-v1"},
+        skill_package_versions={"cio": "skill-v1"},
+        knowledge_item_versions=["knowledge-v1"],
+        memory_collection_versions=["collection-v1"],
+        default_context_versions=["default-v1"],
+        agent_capability_versions={"cio": "profile-v1"},
+        effective_scope="new_task",
+    )
+
+    with pytest.raises(TypeError):
+        snapshot.prompt_versions["cio"] = "prompt-mutated"
+    with pytest.raises(AttributeError):
+        snapshot.knowledge_item_versions.append("knowledge-mutated")

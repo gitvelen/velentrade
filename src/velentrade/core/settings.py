@@ -9,5 +9,6 @@ class Settings:
     single_owner: bool = True
     database_url_env: str = "VELENTRADE_DATABASE_URL"
     redis_url_env: str = "VELENTRADE_REDIS_URL"
+    agent_runner_url_env: str = "VELENTRADE_AGENT_RUNNER_URL"
     secret_key_env: str = "VELENTRADE_SECRET_KEY"
     field_encryption_key_env: str = "VELENTRADE_FIELD_ENCRYPTION_KEY"

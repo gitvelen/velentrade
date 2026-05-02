@@ -1,8 +1,10 @@
 from __future__ import annotations
 
 import json
+from collections.abc import Mapping
 from dataclasses import dataclass, field, replace
 from hashlib import sha256
+from types import MappingProxyType
 from typing import Any
 
 from velentrade.domain.common import new_id, utc_now
@@ -23,12 +25,12 @@ class ContextSnapshot:
     threshold_versions: list[str]
     risk_parameter_versions: list[str]
     approval_rule_versions: list[str]
-    prompt_versions: dict[str, str]
-    skill_package_versions: dict[str, str]
-    knowledge_item_versions: list[str]
-    memory_collection_versions: list[str]
-    default_context_versions: list[str]
-    agent_capability_versions: dict[str, str]
+    prompt_versions: Mapping[str, str]
+    skill_package_versions: Mapping[str, str]
+    knowledge_item_versions: tuple[str, ...]
+    memory_collection_versions: tuple[str, ...]
+    default_context_versions: tuple[str, ...]
+    agent_capability_versions: Mapping[str, str]
     model_route_version: str
     tool_permission_versions: list[str]
     data_policy_version: str
@@ -105,12 +107,12 @@ class GovernanceRuntime:
             threshold_versions=["threshold-v1"],
             risk_parameter_versions=["risk-v1"],
             approval_rule_versions=["approval-v1"],
-            prompt_versions=dict(prompt_versions),
-            skill_package_versions=dict(skill_package_versions),
-            knowledge_item_versions=list(knowledge_item_versions),
-            memory_collection_versions=list(memory_collection_versions),
-            default_context_versions=list(default_context_versions),
-            agent_capability_versions=dict(agent_capability_versions),
+            prompt_versions=MappingProxyType(dict(prompt_versions)),
+            skill_package_versions=MappingProxyType(dict(skill_package_versions)),
+            knowledge_item_versions=tuple(knowledge_item_versions),
+            memory_collection_versions=tuple(memory_collection_versions),
+            default_context_versions=tuple(default_context_versions),
+            agent_capability_versions=MappingProxyType(dict(agent_capability_versions)),
             model_route_version="model-route-v1",
             tool_permission_versions=["tool-v1"],
             data_policy_version="data-policy-v1",
@@ -193,6 +195,32 @@ class GovernanceRuntime:
         self.changes[change_id] = decided
         return decided
 
+    def expire(self, change_id: str) -> GovernanceChange:
+        change = self.changes[change_id]
+        expired = replace(
+            change,
+            state="expired",
+            state_reason="owner_timeout_no_effect",
+            context_snapshot_id=None,
+            effective_at=None,
+            updated_at=utc_now(),
+        )
+        self.changes[change_id] = expired
+        return expired
+
+    def cancel(self, change_id: str) -> GovernanceChange:
+        change = self.changes[change_id]
+        canceled = replace(
+            change,
+            state="canceled",
+            state_reason="canceled_no_effect",
+            context_snapshot_id=None,
+            effective_at=None,
+            updated_at=utc_now(),
+        )
+        self.changes[change_id] = canceled
+        return canceled
+
     def activate(self, change_id: str) -> GovernanceChange:
         change = self.changes[change_id]
         if change.state not in {"approved"}:
@@ -207,12 +235,12 @@ class GovernanceRuntime:
         snapshot = self.create_context_snapshot(
             snapshot_version=f"{base.snapshot_version}+{change.change_id}",
             source_change_ref=change.change_id,
-            prompt_versions=change.target_version_refs.get("prompt_versions", base.prompt_versions),
-            skill_package_versions=change.target_version_refs.get("skill_package_versions", base.skill_package_versions),
-            knowledge_item_versions=change.target_version_refs.get("knowledge_item_versions", base.knowledge_item_versions),
-            memory_collection_versions=change.target_version_refs.get("memory_collection_versions", base.memory_collection_versions),
-            default_context_versions=change.target_version_refs.get("default_context_versions", base.default_context_versions),
-            agent_capability_versions=change.target_version_refs.get("agent_capability_versions", base.agent_capability_versions),
+            prompt_versions=change.target_version_refs.get("prompt_versions", dict(base.prompt_versions)),
+            skill_package_versions=change.target_version_refs.get("skill_package_versions", dict(base.skill_package_versions)),
+            knowledge_item_versions=change.target_version_refs.get("knowledge_item_versions", list(base.knowledge_item_versions)),
+            memory_collection_versions=change.target_version_refs.get("memory_collection_versions", list(base.memory_collection_versions)),
+            default_context_versions=change.target_version_refs.get("default_context_versions", list(base.default_context_versions)),
+            agent_capability_versions=change.target_version_refs.get("agent_capability_versions", dict(base.agent_capability_versions)),
             effective_scope=change.effective_scope,
         )
         effective = replace(

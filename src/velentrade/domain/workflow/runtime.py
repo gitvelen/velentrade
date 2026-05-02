@@ -30,6 +30,11 @@ class RequestBrief:
     owner_confirmation_status: str
     route_reason: str
     created_at: str
+    suggested_semantic_lead: str = "owner_confirmation_required"
+    process_authority: str = "request_distribution_center"
+    predicted_outputs: list[str] = field(default_factory=list)
+    creates_agent_run: bool = False
+    forbidden_action_reason_code: str | None = None
 
     @classmethod
     def create(
@@ -55,6 +60,89 @@ class RequestBrief:
             owner_confirmation_status=status,
             route_reason=reason,
             created_at=utc_now(),
+        )
+
+    @classmethod
+    def route_owner_request(
+        cls,
+        brief_id: str,
+        raw_input_ref: str,
+        intent: str,
+        asset_scope: str,
+        target_action: str,
+        route_confidence: float,
+        authorization_boundary: str,
+    ) -> "RequestBrief":
+        route_type = "research_task"
+        route_reason = "route_research_default"
+        semantic_lead = "investment_researcher"
+        process_authority = "workflow_scheduling_center"
+        predicted_outputs = ["ResearchPackage", "MemoryCapture", "TopicProposalCandidate"]
+        creates_agent_run = True
+        forbidden_action_reason_code = None
+
+        if intent in {"formal_investment_decision", "position_disposal", "paper_trade"} and asset_scope == "a_share_common_stock":
+            route_type = "investment_workflow"
+            route_reason = "route_a_share_formal_workflow"
+            semantic_lead = "cio"
+            predicted_outputs = ["ICChairBrief", "AnalystMemo", "DecisionPacket", "RiskReviewReport"]
+        elif intent in {"learn_hot_event", "research_material", "supporting_evidence_only"}:
+            route_type = "research_task"
+            route_reason = "route_research_task"
+            semantic_lead = "investment_researcher"
+            predicted_outputs = ["ResearchPackage", "MemoryCapture", "TopicProposalCandidate"]
+        elif intent in {"finance_planning", "family_budget", "tax_review"}:
+            route_type = "finance_task"
+            route_reason = "route_finance_task"
+            semantic_lead = "cfo"
+            predicted_outputs = ["FinancePlanningSummary", "ManualTodo"]
+        elif intent in {"prompt_change", "skill_change", "config_change"}:
+            route_type = "governance_task"
+            route_reason = "route_governance_task"
+            semantic_lead = "responsible_agent"
+            process_authority = "governance_runtime"
+            predicted_outputs = ["GovernanceChangeDraft", "ValidationPlan"]
+        elif intent in {"change_agent_capability", "agent_capability_change"}:
+            route_type = "agent_capability_change"
+            route_reason = "route_agent_capability_change"
+            semantic_lead = "responsible_agent"
+            process_authority = "governance_runtime"
+            predicted_outputs = ["AgentCapabilityChangeDraft", "GovernanceChangeDraft"]
+        elif intent in {"system_incident", "data_source_issue", "security_issue"}:
+            route_type = "system_task"
+            route_reason = "route_system_task"
+            semantic_lead = "devops_engineer"
+            predicted_outputs = ["IncidentReport", "RecoveryValidation"]
+        elif asset_scope != "a_share_common_stock" and target_action in {"trade", "execute", "approve_trade"}:
+            route_type = "manual_todo"
+            route_reason = "route_non_a_manual_todo"
+            semantic_lead = "owner_manual_follow_up"
+            process_authority = "task_center"
+            predicted_outputs = ["ManualTodo", "RiskReminder"]
+            creates_agent_run = False
+            forbidden_action_reason_code = "non_a_asset_no_trade"
+        elif intent == "ambiguous_request":
+            route_reason = "route_low_confidence_draft"
+            semantic_lead = "owner_confirmation_required"
+            predicted_outputs = ["RequestBriefDraft"]
+            creates_agent_run = False
+
+        brief = cls.create(
+            brief_id=brief_id,
+            raw_input_ref=raw_input_ref,
+            route_type=route_type,
+            route_confidence=route_confidence,
+            asset_scope=asset_scope,
+            authorization_boundary=authorization_boundary,
+        )
+        return replace(
+            brief,
+            route_reason=route_reason,
+            suggested_semantic_lead=semantic_lead,
+            process_authority=process_authority,
+            predicted_outputs=predicted_outputs,
+            creates_agent_run=creates_agent_run,
+            forbidden_action_reason_code=forbidden_action_reason_code,
         )
 
 
@@ -138,11 +226,31 @@ class WorkflowRuntime:
     reopen_events: list[ReopenEvent] = field(default_factory=list)
     artifact_status: dict[str, str] = field(default_factory=dict)
 
+    def expire_request_brief(self, brief: RequestBrief) -> TaskEnvelope:
+        now = utc_now()
+        task = TaskEnvelope(
+            task_id=new_id("task"),
+            task_type=brief.route_type,
+            priority="P1",
+            owner_role="owner",
+            current_state="expired",
+            reason_code="owner_timeout_request_brief_expired",
+            artifact_refs=[],
+            created_at=now,
+            updated_at=now,
+            closed_at=now,
+        )
+        self.tasks[task.task_id] = task
+        return task
+
     def confirm_request_brief(self, brief: RequestBrief, owner_decision: str) -> TaskEnvelope:
         if owner_decision != "confirmed":
             state = "canceled" if owner_decision == "canceled" else "draft"
             reason = "request_brief_not_confirmed"
-        elif brief.route_confidence < 0.8 or brief.asset_scope != "a_share_common_stock":
+        elif brief.route_confidence < 0.8:
+            state = "draft"
+            reason = "request_brief_not_confirmed"
+        elif brief.route_type == "investment_workflow" and brief.asset_scope != "a_share_common_stock":
             state = "draft"
             reason = "request_brief_not_confirmed"
         else:
@@ -218,6 +326,10 @@ class WorkflowRuntime:
             blocked = workflow.stages[index].with_status("blocked", "missing_required_artifact")
             workflow.stages[index] = blocked
             return blocked
+        if any(_is_memory_ref(ref) for ref in artifact_refs):
+            blocked = workflow.stages[index].with_status("blocked", "memory_not_fact_source")
+            workflow.stages[index] = blocked
+            return blocked
         completed = workflow.stages[index].with_status("completed", outputs=artifact_refs)
         for ref in artifact_refs:
             self.artifact_status.setdefault(ref, "accepted")
@@ -255,3 +367,7 @@ class WorkflowRuntime:
         )
         self.reopen_events.append(event)
         return event
+
+
+def _is_memory_ref(ref: str) -> bool:
+    return ref.startswith("memory-") or ref.startswith("memory:")

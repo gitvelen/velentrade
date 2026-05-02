@@ -78,6 +78,40 @@ Design 已根据人工走查和 R8 标准完成语义修复，并由 `reviews/de
 
 完整 Requirement 索引：REQ-001, REQ-002, REQ-003, REQ-004, REQ-005, REQ-006, REQ-007, REQ-008, REQ-009, REQ-010, REQ-011, REQ-012, REQ-013, REQ-014, REQ-015, REQ-016, REQ-017, REQ-018, REQ-019, REQ-020, REQ-021, REQ-022, REQ-023, REQ-024, REQ-025, REQ-026, REQ-027, REQ-028, REQ-029, REQ-030, REQ-031, REQ-032。
 
+requirement_refs:
+  - REQ-001
+  - REQ-002
+  - REQ-003
+  - REQ-004
+  - REQ-005
+  - REQ-006
+  - REQ-007
+  - REQ-008
+  - REQ-009
+  - REQ-010
+  - REQ-011
+  - REQ-012
+  - REQ-013
+  - REQ-014
+  - REQ-015
+  - REQ-016
+  - REQ-017
+  - REQ-018
+  - REQ-019
+  - REQ-020
+  - REQ-021
+  - REQ-022
+  - REQ-023
+  - REQ-024
+  - REQ-025
+  - REQ-026
+  - REQ-027
+  - REQ-028
+  - REQ-029
+  - REQ-030
+  - REQ-031
+  - REQ-032
+
 | 需求 | 设计响应 | 详细契约 | WI / TC |
 |---|---|---|---|
 | REQ-001/002 | Scope registry、Agent/Service registry、禁用能力扫描 | `runtime-storage-architecture.md`、`agent-capability-profiles.md`、`verification-report-schemas.md` | WI-001 / TC-ACC-001-01, TC-ACC-002-01 |
@@ -244,6 +278,21 @@ Governance proposal
 ## 5. 契约设计
 
 API 使用 REST + JSON，内部 domain command handlers 控制写入。完整 DTO、read model、错误响应和禁用入口响应见 `contracts/api-read-models.md`；本节只列接口面。
+
+data_contracts:
+
+- API/read model、错误响应、分页和禁用入口响应以 `contracts/api-read-models.md` 为准；前端只消费 read model，不直接推进 workflow、approval、governance 或 execution 状态。
+- domain artifact、TaskEnvelope、Workflow、DataReadiness、ContextSnapshot、GovernanceChange、Memory/Knowledge 和 stage guard schema 以 `contracts/domain-artifact-schemas.md` 为准。
+- 验证报告 envelope、report payload、WI/TC/fixture 映射和 pass/fail 规则以 `contracts/verification-report-schemas.md` 为准。
+- 本节只声明 contract/data/storage 边界，不新增 frozen contract 字段；若实现发现字段不足，必须先回写 Design/contract freeze，而不是在 WI 内隐式扩展。
+
+storage:
+
+- PostgreSQL 18 是唯一业务事实源，承载 domain tables、workflow state、artifact ledger、Memory/Knowledge append-only 版本、governance change、audit/event log、session 和 outbox。
+- Redis 只作为 Celery broker/cache，不保存业务事实；任何可审计事实必须落入 PostgreSQL 或 artifact/event ledger。
+- Artifact、MemoryVersion、MemoryRelation、CollaborationEvent、HandoffPacket 和 Reopen Event 均 append-only；旧 artifact 只能 superseded，不删除、不覆盖。
+- Read model 是观察层，可由 PostgreSQL 事实投影生成；Owner 默认视图只展示业务摘要，Trace/Debug 才展示过程审计材料。
+- Alembic migration 是 schema 变更唯一入口；本地、测试和 CI 使用 PostgreSQL/Testcontainers，禁止用 SQLite 代替。
 
 external_interactions:
 

@@ -102,12 +102,14 @@ class AgentRun:
         agent_id: str,
         workflow_id: str,
         allowed_command_types: list[str] | None = None,
+        output_artifact_schema: str = "ResearchPackage",
+        stage: str = "S1",
     ) -> "AgentRun":
         return cls(
             agent_run_id=agent_run_id,
             workflow_id=workflow_id,
             attempt_no=1,
-            stage="S1",
+            stage=stage,
             agent_id=agent_id,
             profile_version="1.0.0",
             run_goal="fixture run",
@@ -116,7 +118,7 @@ class AgentRun:
             context_slice_id=f"slice-{agent_run_id}",
             tool_profile_id="readonly-basic",
             status="running",
-            output_artifact_schema="ResearchPackage",
+            output_artifact_schema=output_artifact_schema,
             allowed_command_types=allowed_command_types or ["ask_question"],
         )
 

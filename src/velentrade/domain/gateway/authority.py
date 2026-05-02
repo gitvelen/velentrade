@@ -5,9 +5,16 @@ from hashlib import sha256
 from typing import Any
 
 from velentrade.domain.agents.models import CapabilityProfile
-from velentrade.domain.collaboration.models import AgentRun, CollaborationCommand
+from velentrade.domain.collaboration.models import AgentRun, CollaborationCommand, CollaborationEvent, HandoffPacket
 from velentrade.domain.common import GuardDecision, new_id, utc_now
-from velentrade.domain.memory.models import ContextSlice, MemoryCapture, MemoryItem, MemoryVersion
+from velentrade.domain.memory.models import (
+    ContextSlice,
+    MemoryCapture,
+    MemoryExtractionResult,
+    MemoryItem,
+    MemoryRelation,
+    MemoryVersion,
+)
 
 
 @dataclass(frozen=True)
@@ -29,10 +36,15 @@ class GatewayWriteResult:
 @dataclass
 class AuthorityGateway:
     profiles: dict[str, CapabilityProfile]
+    store: Any | None = None
     artifact_ledger: list[dict[str, Any]] = field(default_factory=list)
     command_ledger: list[CollaborationCommand] = field(default_factory=list)
+    event_ledger: list[CollaborationEvent] = field(default_factory=list)
+    handoff_ledger: list[HandoffPacket] = field(default_factory=list)
     memory_items: list[MemoryItem] = field(default_factory=list)
     memory_versions: list[MemoryVersion] = field(default_factory=list)
+    memory_extraction_results: list[MemoryExtractionResult] = field(default_factory=list)
+    memory_relations: list[MemoryRelation] = field(default_factory=list)
     denied_direct_writes: list[dict[str, Any]] = field(default_factory=list)
     _idempotency: dict[str, GatewayWriteResult] = field(default_factory=dict)
 
@@ -49,25 +61,41 @@ class AuthorityGateway:
         artifact_type: str,
         payload: dict[str, Any],
         idempotency_key: str,
+        schema_version: str = "1.0.0",
+        source_refs: list[str] | None = None,
     ) -> GatewayWriteResult:
         def write() -> GatewayWriteResult:
             profile = self.profiles[run.agent_id]
             if artifact_type not in profile.write_policy.artifact_types:
                 return GatewayWriteResult(False, "artifact", "", "", "", "permission_denied")
             artifact_id = new_id("artifact")
-            self.artifact_ledger.append(
-                {
-                    "artifact_id": artifact_id,
-                    "artifact_type": artifact_type,
-                    "workflow_id": run.workflow_id,
-                    "attempt_no": run.attempt_no,
-                    "producer": run.agent_id,
-                    "status": "accepted",
-                    "payload": payload,
-                    "created_at": utc_now(),
-                }
-            )
-            return GatewayWriteResult(True, "artifact", artifact_id, new_id("audit"), new_id("outbox"))
+            artifact_row = {
+                "artifact_id": artifact_id,
+                "artifact_type": artifact_type,
+                "workflow_id": run.workflow_id,
+                "attempt_no": run.attempt_no,
+                "trace_id": new_id("trace"),
+                "producer": run.agent_id,
+                "producer_type": "agent",
+                "status": "accepted",
+                "schema_version": schema_version,
+                "payload": payload,
+                "source_refs": source_refs or [],
+                "summary": str(payload.get("summary", "")) if isinstance(payload, dict) else "",
+                "evidence_refs": [],
+                "decision_refs": [],
+                "created_at": utc_now(),
+            }
+            self.artifact_ledger.append(artifact_row)
+            result = GatewayWriteResult(True, "artifact", artifact_id, new_id("audit"), new_id("outbox"))
+            if self.store is not None:
+                self.store.mirror_artifact(
+                    artifact_row,
+                    audit_event_id=result.audit_event_id,
+                    outbox_event_id=result.outbox_event_id,
+                    idempotency_key=idempotency_key,
+                )
+            return result
 
         return self._idempotent(idempotency_key, write)
 
@@ -85,7 +113,15 @@ class AuthorityGateway:
                 **{**command.__dict__, "admission_status": "accepted", "resolved_at": utc_now()}
             )
             self.command_ledger.append(accepted)
-            return GatewayWriteResult(True, "command", command.command_id, new_id("audit"), new_id("outbox"))
+            result = GatewayWriteResult(True, "command", command.command_id, new_id("audit"), new_id("outbox"))
+            if self.store is not None:
+                self.store.mirror_command(
+                    accepted,
+                    audit_event_id=result.audit_event_id,
+                    outbox_event_id=result.outbox_event_id,
+                    idempotency_key=idempotency_key,
+                )
+            return result
 
         return self._idempotent(idempotency_key, write)
 
@@ -94,10 +130,11 @@ class AuthorityGateway:
             memory_id = new_id("memory")
             version_id = new_id("memory-version")
             now = utc_now()
+            producer_profile = self.profiles.get(capture.producer_agent_id)
             item = MemoryItem(
                 memory_id=memory_id,
                 memory_type=capture.suggested_memory_type,
-                owner_role="owner",
+                owner_role=producer_profile.role if producer_profile else "owner",
                 producer_agent_id=capture.producer_agent_id,
                 status="validated_context",
                 current_version_id=version_id,
@@ -117,9 +154,96 @@ class AuthorityGateway:
                 created_at=now,
                 content_hash=sha256(capture.content_markdown.encode("utf-8")).hexdigest(),
             )
+            title = next(
+                (
+                    line.lstrip("# ").strip()
+                    for line in capture.content_markdown.splitlines()
+                    if line.strip()
+                ),
+                "Untitled Memory",
+            )
+            extraction = MemoryExtractionResult(
+                extraction_id=new_id("memory-extraction"),
+                memory_version_id=version_id,
+                extractor_version="wi001-fixture",
+                title=title,
+                tags=[],
+                mentions=[],
+                has_link="http://" in capture.content_markdown or "https://" in capture.content_markdown,
+                has_task_list="- [ ]" in capture.content_markdown,
+                has_code="```" in capture.content_markdown,
+                has_incomplete_tasks="- [ ]" in capture.content_markdown,
+                symbol_refs=list(capture.payload.get("symbol_refs", [])),
+                artifact_refs=list(capture.payload.get("artifact_refs", [])),
+                agent_refs=list(capture.payload.get("agent_refs", [])),
+                stage_refs=list(capture.payload.get("stage_refs", [])),
+                source_refs=list(capture.source_refs),
+                sensitivity=capture.sensitivity,
+                status="succeeded",
+                created_at=now,
+            )
             self.memory_items.append(item)
             self.memory_versions.append(version)
-            return GatewayWriteResult(True, "memory_item", memory_id, new_id("audit"), new_id("outbox"))
+            self.memory_extraction_results.append(extraction)
+            result = GatewayWriteResult(True, "memory_item", memory_id, new_id("audit"), new_id("outbox"))
+            if self.store is not None:
+                self.store.mirror_memory(
+                    item,
+                    version,
+                    extraction,
+                    audit_event_id=result.audit_event_id,
+                    outbox_event_id=result.outbox_event_id,
+                    idempotency_key=idempotency_key,
+                )
+            return result
+
+        return self._idempotent(idempotency_key, write)
+
+    def append_event(
+        self,
+        run: AgentRun,
+        event_type: str,
+        payload: dict[str, Any],
+        idempotency_key: str,
+        trace_id: str | None = None,
+    ) -> GatewayWriteResult:
+        def write() -> GatewayWriteResult:
+            event = CollaborationEvent(
+                event_id=new_id("event"),
+                event_type=event_type,
+                workflow_id=run.workflow_id,
+                attempt_no=run.attempt_no,
+                trace_id=trace_id or new_id("trace"),
+                payload=payload,
+                created_at=utc_now(),
+                session_id=run.session_id,
+                agent_run_id=run.agent_run_id,
+            )
+            self.event_ledger.append(event)
+            result = GatewayWriteResult(True, "event", event.event_id, new_id("audit"), new_id("outbox"))
+            if self.store is not None:
+                self.store.mirror_event(
+                    event,
+                    audit_event_id=result.audit_event_id,
+                    outbox_event_id=result.outbox_event_id,
+                    idempotency_key=idempotency_key,
+                )
+            return result
+
+        return self._idempotent(idempotency_key, write)
+
+    def append_handoff(self, handoff: HandoffPacket, idempotency_key: str) -> GatewayWriteResult:
+        def write() -> GatewayWriteResult:
+            self.handoff_ledger.append(handoff)
+            result = GatewayWriteResult(True, "handoff", handoff.handoff_id, new_id("audit"), new_id("outbox"))
+            if self.store is not None:
+                self.store.mirror_handoff(
+                    handoff,
+                    audit_event_id=result.audit_event_id,
+                    outbox_event_id=result.outbox_event_id,
+                    idempotency_key=idempotency_key,
+                )
+            return result
 
         return self._idempotent(idempotency_key, write)
 
@@ -170,3 +294,86 @@ class AuthorityGateway:
             message="Memory may be context or evidence lead, never formal business fact source.",
             details={"memory_ref": memory_ref},
         )
+
+    def append_memory_relation(
+        self,
+        memory_id: str,
+        target_ref: str,
+        relation_type: str,
+        reason: str,
+        evidence_refs: list[str],
+        client_seen_version_id: str,
+        created_by: str = "owner",
+    ) -> MemoryRelation:
+        item = next((memory for memory in self.memory_items if memory.memory_id == memory_id), None)
+        if item is None:
+            raise KeyError(memory_id)
+        if item.current_version_id != client_seen_version_id:
+            raise ValueError("client_seen_version_mismatch")
+        relation = MemoryRelation(
+            relation_id=new_id("memory-relation"),
+            source_memory_id=memory_id,
+            target_ref=target_ref,
+            relation_type=relation_type,
+            reason=reason,
+            evidence_refs=evidence_refs,
+            created_by=created_by,
+            created_at=utc_now(),
+        )
+        self.memory_relations.append(relation)
+        if self.store is not None:
+            self.store.mirror_memory_relation(relation)
+        return relation
+
+    def list_memory_read_models(self) -> list[dict[str, Any]]:
+        return [self.get_memory_read_model(item.memory_id) for item in self.memory_items]
+
+    def get_memory_read_model(self, memory_id: str) -> dict[str, Any] | None:
+        item = next((memory for memory in self.memory_items if memory.memory_id == memory_id), None)
+        if item is None:
+            return None
+        version = next(
+            (memory_version for memory_version in self.memory_versions if memory_version.version_id == item.current_version_id),
+            None,
+        )
+        extraction = next(
+            (
+                result
+                for result in self.memory_extraction_results
+                if version is not None and result.memory_version_id == version.version_id
+            ),
+            None,
+        )
+        relations = [relation for relation in self.memory_relations if relation.source_memory_id == memory_id]
+        return {
+            "memory_id": item.memory_id,
+            "memory_type": item.memory_type,
+            "status": item.status,
+            "current_version_id": item.current_version_id,
+            "title": extraction.title if extraction else "Untitled Memory",
+            "summary": (version.content_markdown[:120] if version else "").strip(),
+            "tags": extraction.tags if extraction else [],
+            "source_refs": list(item.source_refs),
+            "artifact_refs": extraction.artifact_refs if extraction else [],
+            "symbol_refs": extraction.symbol_refs if extraction else [],
+            "agent_refs": extraction.agent_refs if extraction else [],
+            "stage_refs": extraction.stage_refs if extraction else [],
+            "relations": [
+                {
+                    "relation_id": relation.relation_id,
+                    "target_ref": relation.target_ref,
+                    "relation_type": relation.relation_type,
+                    "reason": relation.reason,
+                    "evidence_refs": list(relation.evidence_refs),
+                    "created_by": relation.created_by,
+                    "created_at": relation.created_at,
+                }
+                for relation in relations
+            ],
+            "collections": [],
+            "sensitivity": item.sensitivity,
+            "promotion_state": item.status,
+            "why_included": "fenced_background_context_only",
+            "created_at": item.created_at,
+            "updated_at": item.updated_at,
+        }

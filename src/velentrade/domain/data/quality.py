@@ -45,7 +45,7 @@ class DataQualityReport:
 @dataclass
 class DataQualityService:
     normal_threshold: float = 0.9
-    degraded_threshold: float = 0.8
+    degraded_threshold: float = 0.7
     blocked_threshold: float = 0.7
 
     def _completeness(self, fields: list[RequiredField]) -> float:

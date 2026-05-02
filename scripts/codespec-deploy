@@ -8,6 +8,9 @@ cd "$project_root"
 revision="$(git rev-parse HEAD)"
 deployed_at="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
 execution_ref="deploy-${revision:0:12}"
+deployment_file="$project_root/deployment.md"
+release_mode="$(awk '/^release_mode:/ {print $2; exit}' "$deployment_file" 2>/dev/null || true)"
+[ -n "$release_mode" ] || release_mode="artifact"
 
 python -m pytest tests/core tests/domain tests/security tests/requirements tests/agent_runner tests/model_gateway tests/worker tests/e2e -q
 python -m compileall src/velentrade >/dev/null
@@ -16,6 +19,54 @@ npm --prefix frontend run build
 test -f frontend/dist/index.html
 test -n "$(find frontend/dist/assets -type f -name '*.js' -print -quit)"
 test -n "$(find frontend/dist/assets -type f -name '*.css' -print -quit)"
+
+if [ "$release_mode" = "runtime" ]; then
+  docker compose down -v --remove-orphans >/dev/null 2>&1 || true
+  docker compose up -d postgres redis agent-runner api worker beat
+
+  python - <<'PY'
+import json
+import sys
+import time
+from urllib import error, request
+
+deadline = time.time() + 180
+url = "http://127.0.0.1:8000/api/team"
+last_error = None
+while time.time() < deadline:
+    try:
+        with request.urlopen(url, timeout=5) as response:
+            body = json.loads(response.read().decode("utf-8"))
+        if response.status == 200 and "data" in body:
+            break
+    except (error.URLError, TimeoutError, ConnectionError) as exc:
+        last_error = exc
+        time.sleep(2)
+else:
+    raise SystemExit(f"api runtime did not become ready: {last_error}")
+PY
+
+  running_services="$(docker compose ps --status running --services)"
+  for service in postgres redis agent-runner api worker beat; do
+    printf '%s\n' "$running_services" | grep -qx "$service"
+  done
+
+  cat > "$result_file" <<EOF
+status: pass
+execution_ref: ${execution_ref}
+deployment_method: docker-compose-runtime
+deployed_at: ${deployed_at}
+deployed_revision: ${revision}
+restart_required: yes
+restart_reason: docker compose services launched for local runtime release
+smoke_test: pass
+runtime_ready: pass
+runtime_observed_revision: ${revision}
+runtime_ready_evidence: docker compose services are running and http://127.0.0.1:8000/api/team returned 200
+manual_verification_ready: pass
+EOF
+  exit 0
+fi
 
 cat > "$result_file" <<EOF
 status: pass
