@@ -1610,6 +1610,123 @@ Design approved 前，`reviews/design-review.yaml` 必须记录 R8 cold-start dr
   residual_risk: Proves collaboration/artifact trace foundation in the full compose runtime. It does not by itself prove every downstream WI semantic calculation is production-grade or Owner verified.
   reopen_required: false
 
+- acceptance_ref: ACC-001
+  run_id: RUN-WI001-ACC001-FULL-RUNTIME-FOUNDATION-20260503
+  test_case_ref: TC-ACC-001-01
+  verification_type: automated
+  test_type: runtime_e2e
+  test_scope: full-integration
+  completion_level: integrated_runtime
+  executed_at: 2026-05-03
+  artifact_ref: CODESPEC_PROJECT_ROOT=$PWD CODESPEC_DEPLOY_RESULT_FILE=$(mktemp) VELENTRADE_RUN_COMPOSE_SMOKE=1 ./scripts/codespec-deploy at runtime_observed_revision=707963b8e0dadb9d40ca908e0828e750b5c1cbee; targeted Python runtime smoke workflow_id=wf-foundation-1777740751 artifact_id=artifact-9ef6c090013f memory_id=memory-0cd33c0b0ea9 verified PostgreSQL/Alembic migration, Redis/Celery worker services, FastAPI endpoints /api/team /api/requests/briefs /api/workflows/{id}/dossier, Chromium browser interaction, and cross-WI runtime workflow S0-S7 persistence after API restart.
+  result: pass
+  residual_risk: Proves current runtime foundation scope and forbidden entry guard behavior in compose; still not Owner acceptance or production external data/broker readiness.
+  reopen_required: false
+
+- acceptance_ref: ACC-002
+  run_id: RUN-WI001-ACC002-FULL-RUNTIME-FOUNDATION-20260503
+  test_case_ref: TC-ACC-002-01
+  verification_type: automated
+  test_type: runtime_e2e
+  test_scope: full-integration
+  completion_level: integrated_runtime
+  executed_at: 2026-05-03
+  artifact_ref: same PostgreSQL/Alembic, Redis/Celery worker, FastAPI endpoint, Chromium browser and cross-WI runtime workflow evidence as RUN-WI001-ACC001-FULL-RUNTIME-FOUNDATION-20260503; targeted runtime smoke asserted /api/team exposes exactly nine official Agents, no forbidden roles, governance draft-only config entries, and the deploy test suite asserted the eight official Services and blocked service/role registry entries.
+  result: pass
+  residual_risk: Service registry validation is exercised inside the deploy test suite rather than exposed as a separate public API endpoint.
+  reopen_required: false
+
+- acceptance_ref: ACC-003
+  run_id: RUN-WI001-ACC003-FULL-RUNTIME-FOUNDATION-20260503
+  test_case_ref: TC-ACC-003-01
+  verification_type: automated
+  test_type: runtime_e2e
+  test_scope: full-integration
+  completion_level: integrated_runtime
+  executed_at: 2026-05-03
+  artifact_ref: same PostgreSQL/Alembic, Redis/Celery worker, FastAPI endpoint, Chromium browser and cross-WI runtime workflow evidence as RUN-WI001-ACC001-FULL-RUNTIME-FOUNDATION-20260503; targeted runtime smoke asserted /api/team/{agent_id}, /api/team/{agent_id}/capability-config and Chromium /governance/team expose Agent profiles, finance-sensitive denials, allowed collaboration commands, and governance-only capability draft paths.
+  result: pass
+  residual_risk: Proves profile/read-model foundation and browser visibility; does not prove future live LLM output quality for every Agent role.
+  reopen_required: false
+
+- acceptance_ref: ACC-004
+  run_id: RUN-WI001-ACC004-FULL-RUNTIME-FOUNDATION-20260503
+  test_case_ref: TC-ACC-004-01
+  verification_type: automated
+  test_type: runtime_e2e
+  test_scope: full-integration
+  completion_level: integrated_runtime
+  executed_at: 2026-05-03
+  artifact_ref: same PostgreSQL/Alembic, Redis/Celery worker, FastAPI endpoint, Chromium browser and cross-WI runtime workflow evidence as RUN-WI001-ACC001-FULL-RUNTIME-FOUNDATION-20260503; targeted runtime smoke asserted /api/collaboration/commands accepted allowed commands and rejected unknown direct DB commands without 500, /api/gateway/artifacts accepted allowed artifacts and denied disallowed artifact types, /api/gateway/memory-items created fenced background memory, /api/knowledge/memory-items persisted memory relations across API restart, and /api/finance/overview redacted sensitive finance data.
+  result: pass
+  residual_risk: Proves Authority Gateway and memory/context foundation through compose API/PostgreSQL; it does not make Memory or Knowledge a business fact source.
+  reopen_required: false
+
+- acceptance_ref: ACC-005
+  run_id: RUN-WI001-ACC005-FULL-RUNTIME-FOUNDATION-20260503
+  test_case_ref: TC-ACC-005-01
+  verification_type: automated
+  test_type: runtime_e2e
+  test_scope: full-integration
+  completion_level: integrated_runtime
+  executed_at: 2026-05-03
+  artifact_ref: same PostgreSQL/Alembic, Redis/Celery worker, FastAPI endpoint, Chromium browser and cross-WI runtime workflow evidence as RUN-WI001-ACC001-FULL-RUNTIME-FOUNDATION-20260503; targeted runtime smoke asserted /api/gateway/events and /api/gateway/handoffs append collaboration evidence, /api/workflows/{workflow_id}/collaboration-events and /api/workflows/{workflow_id}/handoffs return persisted lineage after API restart, and Dossier evidence_map retains workflow-scoped artifact refs.
+  result: pass
+  residual_risk: Proves collaboration lineage persistence and read projection foundation; downstream WI-specific semantic calculations still need their own runtime closure.
+  reopen_required: false
+
+- acceptance_ref: ACC-031
+  run_id: RUN-WI001-ACC031-FULL-RUNTIME-FOUNDATION-20260503
+  test_case_ref: TC-ACC-031-01
+  verification_type: automated
+  test_type: runtime_e2e
+  test_scope: full-integration
+  completion_level: integrated_runtime
+  executed_at: 2026-05-03
+  artifact_ref: same PostgreSQL/Alembic, Redis/Celery worker, FastAPI endpoint, Chromium browser and cross-WI runtime workflow evidence as RUN-WI001-ACC001-FULL-RUNTIME-FOUNDATION-20260503; targeted runtime smoke asserted finance-sensitive raw data denial for non-CFO Agent profile, cleartext allowance for CFO, /api/finance/overview redaction_applied=true, direct DB command rejection, disallowed artifact rejection, and /api/devops/health investment_resume_allowed=false.
+  result: pass
+  residual_risk: Proves security/privacy foundation in local compose; it is not a penetration test or production secrets audit.
+  reopen_required: false
+
+- acceptance_ref: ACC-032
+  run_id: RUN-WI001-ACC032-FULL-RUNTIME-FOUNDATION-20260503
+  test_case_ref: TC-ACC-032-01
+  verification_type: automated
+  test_type: runtime_e2e
+  test_scope: full-integration
+  completion_level: integrated_runtime
+  executed_at: 2026-05-03
+  artifact_ref: same PostgreSQL/Alembic, Redis/Celery worker, FastAPI endpoint, Chromium browser and cross-WI runtime workflow evidence as RUN-WI001-ACC001-FULL-RUNTIME-FOUNDATION-20260503; deploy test suite included tests/requirements and current trace-consistency gate passed, proving REQ/ACC/VO/TC/WI/RUN linkage remains intact while the runtime workflow and browser smoke execute at revision 707963b8e0dadb9d40ca908e0828e750b5c1cbee.
+  result: pass
+  residual_risk: Requirement-structure validation is primarily structural; semantic quality still requires human review per phase policy.
+  reopen_required: false
+
+- acceptance_ref: ACC-006
+  run_id: RUN-WI004-ACC006-FULL-RUNTIME-FOUNDATION-20260503
+  test_case_ref: TC-ACC-006-01
+  verification_type: automated
+  test_type: browser_e2e
+  test_scope: full-integration
+  completion_level: integrated_runtime
+  executed_at: 2026-05-03
+  artifact_ref: same PostgreSQL/Alembic, Redis/Celery worker, FastAPI endpoint, Chromium browser and cross-WI runtime workflow evidence as RUN-WI001-ACC001-FULL-RUNTIME-FOUNDATION-20260503; deploy smoke clicked 自由对话 -> 生成请求预览 -> 确认生成任务卡 against same-origin compose frontend/API, and targeted Chromium smoke asserted main navigation 全景/投资/财务/知识/治理 plus /governance/team Agent cards.
+  result: pass
+  residual_risk: Proves built frontend/browser/API foundation; full downstream investment semantics still depend on later WI runtime closures.
+  reopen_required: false
+
+- acceptance_ref: ACC-007
+  run_id: RUN-WI004-ACC007-FULL-RUNTIME-FOUNDATION-20260503
+  test_case_ref: TC-ACC-007-01
+  verification_type: automated
+  test_type: browser_e2e
+  test_scope: full-integration
+  completion_level: integrated_runtime
+  executed_at: 2026-05-03
+  artifact_ref: same PostgreSQL/Alembic, Redis/Celery worker, FastAPI endpoint, Chromium browser and cross-WI runtime workflow evidence as RUN-WI001-ACC001-FULL-RUNTIME-FOUNDATION-20260503; targeted runtime smoke asserted /api/team/quant_analyst/capability-drafts creates governance-only drafts, /api/approvals exposes approval center, Chromium /governance/approvals/ap-001 renders approval route, and finance asset API keeps non-A assets planning-only.
+  result: pass
+  residual_risk: Proves governance/task/approval foundation at API/browser level; Owner manual acceptance is still pending.
+  reopen_required: false
+
 - acceptance_ref: ACC-006
   run_id: RUN-WI004-COMPOSE-BROWSER-RUNTIME-20260502
   test_case_ref: TC-ACC-006-01
