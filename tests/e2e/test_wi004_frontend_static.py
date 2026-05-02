@@ -75,3 +75,11 @@ def test_frontend_theme_uses_approved_premium_light_tokens():
     assert "position: sticky" in styles
     assert "backdrop-filter: blur(16px)" in styles
     assert "command-panel" in styles
+
+
+def test_vite_dev_server_proxies_api_calls_to_fastapi():
+    config = Path("frontend/vite.config.ts").read_text(encoding="utf-8")
+
+    assert "proxy" in config
+    assert '"/api"' in config
+    assert '"http://127.0.0.1:8000"' in config
