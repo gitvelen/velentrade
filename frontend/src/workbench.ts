@@ -130,6 +130,19 @@ export type KnowledgeReadModel = {
   defaultContextProposalPath: string;
 };
 
+export type FinanceOverviewReadModel = {
+  assets: Array<{ label: string; value: string; status: string }>;
+  health: { liquidity: string; debtRatio: string; riskBudget: string; stress: string };
+  reminders: string[];
+  nonAAssetBoundary: { actionVisible: boolean; reasonCode: string };
+};
+
+export type DevOpsHealthReadModel = {
+  routineChecks: Array<{ checkId: string; status: string }>;
+  incidents: Array<{ incidentId: string; status: string; incidentType: string }>;
+  recovery: Array<{ planId: string; investmentResumeAllowed: boolean }>;
+};
+
 export type Report = Record<string, unknown> & {
   report_id: string;
   result: "pass" | "fail";
@@ -591,7 +604,7 @@ export function buildTeamReadModel(): TeamReadModel {
   };
 }
 
-export function buildFinanceOverviewReadModel() {
+export function buildFinanceOverviewReadModel(): FinanceOverviewReadModel {
   return {
     assets: [
       { label: "现金", value: "1,000,000 CNY", status: "可用" },
@@ -603,6 +616,21 @@ export function buildFinanceOverviewReadModel() {
     health: { liquidity: "充足", debtRatio: "低", riskBudget: "12%", stress: "可承受" },
     reminders: ["税务提醒待确认", "重大支出影响已脱敏进入投资约束"],
     nonAAssetBoundary: { actionVisible: false, reasonCode: "non_a_asset_manual_only" },
+  };
+}
+
+export function buildDevOpsHealthReadModel(): DevOpsHealthReadModel {
+  return {
+    routineChecks: [
+      { checkId: "data-source-latency", status: "degraded" },
+      { checkId: "execution-core-readiness", status: "blocked" },
+    ],
+    incidents: [
+      { incidentId: "incident-data-001", status: "triaged", incidentType: "data_source" },
+    ],
+    recovery: [
+      { planId: "recovery-data-001", investmentResumeAllowed: false },
+    ],
   };
 }
 

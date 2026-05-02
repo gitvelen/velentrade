@@ -414,4 +414,56 @@ describe("WI-004 workbench interactions", () => {
     expect(document.body.textContent).toContain("handoff_created · API 交接事件");
     expect(document.body.textContent).toContain("S2 -> S3 · api blocker");
   });
+
+  it("loads finance overview from /api/finance/overview when available", async () => {
+    vi.stubGlobal("fetch", vi.fn(async (input: string | URL | Request) => {
+      const href = typeof input === "string" ? input : input instanceof URL ? input.pathname : input.url;
+      if (href.endsWith("/api/finance/overview")) {
+        return mockJsonResponse({
+          asset_profile: [
+            { asset_type: "cash", valuation: { amount: 888000, currency: "CNY" }, boundary_label: "finance_planning_only" },
+            { asset_type: "fund", valuation: { amount: 66000, currency: "CNY" }, boundary_label: "finance_planning_only" },
+          ],
+          finance_health: {
+            liquidity: 888000,
+            risk_budget: { budget_ref: "risk-budget-api" },
+            stress_test_summary: "api_stress_checked",
+          },
+          manual_todo: [{ risk_hint: "api_tax_window" }],
+          sensitive_data_notice: { redaction_applied: true },
+        });
+      }
+      throw new Error(`unexpected fetch: ${href}`);
+    }));
+
+    await bootWorkbench("/finance");
+    await flushAsyncWork();
+
+    expect(document.body.textContent).toContain("cash · 888000 CNY");
+    expect(document.body.textContent).toContain("fund · 66000 CNY");
+    expect(document.body.textContent).toContain("risk-budget-api");
+  });
+
+  it("loads governance health from /api/devops/health when available", async () => {
+    vi.stubGlobal("fetch", vi.fn(async (input: string | URL | Request) => {
+      const href = typeof input === "string" ? input : input instanceof URL ? input.pathname : input.url;
+      if (href.endsWith("/api/devops/health")) {
+        return mockJsonResponse({
+          routine_checks: [{ check_id: "api-health", status: "observed" }],
+          incidents: [{ incident_id: "incident-api-1", status: "triaged", incident_type: "runner" }],
+          recovery: [{ plan_id: "recovery-api-1", investment_resume_allowed: false }],
+          audit_trail: [],
+          metrics: { incident_open_total: 1 },
+        });
+      }
+      throw new Error(`unexpected fetch: ${href}`);
+    }));
+
+    await bootWorkbench("/governance?panel=health");
+    await flushAsyncWork();
+
+    expect(document.body.textContent).toContain("api-health · observed");
+    expect(document.body.textContent).toContain("incident-api-1 · triaged");
+    expect(document.body.textContent).toContain("recovery-api-1 · 投资恢复未放行");
+  });
 });

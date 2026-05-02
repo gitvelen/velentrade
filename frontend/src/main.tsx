@@ -20,12 +20,15 @@ import {
 import {
   AgentProfileReadModel,
   CapabilityConfigReadModel,
+  DevOpsHealthReadModel,
+  FinanceOverviewReadModel,
   KnowledgeReadModel,
   RequestBriefPreview,
   ResolvedWorkbenchRoute,
   TeamReadModel,
   TraceDebugReadModel,
   buildApprovalRecordReadModel,
+  buildDevOpsHealthReadModel,
   buildFinanceOverviewReadModel,
   buildGovernanceReadModel,
   buildInvestmentDossierReadModel,
@@ -41,6 +44,8 @@ import {
 import {
   loadAgentCapabilityConfigReadModel,
   loadAgentProfileReadModel,
+  loadDevOpsHealthReadModel,
+  loadFinanceOverviewReadModel,
   loadKnowledgeReadModel,
   loadTeamReadModel,
   loadTraceDebugReadModel,
@@ -311,7 +316,7 @@ function TraceDebugPage({ route, onNavigate }: { route: ResolvedWorkbenchRoute; 
 }
 
 function FinancePage() {
-  const finance = buildFinanceOverviewReadModel();
+  const finance = useFinanceOverviewReadModel();
   return (
     <section className="page-grid finance-grid">
       <h1 className="sr-only">财务</h1>
@@ -319,6 +324,26 @@ function FinancePage() {
       <MetricCard icon={<ShieldAlert />} title="风险预算" value={finance.health.riskBudget} detail={`流动性 ${finance.health.liquidity} · 压力 ${finance.health.stress}`} tone="jade" />
       <MiniList icon={<AlertTriangle />} title="提醒" items={finance.reminders} />
     </section>
+  );
+}
+
+function GovernanceHealthPanel() {
+  const health = useDevOpsHealthReadModel();
+  return (
+    <div className="flat-panel list-panel" data-panel="health">
+      <h3><AlertTriangle size={16} />数据/服务健康</h3>
+      <ul>
+        {health.routineChecks.map((check) => (
+          <li key={check.checkId}>{check.checkId} · {check.status}</li>
+        ))}
+        {health.incidents.map((incident) => (
+          <li key={incident.incidentId}>{incident.incidentId} · {incident.status} · {incident.incidentType}</li>
+        ))}
+        {health.recovery.map((plan) => (
+          <li key={plan.planId}>{plan.planId} · {plan.investmentResumeAllowed ? "投资恢复已放行" : "投资恢复未放行"}</li>
+        ))}
+      </ul>
+    </div>
   );
 }
 
@@ -397,13 +422,7 @@ function GovernancePage({ route, onNavigate }: { route: ResolvedWorkbenchRoute; 
         </div>
       ) : null}
       {selectedPanel === "health" ? (
-        <div className="flat-panel list-panel" data-panel="health">
-          <h3><AlertTriangle size={16} />数据/服务健康</h3>
-          <ul>
-            <li>数据源延迟 · 已交接 Risk</li>
-            <li>执行核心数据不足 · 不允许成交</li>
-          </ul>
-        </div>
+        <GovernanceHealthPanel />
       ) : null}
       {selectedPanel === "audit" ? (
         <div className="flat-panel list-panel" data-panel="audit">
@@ -631,6 +650,46 @@ function useTraceDebugReadModel(workflowId: string) {
   }, [workflowId]);
 
   return trace;
+}
+
+function useFinanceOverviewReadModel() {
+  const [finance, setFinance] = useState<FinanceOverviewReadModel>(() => buildFinanceOverviewReadModel());
+
+  useEffect(() => {
+    let cancelled = false;
+    loadFinanceOverviewReadModel()
+      .then((payload) => {
+        if (!cancelled) {
+          setFinance(payload);
+        }
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  return finance;
+}
+
+function useDevOpsHealthReadModel() {
+  const [health, setHealth] = useState<DevOpsHealthReadModel>(() => buildDevOpsHealthReadModel());
+
+  useEffect(() => {
+    let cancelled = false;
+    loadDevOpsHealthReadModel()
+      .then((payload) => {
+        if (!cancelled) {
+          setHealth(payload);
+        }
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  return health;
 }
 
 function NotFoundPage({ onNavigate }: { onNavigate: Navigate }) {

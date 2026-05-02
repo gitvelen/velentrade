@@ -1,9 +1,13 @@
 import {
   AgentProfileReadModel,
   CapabilityConfigReadModel,
+  DevOpsHealthReadModel,
+  FinanceOverviewReadModel,
   KnowledgeReadModel,
   TeamReadModel,
   TraceDebugReadModel,
+  buildDevOpsHealthReadModel,
+  buildFinanceOverviewReadModel,
   buildKnowledgeReadModel,
   buildTeamReadModel,
   buildTraceDebugReadModel,
@@ -86,6 +90,26 @@ type ApiHandoffReadModel = {
   to_stage_or_agent?: string;
   blockers?: string[];
   open_questions?: string[];
+};
+
+type ApiFinanceOverviewReadModel = {
+  asset_profile?: Array<{
+    asset_type?: string;
+    valuation?: { amount?: number; currency?: string };
+    boundary_label?: string;
+  }>;
+  finance_health?: {
+    liquidity?: number;
+    risk_budget?: { budget_ref?: string };
+    stress_test_summary?: string;
+  };
+  manual_todo?: Array<{ risk_hint?: string }>;
+};
+
+type ApiDevOpsHealthReadModel = {
+  routine_checks?: Array<{ check_id?: string; status?: string }>;
+  incidents?: Array<{ incident_id?: string; status?: string; incident_type?: string }>;
+  recovery?: Array<{ plan_id?: string; investment_resume_allowed?: boolean }>;
 };
 
 async function fetchEnvelope<T>(path: string): Promise<T> {
@@ -231,5 +255,47 @@ export async function loadTraceDebugReadModel(workflowId: string): Promise<Trace
           openQuestions: item.open_questions ?? [],
         }))
       : fallback.handoffs,
+  };
+}
+
+export async function loadFinanceOverviewReadModel(): Promise<FinanceOverviewReadModel> {
+  const fallback = buildFinanceOverviewReadModel();
+  const payload = await fetchEnvelope<ApiFinanceOverviewReadModel>("/api/finance/overview");
+
+  return {
+    ...fallback,
+    assets: (payload.asset_profile ?? []).map((item) => ({
+      label: item.asset_type ?? "asset",
+      value: `${item.valuation?.amount ?? 0} ${item.valuation?.currency ?? "CNY"}`,
+      status: item.boundary_label ?? "finance_planning_only",
+    })),
+    health: {
+      liquidity: String(payload.finance_health?.liquidity ?? fallback.health.liquidity),
+      debtRatio: fallback.health.debtRatio,
+      riskBudget: payload.finance_health?.risk_budget?.budget_ref ?? fallback.health.riskBudget,
+      stress: payload.finance_health?.stress_test_summary ?? fallback.health.stress,
+    },
+    reminders: (payload.manual_todo ?? []).map((item) => item.risk_hint ?? "manual_todo"),
+  };
+}
+
+export async function loadDevOpsHealthReadModel(): Promise<DevOpsHealthReadModel> {
+  const fallback = buildDevOpsHealthReadModel();
+  const payload = await fetchEnvelope<ApiDevOpsHealthReadModel>("/api/devops/health");
+
+  return {
+    routineChecks: (payload.routine_checks ?? []).map((item) => ({
+      checkId: item.check_id ?? "check",
+      status: item.status ?? "unknown",
+    })),
+    incidents: (payload.incidents ?? []).map((item) => ({
+      incidentId: item.incident_id ?? "incident",
+      status: item.status ?? "unknown",
+      incidentType: item.incident_type ?? "unknown",
+    })),
+    recovery: (payload.recovery ?? []).map((item) => ({
+      planId: item.plan_id ?? "recovery",
+      investmentResumeAllowed: item.investment_resume_allowed ?? false,
+    })),
   };
 }
