@@ -40,6 +40,8 @@ class ConsensusCalculator:
         hard_dissent = any(memo.hard_dissent for memo in memos)
         if consensus < 0.7:
             reason = "low_consensus_no_execution"
+        elif hard_dissent:
+            reason = "hard_dissent_requires_debate"
         elif action < ACTION_THRESHOLD:
             reason = "low_action_conviction_no_execution"
         else:

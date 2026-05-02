@@ -1,6 +1,6 @@
 from velentrade.domain.investment.analysis.memo import AnalystMemoFactory
 from velentrade.domain.investment.debate.manager import DebateManager
-from velentrade.domain.investment.debate.wi007_reports import build_wi007_debate_reports
+from velentrade.domain.investment.debate.wi007_reports import _envelope, build_wi007_debate_reports
 
 
 def test_debate_skips_high_consensus_without_hard_dissent_and_blocks_low_action():
@@ -102,3 +102,22 @@ def test_wi007_debate_report_has_contract_payloads():
         "medium_consensus_retained_hard_dissent_path",
         "risk_rejected_block",
     }
+
+
+def test_debate_report_fails_when_guard_or_failure_fails():
+    report = _envelope(
+        {"probe": "negative"},
+        guard_results=[
+            {
+                "guard": "hard_dissent_handoff",
+                "input_ref": "debate_summary",
+                "expected": "risk_review_required",
+                "actual": "risk_review_missing",
+                "result": "fail",
+            }
+        ],
+        failures=[{"code": "retained_dissent_without_risk_handoff", "message": "retained hard dissent skipped Risk handoff"}],
+    )
+
+    assert report["result"] == "fail"
+    assert report["failures"][0]["code"] == "retained_dissent_without_risk_handoff"

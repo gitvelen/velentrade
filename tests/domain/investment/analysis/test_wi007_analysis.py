@@ -1,6 +1,6 @@
 from velentrade.domain.investment.analysis.consensus import ConsensusCalculator
 from velentrade.domain.investment.analysis.memo import ROLE_PAYLOAD_FIELDS, AnalystMemoFactory, AnalystMemoValidator
-from velentrade.domain.investment.analysis.wi007_reports import build_wi007_analysis_reports
+from velentrade.domain.investment.analysis.wi007_reports import _envelope, build_wi007_analysis_reports
 
 
 EXPECTED_ROLE_PAYLOAD_FIELDS = {
@@ -98,7 +98,8 @@ def test_consensus_and_action_conviction_follow_formula_and_thresholds():
 
     assert result.dominant_direction_share == 0.75
     assert result.hard_dissent_present is True
-    assert result.execution_authorized is True
+    assert result.execution_authorized is False
+    assert result.reason_code == "hard_dissent_requires_debate"
 
     low_action = calculator.calculate(AnalystMemoFactory().fixture_memos(direction_scores=[1, 1, 1, 1], confidences=[0.4, 0.4, 0.4, 0.4]))
     assert low_action.consensus_score >= 0.8
@@ -128,3 +129,23 @@ def test_wi007_analysis_reports_have_contract_payloads():
         assert report["work_item_refs"] == ["WI-007"]
         assert report["failures"] == []
     assert reports["consensus_action_report.json"]["no_execution_when_low_action_conviction"] is True
+
+
+def test_analysis_report_fails_when_guard_or_failure_fails():
+    report = _envelope(
+        "consensus_action_report.json",
+        {"probe": "negative"},
+        guard_results=[
+            {
+                "guard": "hard_dissent_requires_debate",
+                "input_ref": "consensus-result",
+                "expected": "execution_authorized_false",
+                "actual": "execution_authorized_true",
+                "result": "fail",
+            }
+        ],
+        failures=[{"code": "hard_dissent_authorized_execution", "message": "hard dissent was marked execution-authorized"}],
+    )
+
+    assert report["result"] == "fail"
+    assert report["failures"][0]["code"] == "hard_dissent_authorized_execution"

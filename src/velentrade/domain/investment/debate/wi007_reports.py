@@ -52,7 +52,14 @@ def build_wi007_debate_reports() -> dict[str, dict[str, Any]]:
     return {"debate_dissent_report.json": _envelope(payload)}
 
 
-def _envelope(payload: dict[str, Any]) -> dict[str, Any]:
+def _envelope(
+    payload: dict[str, Any],
+    guard_results: list[dict[str, Any]] | None = None,
+    failures: list[dict[str, Any]] | None = None,
+) -> dict[str, Any]:
+    guard_results = guard_results or [{"guard": "hard_dissent_handoff", "input_ref": "debate_summary", "expected": "pass", "actual": "pass", "result": "pass"}]
+    failures = failures or []
+    result = "fail" if failures or any(guard.get("result") != "pass" for guard in guard_results) else "pass"
     report = {
         "report_id": "debate_dissent_report.json",
         "generated_at": utc_now(),
@@ -61,18 +68,18 @@ def _envelope(payload: dict[str, Any]) -> dict[str, Any]:
         "work_item_refs": ["WI-007"],
         "test_case_refs": ["TC-ACC-017-01"],
         "fixture_refs": ["FX-HIGH-CONSENSUS-HARD-DISSENT", "FX-MEDIUM-CONSENSUS-HARD-DISSENT"],
-        "result": "pass",
+        "result": result,
         "checked_requirements": ["REQ-017"],
         "checked_acceptances": ["ACC-017"],
         "checked_invariants": ["INV-DEBATE-BOUNDED-HARD-DISSENT-RISK-HANDOFF"],
         "artifact_refs": [],
-        "failures": [],
+        "failures": failures,
         "residual_risk": [],
         "schema_version": "1.0.0",
         "checked_fields": sorted(payload),
         "fixture_inputs": {"fixture": "WI-007 deterministic debate fixture"},
         "actual_outputs": {"payload_keys": sorted(payload)},
-        "guard_results": [{"guard": "hard_dissent_handoff", "input_ref": "debate_summary", "expected": "pass", "actual": "pass", "result": "pass"}],
+        "guard_results": guard_results,
     }
     report.update(payload)
     return deepcopy(report)
