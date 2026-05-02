@@ -1584,6 +1584,32 @@ Design approved 前，`reviews/design-review.yaml` 必须记录 R8 cold-start dr
   residual_risk: Scope/service registry and WI-001 verification report envelope now fail when forbidden entries, guard failures, or report failures are present; still not Owner verification.
   reopen_required: false
 
+- acceptance_ref: ACC-001
+  run_id: RUN-WI001-ACC001-FULL-RUNTIME-CLOSURE-20260502
+  test_case_ref: TC-ACC-001-01
+  verification_type: automated
+  test_type: runtime_e2e
+  test_scope: full-integration
+  completion_level: integrated_runtime
+  executed_at: 2026-05-02
+  artifact_ref: CODESPEC_PROJECT_ROOT=$PWD CODESPEC_DEPLOY_RESULT_FILE=$(mktemp) VELENTRADE_RUN_COMPOSE_SMOKE=1 ./scripts/codespec-deploy; observed PostgreSQL/Alembic migration, Redis/Celery worker services, FastAPI endpoint /api/workflows/{id}/dossier, Chromium browser interaction, cross-WI runtime S0-S7 with data-readiness artifact, four AnalystMemo artifacts, risk artifact, paper execution receipt and attribution artifact; full_investment_runtime_persisted survived docker compose restart api; runtime_observed_revision=eb6beb176963b04ae6c1fa2ef05a247e0aff0648.
+  result: pass
+  residual_risk: Proves Web/API/PostgreSQL/Redis/Celery/agent-runner/browser foundation plus a deterministic A-share S0-S7 artifact runtime closure. Service artifacts are deterministic smoke payloads through Authority Gateway, not proof of production external data provider reliability, real brokerage integration, Owner manual acceptance, or live provider terms/rate-limit readiness.
+  reopen_required: false
+
+- acceptance_ref: ACC-005
+  run_id: RUN-WI001-ACC005-FULL-RUNTIME-CLOSURE-20260502
+  test_case_ref: TC-ACC-005-01
+  verification_type: automated
+  test_type: runtime_e2e
+  test_scope: full-integration
+  completion_level: integrated_runtime
+  executed_at: 2026-05-02
+  artifact_ref: same command and observed PostgreSQL/Alembic, Redis/Celery worker, FastAPI endpoint, Chromium browser and cross-WI runtime evidence as RUN-WI001-ACC001-FULL-RUNTIME-CLOSURE-20260502; Dossier evidence_map retained workflow-scoped agent/service artifact refs after API restart, and /api/gateway/artifacts accepted both workflow-scoped Agent artifacts and service-produced artifacts under Authority Gateway.
+  result: pass
+  residual_risk: Proves collaboration/artifact trace foundation in the full compose runtime. It does not by itself prove every downstream WI semantic calculation is production-grade or Owner verified.
+  reopen_required: false
+
 - acceptance_ref: ACC-006
   run_id: RUN-WI004-COMPOSE-BROWSER-RUNTIME-20260502
   test_case_ref: TC-ACC-006-01
