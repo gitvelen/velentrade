@@ -216,3 +216,68 @@ def test_finance_overview_and_devops_health_endpoints_expose_read_models():
     assert health_payload["routine_checks"][0]["status"] == "observed"
     assert "incident_open_total" in health_payload["metrics"]
     assert health_payload["recovery"][0]["investment_resume_allowed"] is False
+
+
+def test_request_brief_confirmation_and_task_workflow_read_api():
+    client = TestClient(build_app())
+
+    brief_response = client.post(
+        "/api/requests/briefs",
+        json={
+            "raw_text": "学习热点事件",
+            "source": "owner_command",
+            "requested_scope": {"intent": "learn_hot_event", "asset_scope": "a_share_common_stock", "target_action": "research"},
+            "authorization_boundary": "research_only",
+        },
+    )
+    assert brief_response.status_code == 200
+    brief = brief_response.json()["data"]
+    assert brief["owner_confirmation_status"] == "draft"
+    assert brief["route_type"] == "research_task"
+    assert brief["creates_agent_run"] is True
+
+    tasks_before = client.get("/api/tasks").json()["data"]
+    assert tasks_before["task_center"] == []
+
+    confirmation_response = client.post(
+        f"/api/requests/briefs/{brief['brief_id']}/confirmation",
+        json={"decision": "confirm", "client_seen_version": 1},
+    )
+    assert confirmation_response.status_code == 200
+    task = confirmation_response.json()["data"]
+    assert task["task_type"] == "research_task"
+    assert task["current_state"] == "ready"
+    assert task["reason_code"] == "request_brief_confirmed"
+
+    tasks_after = client.get("/api/tasks").json()["data"]
+    assert [item["task_id"] for item in tasks_after["task_center"]] == [task["task_id"]]
+
+    investment_brief_response = client.post(
+        "/api/requests/briefs",
+        json={
+            "raw_text": "请正式研究浦发银行",
+            "source": "owner_command",
+            "requested_scope": {
+                "intent": "formal_investment_decision",
+                "asset_scope": "a_share_common_stock",
+                "target_action": "approve_trade",
+            },
+        },
+    )
+    investment_brief = investment_brief_response.json()["data"]
+    investment_task = client.post(
+        f"/api/requests/briefs/{investment_brief['brief_id']}/confirmation",
+        json={"decision": "confirm", "client_seen_version": 1},
+    ).json()["data"]
+    workflow_response = client.get(f"/api/workflows/{investment_task['workflow_id']}")
+    assert workflow_response.status_code == 200
+    workflow = workflow_response.json()["data"]
+    assert workflow["workflow_id"] == investment_task["workflow_id"]
+    assert workflow["current_stage"] == "S0"
+    assert len(workflow["stages"]) == 8
+
+    cancel_response = client.post(
+        f"/api/requests/briefs/{investment_brief['brief_id']}/confirmation",
+        json={"decision": "cancel", "client_seen_version": 1},
+    )
+    assert cancel_response.status_code == 409

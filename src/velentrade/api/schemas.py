@@ -5,6 +5,21 @@ from typing import Any
 from pydantic import BaseModel, Field
 
 
+class CreateRequestBriefRequest(BaseModel):
+    raw_text: str = Field(min_length=1, max_length=12000)
+    source: str
+    requested_scope: dict[str, Any] | None = None
+    priority_hint: str | None = None
+    authorization_boundary: str | None = None
+    time_budget: str | None = None
+
+
+class RequestBriefConfirmationRequest(BaseModel):
+    decision: str
+    edited_brief: dict[str, Any] | None = None
+    client_seen_version: int = Field(ge=1)
+
+
 class CollaborationCommandRequest(BaseModel):
     command_type: str
     workflow_id: str
