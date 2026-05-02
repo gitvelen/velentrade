@@ -15,7 +15,7 @@ from velentrade.db.base import Base
 from velentrade.db.seed import apply_wi001_seed
 from velentrade.domain.data.persistence import SqlAlchemyDataCollectionStore, build_source_registry_from_db
 from velentrade.domain.data.quality import DataRequest, RequiredField
-from velentrade.domain.data.sources import DataCollectionService
+from velentrade.domain.data.sources import DataCollectionService, SourceFetchError
 
 
 def _find_free_port() -> int:
@@ -135,3 +135,63 @@ def test_public_data_collection_persists_request_lineage_and_quality_report_to_p
         assert lineage_row["source_id"] == "tencent-public-kline"
         assert lineage_row["payload"]["records"][0]["symbol"] == "600000.SH"
         assert persisted["completion_level"] == "db_persistent"
+
+
+def test_public_data_collection_restores_latest_success_as_cache_snapshot():
+    with _postgres_container() as database_url:
+        config = Config(str(Path("alembic.ini")))
+        config.set_main_option("sqlalchemy.url", database_url)
+        command.upgrade(config, "head")
+
+        engine = create_engine(database_url, future=True)
+        apply_wi001_seed(engine)
+        request = _decision_request()
+        store = SqlAlchemyDataCollectionStore(engine)
+        registry = build_source_registry_from_db(
+            engine,
+            fetch_text=lambda _url: (
+                '{"code":0,"msg":"","data":{"sh600000":{"qfqday":['
+                '["2026-04-17","9.970","9.860","10.000","9.850","579330.000"]'
+                ']}}}'
+            ),
+        )
+        first_result = DataCollectionService(registry).collect(request, require_real=True)
+        store.persist_result(request, first_result)
+
+        cached = store.latest_dataset(
+            data_domain="a_share_market",
+            symbol_or_scope="600000.SH",
+            required_usage="decision_core",
+        )
+        assert cached is not None
+        failing_registry = build_source_registry_from_db(
+            engine,
+            fetch_text=lambda _url: (_ for _ in ()).throw(SourceFetchError("provider unavailable")),
+        )
+        fallback_request = DataRequest(
+            request_id="quote-persist-cache-1",
+            trace_id="trace-quote-persist-cache-1",
+            data_domain=request.data_domain,
+            symbol_or_scope=request.symbol_or_scope,
+            required_usage=request.required_usage,
+            freshness_requirement=request.freshness_requirement,
+            required_fields=request.required_fields,
+            requesting_stage=request.requesting_stage,
+            requesting_agent_or_service=request.requesting_agent_or_service,
+        )
+        service = DataCollectionService(failing_registry)
+        service.cache_result(fallback_request, cached)
+
+        fallback_result = service.collect(fallback_request, require_real=True, allow_cache=True)
+        store.persist_result(fallback_request, fallback_result)
+
+        tables = Base.metadata.tables
+        with engine.connect() as connection:
+            lineage_row = connection.execute(
+                select(tables["data_lineage"]).where(tables["data_lineage"].c.request_id == fallback_request.request_id)
+            ).mappings().one()
+
+        assert cached.metadata["cache_source_lineage_id"].startswith("lineage-")
+        assert fallback_result.from_cache is True
+        assert fallback_result.report.decision_core_status == "conditional_pass_owner_exception_required"
+        assert lineage_row["payload"]["from_cache"] is True

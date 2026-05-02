@@ -86,6 +86,41 @@ class SqlAlchemyDataCollectionStore:
         self.engine = engine
         self.tables = Base.metadata.tables
 
+    def latest_dataset(
+        self,
+        *,
+        data_domain: str,
+        symbol_or_scope: str,
+        required_usage: str,
+    ) -> NormalizedDataSet | None:
+        request_table = self.tables["data_request"]
+        lineage_table = self.tables["data_lineage"]
+        statement = (
+            select(
+                lineage_table.c.lineage_id,
+                lineage_table.c.source_id,
+                lineage_table.c.payload,
+            )
+            .select_from(lineage_table.join(request_table, lineage_table.c.request_id == request_table.c.request_id))
+            .where(request_table.c.data_domain == data_domain)
+            .where(request_table.c.symbol_or_scope == symbol_or_scope)
+            .where(request_table.c.required_usage == required_usage)
+            .order_by(lineage_table.c.created_at.desc())
+            .limit(1)
+        )
+        with self.engine.connect() as connection:
+            row = connection.execute(statement).mappings().first()
+        if row is None:
+            return None
+        payload = dict(row["payload"] or {})
+        records = list(payload.get("records") or [])
+        if not records:
+            return None
+        metadata = dict(payload.get("metadata") or {})
+        metadata["cache_source_lineage_id"] = row["lineage_id"]
+        metadata["cache_source_id"] = row["source_id"]
+        return NormalizedDataSet(str(row["source_id"]), records, metadata)
+
     def persist_result(self, request: DataRequest, result: DataCollectionResult) -> dict[str, object]:
         now = _as_datetime(utc_now())
         report_id = f"quality-{request.request_id}"

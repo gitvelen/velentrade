@@ -15,6 +15,7 @@ from alembic.config import Config
 from sqlalchemy import create_engine, text
 
 from velentrade.domain.collaboration.models import AgentRun
+from velentrade.domain.data.quality import DataRequest, RequiredField
 
 
 def _require_module(name: str):
@@ -188,3 +189,86 @@ def test_celery_dispatch_persists_runner_artifact_via_postgres_and_redis():
         assert audit_count == 1
         assert outbox_count == 1
         assert artifact_payload["summary"].startswith("fake_test output")
+
+
+def _data_request(request_id: str = "quote-celery-001") -> DataRequest:
+    return DataRequest(
+        request_id=request_id,
+        trace_id=f"trace-{request_id}",
+        data_domain="a_share_market",
+        symbol_or_scope="600000.SH",
+        required_usage="decision_core",
+        freshness_requirement="same_trading_day",
+        required_fields=[
+            RequiredField("symbol", present=True, valid=True, critical=True),
+            RequiredField("trade_date", present=True, valid=True, critical=True),
+            RequiredField("close", present=True, valid=True, critical=True),
+            RequiredField("volume", present=True, valid=True),
+            RequiredField("source_timestamp", present=True, valid=True),
+        ],
+        requesting_stage="S1",
+        requesting_agent_or_service="data_service",
+    )
+
+
+def test_celery_registers_scheduled_data_collection_requests():
+    celery_runtime = _require_module("velentrade.worker.celery_app")
+    request = _data_request("quote-scheduled-001")
+
+    app = celery_runtime.build_celery_app(
+        broker_url="redis://127.0.0.1:6379/15",
+        result_backend="redis://127.0.0.1:6379/15",
+        runner_url="http://127.0.0.1:9",
+        scheduled_data_requests=[asdict(request)],
+        data_collection_interval_seconds=300,
+    )
+
+    schedule = app.conf.beat_schedule["velentrade.worker.collect_data_request:quote-scheduled-001"]
+    assert schedule["task"] == "velentrade.worker.collect_data_request"
+    assert schedule["schedule"] == 300
+    assert schedule["kwargs"]["request_payload"]["symbol_or_scope"] == "600000.SH"
+
+
+def test_celery_data_collection_task_persists_provider_result_via_postgres_and_redis():
+    celery_worker = _require_module("celery.contrib.testing.worker")
+    seed = _require_module("velentrade.db.seed")
+    celery_runtime = _require_module("velentrade.worker.celery_app")
+
+    with _postgres_container() as database_url, _redis_container() as redis_url:
+        config = Config(str(Path("alembic.ini")))
+        config.set_main_option("sqlalchemy.url", database_url)
+        command.upgrade(config, "head")
+
+        engine = create_engine(database_url, future=True)
+        seed.apply_wi001_seed(engine)
+
+        app = celery_runtime.build_celery_app(
+            broker_url=redis_url,
+            result_backend=redis_url,
+            database_url=database_url,
+            runner_url="http://127.0.0.1:9",
+            data_fetch_text=lambda _url: (
+                '{"code":0,"msg":"","data":{"sh600000":{"qfqday":['
+                '["2026-04-17","9.970","9.860","10.000","9.850","579330.000"]'
+                ']}}}'
+            ),
+        )
+        request = _data_request()
+
+        with celery_worker.start_worker(app, perform_ping_check=False):
+            result = app.send_task(
+                "velentrade.worker.collect_data_request",
+                kwargs={"request_payload": asdict(request)},
+            ).get(timeout=60)
+
+        assert result["completion_level"] == "db_persistent"
+        assert result["selected_source_id"] == "tencent-public-kline"
+        assert result["quality_band"] == "normal"
+        assert result["from_cache"] is False
+
+        with engine.connect() as connection:
+            lineage_payload = connection.execute(text("select payload from data_lineage")).scalar_one()
+            report_band = connection.execute(text("select quality_band from data_quality_report")).scalar_one()
+
+        assert lineage_payload["records"][0]["symbol"] == "600000.SH"
+        assert report_band == "normal"
