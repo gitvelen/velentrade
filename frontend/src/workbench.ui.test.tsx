@@ -409,15 +409,24 @@ describe("WI-004 workbench interactions", () => {
   });
 
   it("submits approval decisions with visible local feedback instead of a dead detail page", async () => {
+    vi.stubGlobal("fetch", vi.fn(async (input: string | URL | Request, init?: RequestInit) => {
+      const href = typeof input === "string" ? input : input instanceof URL ? input.pathname : input.url;
+      if (href.endsWith("/api/approvals/ap-001/decision")) {
+        expect(init?.method).toBe("POST");
+        return await new Promise<Response>(() => {});
+      }
+      throw new Error(`unexpected fetch: ${href}`);
+    }));
+
     await bootWorkbench("/governance/approvals/ap-001");
 
     await act(async () => {
       buttonByName("要求修改").click();
     });
 
-    expect(document.body.textContent).toContain("已提交：要求修改");
+    expect(document.body.textContent).toContain("正在提交：要求修改");
     expect(document.body.textContent).toContain("等待后端返回最新审批状态");
-    expect(document.body.textContent).toContain("生效范围：后续任务");
+    expect(buttonByName("通过").disabled).toBe(true);
   });
 
   it("preserves governance return path when entering trace from an approval detail page", async () => {
@@ -523,7 +532,7 @@ describe("WI-004 workbench interactions", () => {
         expect(init?.method).toBe("POST");
         return mockJsonResponse({
           approval_id: "ap-001",
-          decision: "request_changes",
+          decision: "approved",
           effective_scope: "new_task",
         });
       }
@@ -537,8 +546,9 @@ describe("WI-004 workbench interactions", () => {
     });
     await flushAsyncWork();
 
-    expect(document.body.textContent).toContain("已提交：要求修改");
-    expect(document.body.textContent).toContain("后端已接收");
+    expect(document.body.textContent).toContain("后端状态：通过");
+    expect(document.body.textContent).toContain("生效范围：后续任务");
+    expect(document.body.textContent).not.toContain("已提交：要求修改 · 后端已接收");
   });
 
   it("merges partial API team cards with the nine-agent roster instead of dropping missing agents", async () => {

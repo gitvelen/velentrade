@@ -19,6 +19,7 @@ import {
 
 import {
   AgentProfileReadModel,
+  ApprovalDecisionApiReadModel,
   CapabilityConfigReadModel,
   DevOpsHealthReadModel,
   FinanceOverviewReadModel,
@@ -570,7 +571,9 @@ function AgentConfigPage({ agentId, onNavigate }: { agentId: string; onNavigate:
 function ApprovalDetailPage({ onNavigate }: { onNavigate: Navigate }) {
   const approval = buildApprovalRecordReadModel();
   const [submittedDecision, setSubmittedDecision] = useState<string | null>(null);
-  const [backendAccepted, setBackendAccepted] = useState(false);
+  const [approvalResponse, setApprovalResponse] = useState<ApprovalDecisionApiReadModel | null>(null);
+  const [approvalSubmitting, setApprovalSubmitting] = useState(false);
+  const [approvalError, setApprovalError] = useState(false);
   const traceHref = `${approval.traceRoute}?returnTo=${encodeURIComponent(`/governance/approvals/${approval.approvalId}`)}`;
   return (
     <section className="page-grid approval-grid">
@@ -588,13 +591,17 @@ function ApprovalDetailPage({ onNavigate }: { onNavigate: Navigate }) {
           {approval.allowedActions.map((action) => (
             <button
               className={action === "request_changes" ? "ghost-button" : ""}
-              disabled={submittedDecision !== null}
+              disabled={approvalSubmitting || approvalResponse !== null}
               key={action}
               onClick={() => {
                 setSubmittedDecision(action);
+                setApprovalSubmitting(true);
+                setApprovalError(false);
+                setApprovalResponse(null);
                 submitApprovalDecision(approval.approvalId, action)
-                  .then(() => setBackendAccepted(true))
-                  .catch(() => setBackendAccepted(false));
+                  .then((payload) => setApprovalResponse(payload))
+                  .catch(() => setApprovalError(true))
+                  .finally(() => setApprovalSubmitting(false));
               }}
               type="button"
             >
@@ -602,8 +609,14 @@ function ApprovalDetailPage({ onNavigate }: { onNavigate: Navigate }) {
             </button>
           ))}
         </div>
-        {submittedDecision ? (
-          <p className="panel-note">已提交：{formatStatus(submittedDecision)} · {backendAccepted ? "后端已接收" : "等待后端返回最新审批状态"} · 生效范围：{formatStatus(approval.impactScope)}</p>
+        {approvalSubmitting && submittedDecision ? (
+          <p className="panel-note">正在提交：{formatStatus(submittedDecision)} · 按钮已锁定，等待后端返回最新审批状态</p>
+        ) : approvalResponse ? (
+          <p className="panel-note">后端状态：{formatStatus(approvalResponse.decision)} · 生效范围：{formatStatus(approvalResponse.effectiveScope)}</p>
+        ) : approvalError && submittedDecision ? (
+          <p className="panel-note danger">提交失败：{formatStatus(submittedDecision)} · 请刷新后重试，不保留本地乐观结论。</p>
+        ) : submittedDecision ? (
+          <p className="panel-note">已提交：{formatStatus(submittedDecision)} · 等待后端返回最新审批状态 · 生效范围：{formatStatus(approval.impactScope)}</p>
         ) : (
           <p className="panel-note">提交后以后端状态为准，前端只展示提交反馈，不保留乐观结论。</p>
         )}
