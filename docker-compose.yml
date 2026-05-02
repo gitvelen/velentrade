@@ -30,10 +30,14 @@ services:
     working_dir: /app
     volumes:
       - .:/app
+      - pip-cache:/root/.cache/pip
     environment:
       VELENTRADE_DATABASE_URL: postgresql+psycopg://velentrade:velentrade@postgres:5432/velentrade
       VELENTRADE_REDIS_URL: redis://redis:6379/0
       VELENTRADE_AGENT_RUNNER_URL: http://agent-runner:8100
+      PIP_DEFAULT_TIMEOUT: "120"
+      PIP_RETRIES: "10"
+      PIP_DISABLE_PIP_VERSION_CHECK: "1"
     depends_on:
       postgres:
         condition: service_healthy
@@ -53,10 +57,14 @@ services:
     working_dir: /app
     volumes:
       - .:/app
+      - pip-cache:/root/.cache/pip
     environment:
       VELENTRADE_DATABASE_URL: postgresql+psycopg://velentrade:velentrade@postgres:5432/velentrade
       VELENTRADE_REDIS_URL: redis://redis:6379/0
       VELENTRADE_AGENT_RUNNER_URL: http://agent-runner:8100
+      PIP_DEFAULT_TIMEOUT: "120"
+      PIP_RETRIES: "10"
+      PIP_DISABLE_PIP_VERSION_CHECK: "1"
     depends_on:
       postgres:
         condition: service_healthy
@@ -72,10 +80,14 @@ services:
     working_dir: /app
     volumes:
       - .:/app
+      - pip-cache:/root/.cache/pip
     environment:
       VELENTRADE_DATABASE_URL: postgresql+psycopg://velentrade:velentrade@postgres:5432/velentrade
       VELENTRADE_REDIS_URL: redis://redis:6379/0
       VELENTRADE_AGENT_RUNNER_URL: http://agent-runner:8100
+      PIP_DEFAULT_TIMEOUT: "120"
+      PIP_RETRIES: "10"
+      PIP_DISABLE_PIP_VERSION_CHECK: "1"
     depends_on:
       postgres:
         condition: service_healthy
@@ -93,10 +105,14 @@ services:
     working_dir: /app
     volumes:
       - .:/app
+      - pip-cache:/root/.cache/pip
     environment:
       VELENTRADE_DATABASE_URL: postgresql+psycopg://velentrade:velentrade@postgres:5432/velentrade
       VELENTRADE_REDIS_URL: redis://redis:6379/0
       VELENTRADE_AGENT_RUNNER_URL: http://agent-runner:8100
+      PIP_DEFAULT_TIMEOUT: "120"
+      PIP_RETRIES: "10"
+      PIP_DISABLE_PIP_VERSION_CHECK: "1"
     depends_on:
       redis:
         condition: service_healthy
@@ -109,3 +125,4 @@ services:
 
 volumes:
   postgres-data:
+  pip-cache:

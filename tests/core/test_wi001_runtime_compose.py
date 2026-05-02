@@ -34,6 +34,10 @@ def test_runtime_compose_wires_required_services_and_entrypoints():
 
     assert "VELENTRADE_DATABASE_URL" in rendered
     assert "VELENTRADE_REDIS_URL" in rendered
+    assert "PIP_DEFAULT_TIMEOUT" in rendered
+    assert "PIP_RETRIES" in rendered
+    assert "pip-cache" in rendered
+    assert "/root/.cache/pip" in rendered
     assert "uvicorn --factory velentrade.api.app:build_app" in rendered
     assert "uvicorn --factory velentrade.agent_runner.service:build_agent_runner_app" in rendered
     assert "velentrade.worker.celery_runtime:celery_app" in rendered
