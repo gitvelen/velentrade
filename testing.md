@@ -1025,6 +1025,45 @@ Design approved 前，`reviews/design-review.yaml` 必须记录 R8 cold-start dr
   residual_risk: none
   reopen_required: false
 
+- acceptance_ref: ACC-023
+  run_id: RUN-WI005-ACC023-REPORT-NEGATIVE-20260502
+  test_case_ref: TC-ACC-023-01
+  verification_type: automated
+  test_type: regression
+  test_scope: branch-local
+  completion_level: in_memory_domain
+  executed_at: 2026-05-02
+  artifact_ref: python -m pytest tests/domain/finance tests/domain/attribution tests/domain/knowledge -q; python -m compileall src/velentrade
+  result: pass
+  residual_risk: Finance asset boundary report now fails when non-A asset guard evidence or failures fail; still not a database/API/browser integration run.
+  reopen_required: false
+
+- acceptance_ref: ACC-025
+  run_id: RUN-WI005-ACC025-TRIGGER-REPORT-NEGATIVE-20260502
+  test_case_ref: TC-ACC-025-01
+  verification_type: automated
+  test_type: regression
+  test_scope: branch-local
+  completion_level: in_memory_domain
+  executed_at: 2026-05-02
+  artifact_ref: python -m pytest tests/domain/finance tests/domain/attribution tests/domain/knowledge -q; python -m compileall src/velentrade
+  result: pass
+  residual_risk: Invalidation condition hit now triggers CFO interpretation/condition_failure, and attribution/CFO report envelope fails when guard evidence or failures fail; still uses deterministic in-memory fixtures.
+  reopen_required: false
+
+- acceptance_ref: ACC-028
+  run_id: RUN-WI005-ACC028-REPORT-NEGATIVE-20260502
+  test_case_ref: TC-ACC-028-01
+  verification_type: automated
+  test_type: regression
+  test_scope: branch-local
+  completion_level: in_memory_domain
+  executed_at: 2026-05-02
+  artifact_ref: python -m pytest tests/domain/finance tests/domain/attribution tests/domain/knowledge -q; python -m compileall src/velentrade
+  result: pass
+  residual_risk: Reflection/knowledge report envelope now fails when no-hot-patch guard evidence or failures fail; still uses deterministic in-memory fixtures and no Owner acceptance.
+  reopen_required: false
+
 - acceptance_ref: ACC-029
   run_id: RUN-WI006-ACC029-20260430
   test_case_ref: TC-ACC-029-01
