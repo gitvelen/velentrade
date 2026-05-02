@@ -1649,6 +1649,19 @@ Design approved 前，`reviews/design-review.yaml` 必须记录 R8 cold-start dr
   residual_risk: Approval action buttons now show submitting feedback, lock duplicate clicks, and render the backend returned approval decision/effective_scope instead of keeping only the local clicked action. Still not Owner manual acceptance.
   reopen_required: false
 
+- acceptance_ref: ACC-006
+  run_id: RUN-WI004-ACC006-CONFIRMATION-FAILURE-FEEDBACK-20260502
+  test_case_ref: TC-ACC-006-01
+  verification_type: automated
+  test_type: frontend
+  test_scope: branch-local-api-connected
+  completion_level: api_connected
+  executed_at: 2026-05-02
+  artifact_ref: npm --prefix frontend test; npm --prefix frontend run build; python -m pytest tests/e2e -q
+  result: pass
+  residual_risk: Request Brief confirmation failure now shows an explicit task-card generation failure and does not claim a task was generated or expose an Investment Dossier link. Still not Owner manual acceptance.
+  reopen_required: false
+
 - acceptance_ref: ACC-001
   run_id: RUN-FULL-ACC001-20260430
   test_case_ref: TC-ACC-001-01
