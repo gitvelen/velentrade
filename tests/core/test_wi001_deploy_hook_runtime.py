@@ -15,4 +15,5 @@ def test_deploy_hook_supports_runtime_compose_release_mode():
     assert "/api/requests/briefs" in script
     assert "docker compose restart api" in script
     assert "persisted_task_after_restart" in script
+    assert "same_origin_frontend_served" in script
     assert "/internal/agent-runner/runs/runtime-smoke-run/start" in script

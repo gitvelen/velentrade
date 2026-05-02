@@ -46,6 +46,11 @@ def api_json(method, path, payload=None, base_url=API_BASE):
         return json.loads(response.read().decode("utf-8"))
 
 
+def http_text(path, base_url=API_BASE):
+    with request.urlopen(f"{base_url}{path}", timeout=10) as response:
+        return response.read().decode("utf-8")
+
+
 def wait_api_ready():
     deadline = time.time() + 180
     last_error = None
@@ -61,6 +66,9 @@ def wait_api_ready():
 
 
 wait_api_ready()
+frontend_html = http_text("/")
+if "<html" not in frontend_html or "root" not in frontend_html:
+    raise SystemExit("same_origin_frontend_served failed")
 
 brief = api_json("POST", "/api/requests/briefs", {
     "raw_text": "runtime smoke formal investment workflow",
@@ -122,7 +130,7 @@ restart_reason: docker compose services launched for local runtime release
 smoke_test: pass
 runtime_ready: pass
 runtime_observed_revision: ${revision}
-runtime_ready_evidence: docker compose services are running; /api/requests/briefs created a task; persisted_task_after_restart survived docker compose restart api; agent-runner internal endpoint returned completed fake_test result
+runtime_ready_evidence: docker compose services are running; same_origin_frontend_served returned frontend index; /api/requests/briefs created a task; persisted_task_after_restart survived docker compose restart api; agent-runner internal endpoint returned completed fake_test result
 manual_verification_ready: pass
 EOF
   exit 0

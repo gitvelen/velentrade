@@ -2,10 +2,12 @@ from __future__ import annotations
 
 import os
 from dataclasses import asdict, is_dataclass, replace
+from pathlib import Path
 from typing import Any
 
-from fastapi import FastAPI
-from fastapi.responses import JSONResponse
+from fastapi import FastAPI, HTTPException
+from fastapi.responses import FileResponse, JSONResponse
+from fastapi.staticfiles import StaticFiles
 
 from velentrade.core.settings import Settings
 from velentrade.db.session import build_engine
@@ -42,6 +44,9 @@ from .schemas import (
     RequestBriefConfirmationRequest,
     WorkflowCommandRequest,
 )
+
+
+FRONTEND_DIST_DIR = Path(__file__).resolve().parents[3] / "frontend" / "dist"
 
 
 def _serialize(value: Any) -> Any:
@@ -434,6 +439,22 @@ def _governance_change_read_model(change) -> dict[str, Any]:
         "decided_at": change.decided_at,
         "effective_at": change.effective_at,
     }
+
+
+def _install_frontend_static_routes(app: FastAPI) -> None:
+    index_file = FRONTEND_DIST_DIR / "index.html"
+    if not index_file.exists():
+        return
+    assets_dir = FRONTEND_DIST_DIR / "assets"
+    if assets_dir.exists():
+        app.mount("/assets", StaticFiles(directory=assets_dir), name="frontend-assets")
+
+    @app.get("/", include_in_schema=False)
+    @app.get("/{full_path:path}", include_in_schema=False)
+    def serve_frontend_spa(full_path: str = ""):
+        if full_path.startswith("api/") or full_path.startswith("internal/"):
+            raise HTTPException(status_code=404, detail="Not Found")
+        return FileResponse(index_file)
 
 
 def build_app(runtime: ApiRuntime | None = None) -> FastAPI:
@@ -877,5 +898,7 @@ def build_app(runtime: ApiRuntime | None = None) -> FastAPI:
         except ValueError:
             return _error(409, "CONFLICT", "Memory version mismatch.", reason_code="client_seen_version_mismatch")
         return _success(relation)
+
+    _install_frontend_static_routes(app)
 
     return app

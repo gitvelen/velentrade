@@ -23,6 +23,22 @@ def test_build_app_factory_uses_database_url_env(monkeypatch):
     assert isinstance(app.state.api_runtime.gateway.store, FakeStore)
 
 
+def test_build_app_serves_frontend_dist_as_same_origin_spa(monkeypatch, tmp_path):
+    dist = tmp_path / "dist"
+    assets = dist / "assets"
+    assets.mkdir(parents=True)
+    (dist / "index.html").write_text("<html><body>velentrade</body></html>", encoding="utf-8")
+    (assets / "app.js").write_text("console.log('velentrade')", encoding="utf-8")
+    monkeypatch.setattr(api_app, "FRONTEND_DIST_DIR", dist)
+
+    client = TestClient(api_app.build_app(api_app.ApiRuntime()))
+
+    assert client.get("/").text == "<html><body>velentrade</body></html>"
+    assert client.get("/investment/wf-1").text == "<html><body>velentrade</body></html>"
+    assert client.get("/assets/app.js").text == "console.log('velentrade')"
+    assert client.get("/api/unknown").status_code == 404
+
+
 def test_team_and_agent_profile_endpoints_expose_wi001_read_models():
     client = TestClient(build_app())
 
