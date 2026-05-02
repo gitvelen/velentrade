@@ -18,8 +18,8 @@
 
 - `fixture_contract`: 已有 pytest/vitest/static/report fixture 证据，但不能声称真实系统完成。
 - `in_memory_domain`: 部分 domain dataclass 行为可由现有测试支撑，但尚未逐 RUN 复核升级。
-- `api_connected`: 已完成 WI-001 foundation 级证据；`FastAPI` app/router、`/api/team`、`/api/gateway/*`、`/api/collaboration/commands`、`/api/workflows/*`、`/api/knowledge/memory-items*` 已有自动化验证，但投资/财务/知识/治理的完整业务读模型尚未全部接通。
-- `db_persistent`: 已完成 WI-001 foundation 级证据；`Alembic`、PostgreSQL schema、seed、Postgres smoke、API->DB mirror 已有自动化验证，但并非所有 domain workflow 都已持久化。
+- `api_connected`: 已完成 WI-001/WI-004 foundation 级证据；`FastAPI` app/router、`/api/team`、`/api/gateway/*`、`/api/collaboration/commands`、`/api/workflows/*`、`/api/knowledge/memory-items*`、`/api/tasks`、`/api/approvals`、`/api/governance/changes`、`/api/finance/overview`、`/api/devops/health` 已有自动化验证，但真实外部数据采集和跨 WI 浏览器到后端闭环仍未完成。
+- `db_persistent`: 已完成 WI-001 foundation 级证据；`Alembic`、PostgreSQL schema、seed、Postgres smoke、API->DB mirror、Task/Workflow/WorkflowStage 持久化恢复已有自动化验证，但真实外部数据源 adapter 仍未接入。
 - `integrated_runtime`: 未完成；已有 `docker-compose`、`Redis/Celery`、runtime smoke 和前端浏览器级交互验证，但尚无 PostgreSQL + Redis/Celery + API + 前端浏览器 + 跨 WI 数据流的闭环联调。
 - `owner_verified`: 未完成；人工验收仍未通过。
 
@@ -1230,7 +1230,7 @@ Design approved 前，`reviews/design-review.yaml` 必须记录 R8 cold-start dr
   executed_at: 2026-05-02
   artifact_ref: python -m pytest tests/api/test_wi001_api_foundation.py tests/core/test_wi001_seed_bundle.py -q
   result: pass
-  residual_risk: Agent 团队业务页仍以 fixture/read model 为主，尚未全量切到 API 查询
+  residual_risk: Agent 团队 read model 已接 API；仍未证明 live browser 与 FastAPI 的端到端闭环。
   reopen_required: false
 
 - acceptance_ref: ACC-004
@@ -1257,6 +1257,58 @@ Design approved 前，`reviews/design-review.yaml` 必须记录 R8 cold-start dr
   artifact_ref: python -m pytest tests/api/test_wi001_api_db_persistence.py tests/core/test_wi001_postgres_smoke.py tests/core/test_wi001_seed_bundle.py -q
   result: pass
   residual_risk: 跨 WI 协作链虽可落库与回读，但完整业务闭环联调仍未完成
+  reopen_required: false
+
+- acceptance_ref: ACC-001
+  run_id: RUN-WI001-DB-SCHEMA-20260502
+  test_case_ref: TC-ACC-001-01
+  verification_type: automated
+  test_type: integration
+  test_scope: branch-local-postgres
+  completion_level: db_persistent
+  executed_at: 2026-05-02
+  artifact_ref: python -m pytest tests/core/test_wi001_db_foundation.py tests/core/test_wi001_postgres_smoke.py tests/core/test_wi001_seed_bundle.py -q
+  result: pass
+  residual_risk: Seeded data_source_registry entries are fixture_contract only; real vendor adapters remain unimplemented/out_of_scope for WI-002.
+  reopen_required: false
+
+- acceptance_ref: ACC-005
+  run_id: RUN-WI001-WORKFLOW-DB-20260502
+  test_case_ref: TC-ACC-005-01
+  verification_type: automated
+  test_type: integration
+  test_scope: branch-local-api-db
+  completion_level: db_persistent
+  executed_at: 2026-05-02
+  artifact_ref: python -m pytest tests/api/test_wi001_api_db_persistence.py -q
+  result: pass
+  residual_risk: Proves Task/Workflow/WorkflowStage persistence and recovery through API; does not prove full S0-S7 investment semantics.
+  reopen_required: false
+
+- acceptance_ref: ACC-006
+  run_id: RUN-WI004-API-CONNECTED-20260502
+  test_case_ref: TC-ACC-006-01
+  verification_type: automated
+  test_type: frontend
+  test_scope: branch-local-api-connected
+  completion_level: api_connected
+  executed_at: 2026-05-02
+  artifact_ref: npm --prefix frontend test && npm --prefix frontend run build
+  result: pass
+  residual_risk: Vitest/jsdom uses mocked API responses; no Playwright/browser-to-live-FastAPI closed loop.
+  reopen_required: false
+
+- acceptance_ref: ACC-007
+  run_id: RUN-WI004-GOVERNANCE-ACTIONS-20260502
+  test_case_ref: TC-ACC-007-01
+  verification_type: automated
+  test_type: frontend
+  test_scope: branch-local-api-connected
+  completion_level: api_connected
+  executed_at: 2026-05-02
+  artifact_ref: npm --prefix frontend test && npm --prefix frontend run build
+  result: pass
+  residual_risk: Approval/capability/governance UI actions call API adapters, but Owner has not performed live browser acceptance.
   reopen_required: false
 
 - acceptance_ref: ACC-001
@@ -1707,6 +1759,7 @@ Design approved 前，`reviews/design-review.yaml` 必须记录 R8 cold-start dr
 - residual_risk: medium
 - reopen_required: false
 - notes:
-  - 本阶段已完成 planned TC 到 WI、design appendix 和 report schema 的映射，尚无实现级 `RUN-*` 证据。
+  - 本阶段已追加 WI-001/WI-004 的 `api_connected` 与 `db_persistent` 级实现证据；历史 `RUN-FULL-*` 仍仅为 `fixture_contract`。
   - Implementation 阶段必须按 `contracts/verification-report-schemas.md` 生成可复核 report artifact。
+  - 真实外部数据源 adapter、live browser -> FastAPI -> PostgreSQL/Redis/Celery 跨 WI 闭环和 Owner 人工验收仍未完成。
   - 若后续任何 P0 自动化不可行，必须回到 Requirement 或 review 明确记录例外理由。
