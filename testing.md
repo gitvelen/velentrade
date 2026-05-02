@@ -1480,6 +1480,19 @@ Design approved 前，`reviews/design-review.yaml` 必须记录 R8 cold-start dr
   residual_risk: Proves WI-001/WI-004 foundation runtime only: RequestBrief -> Task through browser/API/PostgreSQL with Redis/Celery services and agent-runner alive. Does not prove full S0-S7 investment semantics, external data provider, paper execution, or Owner acceptance.
   reopen_required: false
 
+- acceptance_ref: ACC-001
+  run_id: RUN-WI001-ACC001-REPORT-NEGATIVE-20260502
+  test_case_ref: TC-ACC-001-01
+  verification_type: automated
+  test_type: regression
+  test_scope: branch-local
+  completion_level: in_memory_domain
+  executed_at: 2026-05-02
+  artifact_ref: python -m pytest tests/domain/test_wi001_foundation.py -q; python -m compileall src/velentrade
+  result: pass
+  residual_risk: Scope/service registry and WI-001 verification report envelope now fail when forbidden entries, guard failures, or report failures are present; still not Owner verification.
+  reopen_required: false
+
 - acceptance_ref: ACC-006
   run_id: RUN-WI004-COMPOSE-BROWSER-RUNTIME-20260502
   test_case_ref: TC-ACC-006-01
