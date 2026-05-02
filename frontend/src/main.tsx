@@ -22,6 +22,7 @@ import {
   CapabilityConfigReadModel,
   DevOpsHealthReadModel,
   FinanceOverviewReadModel,
+  GovernanceReadModel,
   InvestmentDossierReadModel,
   KnowledgeReadModel,
   RequestBriefPreview,
@@ -52,6 +53,7 @@ import {
   loadAgentProfileReadModel,
   loadDevOpsHealthReadModel,
   loadFinanceOverviewReadModel,
+  loadGovernanceReadModel,
   loadInvestmentDossierReadModel,
   loadKnowledgeReadModel,
   loadTeamReadModel,
@@ -389,7 +391,7 @@ function KnowledgePage({ onNavigate }: { onNavigate: Navigate }) {
 }
 
 function GovernancePage({ route, onNavigate }: { route: ResolvedWorkbenchRoute; onNavigate: Navigate }) {
-  const governance = buildGovernanceReadModel();
+  const governance = useGovernanceReadModel();
   const team = useTeamReadModel();
   const selectedPanel = getGovernancePanel(route.query);
   const taskCenter = route.query.task === "manual"
@@ -441,8 +443,9 @@ function GovernancePage({ route, onNavigate }: { route: ResolvedWorkbenchRoute; 
           <h3><GitBranch size={16} />变更管理</h3>
           {route.query.change === "default-context" ? <p className="panel-note">当前提案：默认上下文提案 · 只对后续任务生效</p> : null}
           <ul>
-            <li>默认上下文提案 · 只对后续任务生效</li>
-            <li>能力草案 gov-change-001 · 高影响待审批</li>
+            {governance.governanceChanges.map((change) => (
+              <li key={change.changeId}>{formatChangeType(change.changeType)} {change.changeId} · {formatStatus(change.state)} · {formatStatus(change.effectiveScope)}</li>
+            ))}
           </ul>
         </div>
       ) : null}
@@ -714,6 +717,26 @@ function useInvestmentDossierReadModel(workflowId: string) {
   return dossier;
 }
 
+function useGovernanceReadModel() {
+  const [governance, setGovernance] = useState<GovernanceReadModel>(() => buildGovernanceReadModel());
+
+  useEffect(() => {
+    let cancelled = false;
+    loadGovernanceReadModel()
+      .then((payload) => {
+        if (!cancelled) {
+          setGovernance(payload);
+        }
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  return governance;
+}
+
 function useFinanceOverviewReadModel() {
   const [finance, setFinance] = useState<FinanceOverviewReadModel>(() => buildFinanceOverviewReadModel());
 
@@ -854,6 +877,18 @@ function formatTaskType(value: string) {
     agent_capability_change: "能力草案",
     system_task: "系统事项",
     manual_todo: "人工待办",
+  };
+  return labels[value] ?? value;
+}
+
+function formatChangeType(value: string) {
+  const labels: Record<string, string> = {
+    agent_capability: "能力草案",
+    default_context: "默认上下文",
+    prompt: "Prompt",
+    skill_package: "Skill",
+    data_source_routing: "数据源策略",
+    execution_parameter: "执行参数",
   };
   return labels[value] ?? value;
 }

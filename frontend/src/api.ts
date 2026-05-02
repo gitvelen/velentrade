@@ -3,12 +3,14 @@ import {
   CapabilityConfigReadModel,
   DevOpsHealthReadModel,
   FinanceOverviewReadModel,
+  GovernanceReadModel,
   InvestmentDossierReadModel,
   KnowledgeReadModel,
   TeamReadModel,
   TraceDebugReadModel,
   buildDevOpsHealthReadModel,
   buildFinanceOverviewReadModel,
+  buildGovernanceReadModel,
   buildInvestmentDossierReadModel,
   buildKnowledgeReadModel,
   buildTeamReadModel,
@@ -112,6 +114,34 @@ type ApiDevOpsHealthReadModel = {
   routine_checks?: Array<{ check_id?: string; status?: string }>;
   incidents?: Array<{ incident_id?: string; status?: string; incident_type?: string }>;
   recovery?: Array<{ plan_id?: string; investment_resume_allowed?: boolean }>;
+};
+
+type ApiTaskCenterReadModel = {
+  task_center?: Array<{
+    task_id?: string;
+    task_type?: string;
+    current_state?: string;
+    reason_code?: string;
+  }>;
+};
+
+type ApiApprovalCenterReadModel = {
+  approval_center?: Array<{
+    approval_id?: string;
+    approval_type?: string;
+    trigger_reason?: string;
+    effective_scope?: string;
+    recommended_decision?: string;
+    decision?: string;
+  }>;
+};
+
+type ApiGovernanceChangeReadModel = {
+  change_id?: string;
+  change_type?: string;
+  impact_level?: string;
+  state?: string;
+  effective_scope?: string;
 };
 
 type ApiInvestmentDossierReadModel = {
@@ -362,6 +392,49 @@ export async function loadInvestmentDossierReadModel(workflowId: string): Promis
       : fallback.analystStanceMatrix,
     forbiddenActions,
     traceRoute: `/investment/${workflowId}/trace`,
+  };
+}
+
+export async function loadGovernanceReadModel(): Promise<GovernanceReadModel> {
+  const fallback = buildGovernanceReadModel();
+  const [tasks, approvals, changes] = await Promise.all([
+    fetchEnvelope<ApiTaskCenterReadModel>("/api/tasks"),
+    fetchEnvelope<ApiApprovalCenterReadModel>("/api/approvals"),
+    fetchEnvelope<ApiGovernanceChangeReadModel[]>("/api/governance/changes"),
+  ]);
+
+  return {
+    ...fallback,
+    taskCenter: (tasks.task_center ?? []).length
+      ? (tasks.task_center ?? []).map((task) => ({
+          taskId: task.task_id ?? "task",
+          taskType: task.task_type ?? "system_task",
+          currentState: task.current_state ?? "ready",
+          reasonCode: task.reason_code ?? "unknown",
+        }))
+      : fallback.taskCenter,
+    approvalCenter: (approvals.approval_center ?? []).length
+      ? (approvals.approval_center ?? []).map((approval) => ({
+          approvalId: approval.approval_id ?? "approval",
+          kind: approval.approval_type ?? "approval",
+          triggerReason: approval.trigger_reason ?? "unknown",
+          packet: {
+            comparisonAnalysis: true,
+            impactScope: approval.effective_scope ?? "new_task",
+            alternatives: ["approved", "rejected", "request_changes"],
+            recommendation: approval.recommended_decision ?? approval.decision ?? "request_changes",
+          },
+        }))
+      : fallback.approvalCenter,
+    governanceChanges: changes.length
+      ? changes.map((change) => ({
+          changeId: change.change_id ?? "change",
+          changeType: change.change_type ?? "unknown",
+          impactLevel: change.impact_level ?? "medium",
+          state: change.state ?? "draft",
+          effectiveScope: change.effective_scope ?? "new_task",
+        }))
+      : fallback.governanceChanges,
   };
 }
 

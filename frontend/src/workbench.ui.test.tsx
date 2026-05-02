@@ -284,6 +284,53 @@ describe("WI-004 workbench interactions", () => {
     expect(document.body.textContent).toContain("不进入审批、执行或交易链路");
   });
 
+  it("loads governance tasks approvals and changes from their API read models", async () => {
+    vi.stubGlobal("fetch", vi.fn(async (input: string | URL | Request) => {
+      const href = typeof input === "string" ? input : input instanceof URL ? input.pathname : input.url;
+      if (href.endsWith("/api/tasks")) {
+        return mockJsonResponse({
+          task_center: [
+            { task_id: "task-api", task_type: "system_task", current_state: "running", reason_code: "api_task_reason" },
+          ],
+        });
+      }
+      if (href.endsWith("/api/approvals")) {
+        return mockJsonResponse({
+          approval_center: [
+            { approval_id: "ap-api", approval_type: "owner_approval", trigger_reason: "api_approval_reason", effective_scope: "new_task" },
+          ],
+        });
+      }
+      if (href.endsWith("/api/governance/changes")) {
+        return mockJsonResponse([
+          { change_id: "gov-api", change_type: "agent_capability", impact_level: "high", state: "owner_pending", effective_scope: "new_task" },
+        ]);
+      }
+      if (href.endsWith("/api/team")) {
+        return mockJsonResponse({ team_health: { healthy_agent_count: 9 }, agent_cards: [] });
+      }
+      throw new Error(`unexpected fetch: ${href}`);
+    }));
+
+    await bootWorkbench("/governance");
+    await flushAsyncWork();
+
+    expect(document.body.textContent).toContain("系统事项");
+    expect(document.body.textContent).toContain("api_task_reason");
+
+    await act(async () => {
+      linkByName("审批").click();
+    });
+    expect(document.body.textContent).toContain("ap-api");
+    expect(document.body.textContent).toContain("api_approval_reason");
+
+    await act(async () => {
+      linkByName("变更").click();
+    });
+    expect(document.body.textContent).toContain("能力草案 gov-api");
+    expect(document.body.textContent).toContain("后续任务");
+  });
+
   it("submits approval decisions with visible local feedback instead of a dead detail page", async () => {
     await bootWorkbench("/governance/approvals/ap-001");
 

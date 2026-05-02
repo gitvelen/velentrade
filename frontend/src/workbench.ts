@@ -165,6 +165,24 @@ export type FinanceOverviewReadModel = {
   nonAAssetBoundary: { actionVisible: boolean; reasonCode: string };
 };
 
+export type GovernanceReadModel = {
+  modules: string[];
+  taskCenter: Array<{ taskId: string; taskType: string; currentState: string; reasonCode: string }>;
+  approvalCenter: Array<{
+    approvalId: string;
+    kind: string;
+    triggerReason: string;
+    packet: { comparisonAnalysis: boolean; impactScope: string; alternatives: string[]; recommendation: string };
+  }>;
+  governanceChanges: Array<{ changeId: string; changeType: string; impactLevel: string; state: string; effectiveScope: string }>;
+  manualTodoIsolation: { connectedToS5S6: boolean; state: string };
+  governanceStateMachine: string[];
+  agentCapabilityDraftStates: string[];
+  uiGuardResponses: Record<string, { actionVisible: boolean; reasonCode: string }>;
+  inFlightSnapshotUnchanged: boolean;
+  financeSensitiveRedactionUi: { dossier: string; trace: string; financeOwnerView: string };
+};
+
 export type DevOpsHealthReadModel = {
   routineChecks: Array<{ checkId: string; status: string }>;
   incidents: Array<{ incidentId: string; status: string; incidentType: string }>;
@@ -539,7 +557,7 @@ export function buildTraceDebugReadModel(): TraceDebugReadModel {
   };
 }
 
-export function buildGovernanceReadModel() {
+export function buildGovernanceReadModel(): GovernanceReadModel {
   return {
     modules: ["任务", "审批", "Agent 团队", "变更", "健康", "审计"],
     taskCenter: [
@@ -555,6 +573,10 @@ export function buildGovernanceReadModel() {
         triggerReason: "high_impact_agent_capability_change",
         packet: { comparisonAnalysis: true, impactScope: "new_task", alternatives: ["reject", "request_changes"], recommendation: "request_changes" },
       },
+    ],
+    governanceChanges: [
+      { changeId: "default-context", changeType: "default_context", impactLevel: "medium", state: "draft", effectiveScope: "new_task" },
+      { changeId: "gov-change-001", changeType: "agent_capability", impactLevel: "high", state: "owner_pending", effectiveScope: "new_task" },
     ],
     manualTodoIsolation: { connectedToS5S6: false, state: "task_center_only" },
     governanceStateMachine: ["draft", "triage", "assessment", "owner_pending", "approved", "effective"],
