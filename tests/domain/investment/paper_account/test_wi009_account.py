@@ -44,6 +44,7 @@ def test_paper_account_applies_sell_receipt_after_t_plus_one_availability():
                 }
             },
             "total_value": {"amount": 1_020_000, "currency": "CNY"},
+            "cost_basis": {"600000.SH": {"gross_cost": 20_000, "fees": 10, "taxes": 0}},
         }
     )
     order = PaperOrder("order-account-sell", "wf-1", "memo-1", "600000.SH", "sell", 1_000, {"min_price": 9.5}, "low", "exec-core-1")
@@ -56,6 +57,7 @@ def test_paper_account_applies_sell_receipt_after_t_plus_one_availability():
     assert updated.positions["600000.SH"]["quantity"] == 1_000
     assert updated.positions["600000.SH"]["available_quantity"] == 1_000
     assert updated.positions["600000.SH"]["t_plus_one_state"] == "not_applicable"
+    assert updated.cost_basis["600000.SH"] == {"gross_cost": 10_000.0, "fees": 5.0, "taxes": 0.0}
 
 
 def test_paper_account_report_has_contract_payload():

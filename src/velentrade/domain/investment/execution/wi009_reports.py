@@ -19,28 +19,31 @@ def build_paper_execution_report() -> dict[str, Any]:
     cache_order = PaperOrder("order-cache", "wf-1", "memo-1", "600000.SH", "buy", 10000, {"max_price": 10.5}, "normal", "exec-core-cache")
     partial_order = PaperOrder("order-partial", "wf-1", "memo-1", "600000.SH", "buy", 10000, {"max_price": 10.5}, "normal", "exec-core-1")
     twap_sell_order = PaperOrder("order-twap-sell", "wf-1", "memo-1", "600000.SH", "sell", 2000, {"min_price": 9.5}, "low", "exec-core-twap")
+    invalid_price_order = PaperOrder("order-invalid-price", "wf-1", "memo-1", "600000.SH", "buy", 1000, {"max_price": 10.5}, "normal", "exec-core-invalid-price")
+    twap_bars = [
+        MinuteBar("2026-04-30T09:31:00+08:00", 10.0, 10.2, 9.9, 10.1, 0),
+        MinuteBar("2026-04-30T09:32:00+08:00", 10.1, 10.3, 10.0, 10.2, 0),
+        MinuteBar("2026-04-30T09:33:00+08:00", 10.2, 10.4, 10.1, 10.3, 0),
+    ]
+    invalid_price_bars = [
+        MinuteBar("2026-04-30T09:31:00+08:00", 0, 0, 0, 0, 0),
+        MinuteBar("2026-04-30T09:32:00+08:00", 0, 0, 0, 0, 1000),
+    ]
     filled = service.execute(filled_order, ExecutionCoreSnapshot.pass_with_bars(bars))
     blocked = service.execute(blocked_order, ExecutionCoreSnapshot.blocked("minute_bar_stale"))
     missed = service.execute(miss_order, ExecutionCoreSnapshot.pass_with_bars(bars))
     cache_blocked = service.execute(cache_order, ExecutionCoreSnapshot.pass_with_bars(bars, may_create_execution_authorization=False))
     partial = service.execute(partial_order, ExecutionCoreSnapshot.pass_with_bars(bars), available_cash=25_000)
-    twap_sell = service.execute(
-        twap_sell_order,
-        ExecutionCoreSnapshot.pass_with_bars(
-            [
-                MinuteBar("2026-04-30T09:31:00+08:00", 10.0, 10.2, 9.9, 10.1, 0),
-                MinuteBar("2026-04-30T09:32:00+08:00", 10.1, 10.3, 10.0, 10.2, 0),
-                MinuteBar("2026-04-30T09:33:00+08:00", 10.2, 10.4, 10.1, 10.3, 0),
-            ]
-        ),
-    )
+    twap_sell = service.execute(twap_sell_order, ExecutionCoreSnapshot.pass_with_bars(twap_bars))
+    invalid_price = service.execute(invalid_price_order, ExecutionCoreSnapshot.pass_with_bars(invalid_price_bars))
     payload = {
         "order_windows": {"urgent": "30m", "normal": "2h", "low": "full_day"},
-        "selected_window_bar_counts": {"urgent": 30, "normal": 120, "low": "all_available"},
+        "selected_window_bar_counts": {"urgent": len(bars[:30]), "normal": len(bars[:120]), "low": len(twap_bars)},
         "minute_bar_fixture": [bar.__dict__ for bar in bars],
         "pricing_method": {"filled": filled.pricing_method, "twap_sell": twap_sell.pricing_method},
         "vwap_or_twap_calculation": {"filled_price": filled.fill_price, "twap_sell_price": twap_sell.fill_price, "fallback": "twap_when_zero_volume"},
         "price_range_check": {"filled": "hit", "missed": missed.reason_code, "twap_sell": "hit"},
+        "invalid_price_check": {"fill_status": invalid_price.fill_status, "reason_code": invalid_price.reason_code},
         "fill_status": {"filled": filled.fill_status, "partial": partial.fill_status, "blocked": blocked.fill_status, "missed": missed.fill_status, "twap_sell": twap_sell.fill_status},
         "fees": filled.fees,
         "taxes": {"buy": filled.taxes, "sell": twap_sell.taxes},

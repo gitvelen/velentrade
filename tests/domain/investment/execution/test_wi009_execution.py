@@ -66,6 +66,22 @@ def test_non_a_asset_symbol_cannot_create_paper_execution():
     assert receipt.fill_price is None
 
 
+def test_invalid_order_side_or_urgency_is_blocked_before_pricing():
+    service = PaperExecutionService()
+    invalid_side = PaperOrder("order-invalid-side", "wf-1", "memo-1", "600000.SH", "short", 1_000, {"min_price": 9.5}, "normal", "exec-core-invalid")
+    invalid_urgency = PaperOrder("order-invalid-urgency", "wf-1", "memo-1", "600000.SH", "buy", 1_000, {"max_price": 10.5}, "overnight", "exec-core-invalid")
+
+    side_receipt = service.execute(invalid_side, ExecutionCoreSnapshot.pass_with_bars(_bars()))
+    urgency_receipt = service.execute(invalid_urgency, ExecutionCoreSnapshot.pass_with_bars(_bars()))
+
+    assert side_receipt.fill_status == "blocked"
+    assert side_receipt.reason_code == "invalid_order_side"
+    assert side_receipt.fill_price is None
+    assert urgency_receipt.fill_status == "blocked"
+    assert urgency_receipt.reason_code == "invalid_order_urgency"
+    assert urgency_receipt.fill_price is None
+
+
 def test_zero_volume_falls_back_to_twap_and_sell_applies_stamp_tax():
     service = PaperExecutionService()
     order = PaperOrder("order-sell", "wf-1", "memo-1", "600000.SH", "sell", 2_000, {"min_price": 9.5}, "low", "exec-core-sell")
@@ -77,6 +93,23 @@ def test_zero_volume_falls_back_to_twap_and_sell_applies_stamp_tax():
     assert receipt.pricing_method == "minute_twap"
     assert receipt.taxes["stamp_tax"] > 0
     assert receipt.t_plus_one_state == "not_applicable"
+
+
+def test_no_valid_minute_price_returns_unfilled_instead_of_zero_price_fill():
+    service = PaperExecutionService()
+    order = PaperOrder("order-invalid-price", "wf-1", "memo-1", "600000.SH", "buy", 1_000, {"max_price": 10.5}, "normal", "exec-core-invalid-price")
+    snapshot = ExecutionCoreSnapshot.pass_with_bars(
+        [
+            MinuteBar("2026-04-30T09:31:00+08:00", 0, 0, 0, 0, 0),
+            MinuteBar("2026-04-30T09:32:00+08:00", 0, 0, 0, 0, 1000),
+        ]
+    )
+
+    receipt = service.execute(order, snapshot)
+
+    assert receipt.fill_status == "unfilled"
+    assert receipt.fill_price is None
+    assert receipt.reason_code == "no_valid_minute_price"
 
 
 def test_insufficient_cash_or_position_returns_partial_or_blocked():
@@ -95,6 +128,17 @@ def test_insufficient_cash_or_position_returns_partial_or_blocked():
     assert blocked_sell.reason_code == "insufficient_position_blocked"
 
 
+def test_partial_buy_reserves_fees_inside_available_cash():
+    service = PaperExecutionService()
+    order = PaperOrder("order-cash-fee", "wf-1", "memo-1", "600000.SH", "buy", 10_000, {"max_price": 10.5}, "normal", "exec-core-fee")
+
+    receipt = service.execute(order, ExecutionCoreSnapshot.pass_with_bars(_bars()), available_cash=25_000)
+
+    total_cash_used = receipt.fill_price * receipt.fill_quantity + sum(receipt.fees.values()) + sum(receipt.taxes.values())
+    assert receipt.fill_status == "partial"
+    assert total_cash_used <= 25_000
+
+
 def test_paper_execution_report_has_contract_payload():
     report = build_paper_execution_report()
 
@@ -107,6 +151,7 @@ def test_paper_execution_report_has_contract_payload():
         "pricing_method",
         "vwap_or_twap_calculation",
         "price_range_check",
+        "invalid_price_check",
         "fill_status",
         "fees",
         "taxes",
@@ -116,7 +161,8 @@ def test_paper_execution_report_has_contract_payload():
         "t_plus_one_state",
     }
     assert report["cache_execution_authorization_block"] == "cache_execution_authorization_denied"
-    assert report["selected_window_bar_counts"] == {"urgent": 30, "normal": 120, "low": "all_available"}
+    assert report["selected_window_bar_counts"] == {"urgent": 3, "normal": 3, "low": 3}
+    assert report["invalid_price_check"] == {"fill_status": "unfilled", "reason_code": "no_valid_minute_price"}
 
 
 def test_paper_execution_report_fails_when_guard_or_failure_fails():

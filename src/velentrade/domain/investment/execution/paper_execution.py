@@ -83,7 +83,12 @@ class PaperExecutionService:
         available_cash: float | None = None,
         available_position: float | None = None,
     ) -> PaperExecutionReceipt:
-        window = {"urgent": "30m", "normal": "2h", "low": "full_day"}[order.urgency]
+        window_by_urgency = {"urgent": "30m", "normal": "2h", "low": "full_day"}
+        if order.urgency not in window_by_urgency:
+            return self._receipt(order, "invalid", "blocked", None, 0, "invalid_order_urgency", snapshot, "not_applicable")
+        window = window_by_urgency[order.urgency]
+        if order.side not in {"buy", "sell"}:
+            return self._receipt(order, window, "blocked", None, 0, "invalid_order_side", snapshot, "not_applicable")
         if not _is_a_share_symbol(order.symbol):
             return self._receipt(order, window, "blocked", None, 0, "non_a_asset_no_paper_execution", snapshot)
         if snapshot.status != "pass" or not snapshot.bars:
@@ -93,15 +98,18 @@ class PaperExecutionService:
         window_bars = _select_window_bars(order, snapshot.bars)
         if not window_bars:
             return self._receipt(order, window, "expired" if order.urgency == "urgent" else "unfilled", None, 0, "execution_window_empty", snapshot)
-        price, method = _vwap_or_twap(window_bars)
-        if not _price_hits(order, price, window_bars):
+        valid_bars = _valid_minute_bars(window_bars)
+        if not valid_bars:
+            return self._receipt(order, window, "expired" if order.urgency == "urgent" else "unfilled", None, 0, "no_valid_minute_price", snapshot)
+        price, method = _vwap_or_twap(valid_bars)
+        if not _price_hits(order, price, valid_bars):
             return self._receipt(order, window, "expired" if order.urgency == "urgent" else "unfilled", None, 0, "price_range_not_hit", snapshot, method)
-        slipped = _apply_slippage(order, price, window_bars)
+        slipped = _apply_slippage(order, price, valid_bars)
         quantity = order.target_quantity_or_weight
         fill_status = "filled"
         reason_code = None
         if order.side == "buy" and available_cash is not None:
-            affordable_quantity = round(available_cash / slipped, 3) if slipped else 0
+            affordable_quantity = _affordable_buy_quantity(slipped, available_cash, snapshot.fee_config)
             if affordable_quantity <= 0:
                 return self._receipt(order, window, "blocked", None, 0, "insufficient_cash_blocked", snapshot, method)
             if affordable_quantity < quantity:
@@ -133,7 +141,7 @@ class PaperExecutionService:
         commission = max(5.0, gross * snapshot.fee_config["commission_bps"] / 10000) if is_executed else 0
         transfer = gross * snapshot.fee_config["transfer_bps"] / 10000 if is_executed else 0
         stamp = gross * snapshot.fee_config["stamp_tax_sell_bps"] / 10000 if is_executed and order.side == "sell" else 0
-        policy_bps = {"urgent": 8, "normal": 5, "low": 3}[order.urgency]
+        policy_bps = {"urgent": 8, "normal": 5, "low": 3}.get(order.urgency, 0)
         return PaperExecutionReceipt(
             paper_order_id=order.paper_order_id,
             decision_memo_ref=order.decision_memo_ref,
@@ -164,6 +172,10 @@ def _select_window_bars(order: PaperOrder, bars: list[MinuteBar]) -> list[Minute
     return bars[:window_size]
 
 
+def _valid_minute_bars(bars: list[MinuteBar]) -> list[MinuteBar]:
+    return [bar for bar in bars if bar.open > 0 and bar.high > 0 and bar.low > 0 and bar.close > 0 and bar.high >= bar.low and bar.volume >= 0]
+
+
 def _price_hits(order: PaperOrder, price: float, bars: list[MinuteBar]) -> bool:
     if order.side == "buy":
         max_price = order.price_range.get("max_price") or order.price_range.get("max")
@@ -179,6 +191,38 @@ def _apply_slippage(order: PaperOrder, price: float, bars: list[MinuteBar]) -> f
         bps += 2
     multiplier = 1 + bps / 10000 if order.side == "buy" else 1 - bps / 10000
     return round(price * multiplier, 4)
+
+
+def _affordable_buy_quantity(fill_price: float, available_cash: float, fee_config: dict[str, float]) -> float:
+    if available_cash <= 0 or fill_price <= 0:
+        return 0.0
+    commission_rate = fee_config["commission_bps"] / 10000
+    transfer_rate = fee_config["transfer_bps"] / 10000
+    min_commission = fee_config["min_commission"]
+    if available_cash <= min_commission:
+        return 0.0
+
+    quantity_with_min_commission = (available_cash - min_commission) / (fill_price * (1 + transfer_rate))
+    gross_with_min_commission = quantity_with_min_commission * fill_price
+    if gross_with_min_commission * commission_rate <= min_commission:
+        quantity = _floor_quantity(quantity_with_min_commission)
+    else:
+        quantity = _floor_quantity(available_cash / (fill_price * (1 + commission_rate + transfer_rate)))
+
+    while quantity > 0 and _buy_cash_required(quantity, fill_price, fee_config) > available_cash:
+        quantity = _floor_quantity(quantity - 0.001)
+    return quantity
+
+
+def _buy_cash_required(quantity: float, fill_price: float, fee_config: dict[str, float]) -> float:
+    gross = fill_price * quantity
+    commission = round(max(fee_config["min_commission"], gross * fee_config["commission_bps"] / 10000), 3)
+    transfer = round(gross * fee_config["transfer_bps"] / 10000, 3)
+    return gross + commission + transfer
+
+
+def _floor_quantity(quantity: float) -> float:
+    return max(0.0, int(quantity * 1000) / 1000)
 
 
 def _is_a_share_symbol(symbol: str) -> bool:

@@ -13,6 +13,7 @@ def build_position_disposal_report() -> dict[str, Any]:
         "trigger_events": [{"trigger": trigger, "symbol": task.symbol} for trigger in task.triggers],
         "position_disposal_tasks": [task.__dict__],
         "priority_changes": {"from": "P1", "to": task.priority},
+        "priority_escalation": {"from": "P1", "to": task.priority, "reason_code": task.reason_code},
         "risk_review_guard": task.risk_gate_present,
         "execution_core_guard": task.execution_core_guard_present,
         "risk_gate_present": task.risk_gate_present,

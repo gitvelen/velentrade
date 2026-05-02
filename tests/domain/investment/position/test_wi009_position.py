@@ -32,6 +32,7 @@ def test_position_disposal_report_has_contract_payload():
         "trigger_events",
         "position_disposal_tasks",
         "priority_changes",
+        "priority_escalation",
         "risk_review_guard",
         "execution_core_guard",
         "risk_gate_present",

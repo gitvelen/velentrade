@@ -70,13 +70,19 @@ class PaperAccountService:
         else:
             cash_amount += gross - fees - taxes
             existing = positions.get(order.symbol, {"quantity": 0.0, "available_quantity": 0.0})
+            previous_quantity = float(existing.get("quantity", 0))
+            remaining_quantity = round(max(0.0, previous_quantity - receipt.fill_quantity), 3)
             positions[order.symbol] = {
                 **existing,
-                "quantity": round(max(0.0, float(existing.get("quantity", 0)) - receipt.fill_quantity), 3),
+                "quantity": remaining_quantity,
                 "available_quantity": round(max(0.0, float(existing.get("available_quantity", 0)) - receipt.fill_quantity), 3),
                 "t_plus_one_state": receipt.t_plus_one_state,
                 "last_fill_price": receipt.fill_price,
             }
+            existing_basis = cost_basis.get(order.symbol)
+            if existing_basis and previous_quantity > 0:
+                remaining_ratio = remaining_quantity / previous_quantity
+                cost_basis[order.symbol] = {field: round(float(value) * remaining_ratio, 3) for field, value in existing_basis.items()}
 
         marked_positions_value = sum(float(position.get("quantity", 0)) * float(position.get("last_fill_price", 0)) for position in positions.values())
         total_value = round(cash_amount + marked_positions_value, 3)
