@@ -28,6 +28,7 @@ export type WorkbenchRoute = {
 export type ResolvedWorkbenchRoute = WorkbenchRoute & {
   pathname: string;
   params: Record<string, string>;
+  query: Record<string, string>;
 };
 
 export type RequestBriefPreview = {
@@ -38,6 +39,16 @@ export type RequestBriefPreview = {
   expectedArtifacts: string[];
   reasonCode: string;
   blockedDirectActions: string[];
+  clarificationPrompts?: string[];
+  display: {
+    statusLabel: string;
+    taskLabel: string;
+    leadLabel: string;
+    authorityLabel: string;
+    artifactsLabel: string;
+    boundaryLabel: string;
+    nextStepLabel: string;
+  };
 };
 
 export type Report = Record<string, unknown> & {
@@ -101,6 +112,7 @@ export function buildRouteManifest(): WorkbenchRoute[] {
 
 export function resolveWorkbenchRoute(pathname: string): ResolvedWorkbenchRoute {
   const cleanPath = normalizePath(pathname);
+  const query = parseQuery(pathname);
   const matchers: Array<[RegExp, WorkbenchPage, string, string, string[], string]> = [
     [/^\/$/, "overview", "overview", "/", [], "全景"],
     [/^\/investment$/, "investment-queue", "investment", "/investment", [], "投资队列"],
@@ -124,6 +136,7 @@ export function resolveWorkbenchRoute(pathname: string): ResolvedWorkbenchRoute 
       label,
       pathname: cleanPath,
       params: Object.fromEntries(paramNames.map((name, index) => [name, match[index + 1]])),
+      query,
     };
   }
   return {
@@ -133,6 +146,7 @@ export function resolveWorkbenchRoute(pathname: string): ResolvedWorkbenchRoute 
     label: "未找到",
     pathname: cleanPath,
     params: {},
+    query,
   };
 }
 
@@ -140,6 +154,11 @@ function normalizePath(pathname: string): string {
   const withoutHash = pathname.split("#")[0] || "/";
   const withoutQuery = withoutHash.split("?")[0] || "/";
   return withoutQuery.length > 1 ? withoutQuery.replace(/\/+$/, "") : "/";
+}
+
+function parseQuery(pathname: string): Record<string, string> {
+  const queryText = pathname.includes("?") ? pathname.slice(pathname.indexOf("?") + 1).split("#")[0] : "";
+  return Object.fromEntries(new URLSearchParams(queryText));
 }
 
 export function buildShellReadModel() {
@@ -156,12 +175,68 @@ export function buildShellReadModel() {
       incidents: 1,
     },
     governanceModules: ["任务", "审批", "Agent 团队", "变更", "健康", "审计"],
+    commandLayer: {
+      placement: "topbar_drawer",
+      defaultExpanded: false,
+      pageNarrativeIntrusion: false,
+      previewTitle: "请求预览",
+    },
     session: { ownerMode: "single_owner", language: "zh-CN" },
   };
 }
 
 export function routeOwnerCommand(input: string): RequestBriefPreview {
+  const trimmed = input.trim();
   const normalized = input.toLowerCase();
+  if (isBlockedCapabilityHotPatch(trimmed)) {
+    return {
+      status: "blocked_draft",
+      taskType: "agent_capability_change",
+      semanticLead: "Governance Runtime",
+      processAuthority: "Governance Runtime",
+      expectedArtifacts: ["AgentCapabilityChangeDraft", "GovernanceChange"],
+      reasonCode: "agent_capability_hot_patch_denied",
+      blockedDirectActions: ["hot_patch_in_flight_agent_run_denied"],
+      clarificationPrompts: [
+        "请说明影响的 Agent 或配置项",
+        "确认是否接受只对后续任务生效",
+      ],
+      display: {
+        statusLabel: "已阻断",
+        taskLabel: "能力改进",
+        leadLabel: "治理运行时",
+        authorityLabel: "治理流程",
+        artifactsLabel: "能力配置草案 / 治理变更草案",
+        boundaryLabel: "不能热改运行中的 Agent",
+        nextStepLabel: "改为治理变更草案后再评估",
+      },
+    };
+  }
+  if (isAmbiguousOwnerCommand(trimmed)) {
+    return {
+      status: "draft",
+      taskType: "manual_todo",
+      semanticLead: "待确认",
+      processAuthority: "Request Brief Triage",
+      expectedArtifacts: ["RequestBriefDraft"],
+      reasonCode: "request_brief_needs_clarification",
+      blockedDirectActions: ["task_creation_blocked_until_clarified"],
+      clarificationPrompts: [
+        "请补充目标对象或主题",
+        "请补充希望产出的结果",
+        "请说明是否只做研究、审批还是人工跟进",
+      ],
+      display: {
+        statusLabel: "待补充",
+        taskLabel: "待补充请求",
+        leadLabel: "待确认",
+        authorityLabel: "请求分诊",
+        artifactsLabel: "请求草稿",
+        boundaryLabel: "信息不完整，先不生成任务卡",
+        nextStepLabel: "补充后再重新生成预览",
+      },
+    };
+  }
   if (input.includes("热点") || input.includes("学习")) {
     return {
       status: "preview",
@@ -171,6 +246,15 @@ export function routeOwnerCommand(input: string): RequestBriefPreview {
       expectedArtifacts: ["Research Package", "MemoryCapture", "候选 TopicProposal"],
       reasonCode: "supporting_evidence_only",
       blockedDirectActions: ["no_trade_or_approval_entry"],
+      display: {
+        statusLabel: "可确认",
+        taskLabel: "热点研究",
+        leadLabel: "投资研究员",
+        authorityLabel: "流程调度",
+        artifactsLabel: "研究资料包 / 记忆摘录 / 候选议题",
+        boundaryLabel: "只做研究，不进入审批或交易",
+        nextStepLabel: "确认后生成研究任务卡",
+      },
     };
   }
   if (input.includes("下单") || normalized.includes("trade") || input.includes("腾讯")) {
@@ -182,6 +266,15 @@ export function routeOwnerCommand(input: string): RequestBriefPreview {
       expectedArtifacts: ["manual_todo"],
       reasonCode: "non_a_asset_no_trade",
       blockedDirectActions: ["approval_entry_hidden", "execution_entry_hidden", "real_trade_entry_hidden"],
+      display: {
+        statusLabel: "需补充",
+        taskLabel: "人工事项",
+        leadLabel: "老板确认",
+        authorityLabel: "任务中心",
+        artifactsLabel: "人工待办",
+        boundaryLabel: "不生成审批、执行或交易入口",
+        nextStepLabel: "补充资产范围后重新生成预览",
+      },
     };
   }
   if (input.includes("能力") || input.includes("Prompt") || input.includes("Skill")) {
@@ -193,6 +286,15 @@ export function routeOwnerCommand(input: string): RequestBriefPreview {
       expectedArtifacts: ["AgentCapabilityChangeDraft", "GovernanceChange"],
       reasonCode: "agent_capability_hot_patch_denied",
       blockedDirectActions: ["hot_patch_in_flight_agent_run_denied"],
+      display: {
+        statusLabel: "草案",
+        taskLabel: "能力改进",
+        leadLabel: "治理运行时",
+        authorityLabel: "治理流程",
+        artifactsLabel: "能力配置草案 / 治理变更草案",
+        boundaryLabel: "只影响后续任务，不热改运行中的 Agent",
+        nextStepLabel: "确认后进入治理变更评估",
+      },
     };
   }
   return {
@@ -203,7 +305,32 @@ export function routeOwnerCommand(input: string): RequestBriefPreview {
     expectedArtifacts: ["Request Brief", "TaskEnvelope", "Investment Dossier"],
     reasonCode: "request_brief_preview_required",
     blockedDirectActions: ["direct_execution_denied"],
+    display: {
+      statusLabel: "可确认",
+      taskLabel: "投资任务",
+      leadLabel: "CIO",
+      authorityLabel: "流程调度",
+      artifactsLabel: "请求预览 / 任务卡 / 投资档案",
+      boundaryLabel: "先进入受控流程，不直接执行",
+      nextStepLabel: "确认后创建任务卡",
+    },
   };
+}
+
+function isAmbiguousOwnerCommand(input: string) {
+  if (!input) return true;
+  const vaguePatterns = ["处理一下", "安排一下", "看一下", "看看", "跟进一下", "弄一下"];
+  const knownIntentPatterns = ["热点", "学习", "下单", "买入", "卖出", "能力", "prompt", "skill", "审批", "财务", "治理", "研究"];
+  return vaguePatterns.some((pattern) => input.includes(pattern))
+    && !knownIntentPatterns.some((pattern) => input.toLowerCase().includes(pattern));
+}
+
+function isBlockedCapabilityHotPatch(input: string) {
+  const normalized = input.toLowerCase();
+  const configKeywords = ["能力", "prompt", "skill", "工具权限", "model route", "上下文"];
+  const activationKeywords = ["直接生效", "立刻生效", "马上生效", "热更新", "热改"];
+  return configKeywords.some((pattern) => normalized.includes(pattern.toLowerCase()))
+    && activationKeywords.some((pattern) => normalized.includes(pattern.toLowerCase()));
 }
 
 export function buildOwnerDecisionReadModel() {
@@ -417,6 +544,8 @@ export function buildWorkbenchReports(): Record<string, Report> {
   const governance = buildGovernanceReadModel();
   const team = buildTeamReadModel();
   const command = routeOwnerCommand("学习热点事件");
+  const ambiguousCommand = routeOwnerCommand("帮我处理一下");
+  const blockedHotPatchCommand = routeOwnerCommand("把量化分析的 Prompt 直接生效");
   return {
     "web_command_routing_report.json": envelope("web_command_routing_report.json", "TC-ACC-006-01", "ACC-006", {
       nav_scan: { top_level_labels: shell.navItems.map((item) => item.label), top_level_team_present: false },
@@ -424,7 +553,30 @@ export function buildWorkbenchReports(): Record<string, Report> {
       chinese_ui_scan: { language: "zh-CN", forbidden_english_titles: [] },
       premium_light_theme_assertions: { warm_porcelain: true, ink_text: true, jade_accent: true, indigo_gold_crimson_support: true },
       request_brief_preview_flow: command,
+      draft_clarification_prompts: ambiguousCommand.clarificationPrompts ?? [],
+      blocked_hot_patch_preview: blockedHotPatchCommand,
+      command_layer_assertions: shell.commandLayer,
+      owner_facing_content_assertions: {
+        forbidden_terms_absent: [
+          "Request Brief",
+          "research_task",
+          "supporting_evidence_only",
+          "Workflow Scheduling Center",
+          "schema pass",
+          "Governance Change",
+        ],
+        removed_page_subtitles: [
+          "待处理、风险、审批和系统状态",
+          "机会池、IC 队列、硬门槛与 Dossier 入口",
+          "全资产档案、现金流、风险预算和人工待办",
+          "研究资料、经验、关系和上下文注入",
+        ],
+      },
       view_layers: { owner: owner.todayAttention, dossier: dossier.stageRail, traceRoute: dossier.traceRoute },
+      trace_entry_return_path: {
+        from_dossier: "/investment/wf-001/trace",
+        from_approval_detail: "/investment/wf-001/trace?returnTo=%2Fgovernance%2Fapprovals%2Fap-001",
+      },
       governance_agent_team_assertions: { modules: shell.governanceModules, agentCount: team.agentCards.length, draftOnly: true },
       design_preview_refs: designPreviewRefs,
       forbidden_action_ui_denials: dossier.forbiddenActions,
