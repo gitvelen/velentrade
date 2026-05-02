@@ -1,7 +1,7 @@
 from velentrade.domain.attribution.cfo import CFOGovernanceService
 from velentrade.domain.attribution.factor_research import FactorResearchService
 from velentrade.domain.attribution.service import AttributionInput, PerformanceAttributionService
-from velentrade.domain.attribution.wi005_reports import build_wi005_attribution_reports
+from velentrade.domain.attribution.wi005_reports import _envelope, build_wi005_attribution_reports
 
 
 def test_performance_attribution_scores_missing_inputs_and_cfo_triggers():
@@ -67,6 +67,37 @@ def test_normal_daily_attribution_auto_publishes_without_cfo_trigger():
     assert report.trigger_candidates == []
 
 
+def test_invalidation_condition_hit_triggers_cfo_interpretation():
+    report = PerformanceAttributionService().evaluate(
+        AttributionInput(
+            period="daily",
+            market_result={"return": 0.0},
+            thesis_outcome_fit=0.8,
+            decision_rationale_completeness=0.8,
+            dissent_handling=0.8,
+            invalidation_condition_quality=0.8,
+            fill_policy_fit=0.8,
+            slippage_bps=5,
+            policy_slippage_bps=5,
+            fee_tax_correctness=1.0,
+            execution_core_guard_compliance=1.0,
+            hard_constraint_compliance=0.9,
+            conditional_requirement_followthrough=0.9,
+            drawdown_or_exposure_control=0.9,
+            hard_dissent_assessment_quality=0.9,
+            data_quality_score=0.9,
+            source_reliability=0.9,
+            evidence_ref_completeness=0.9,
+            counter_evidence_coverage=0.9,
+            stale_or_conflict_penalty_adjusted=0.9,
+            conditions=[("invalidation:policy_shock", "hit")],
+        )
+    )
+
+    assert report.needs_cfo_interpretation is True
+    assert "condition_failure" in report.trigger_candidates
+
+
 def test_cfo_maps_trigger_priority_to_reflection_and_high_impact_governance():
     attribution = PerformanceAttributionService().evaluate(
         AttributionInput(
@@ -125,3 +156,23 @@ def test_wi005_attribution_reports_have_contract_payloads():
         assert report["work_item_refs"] == ["WI-005"]
         assert report["failures"] == []
     assert reports["cfo_governance_report.json"]["auto_published_daily"] is True
+
+
+def test_attribution_report_fails_when_guard_or_failure_fails():
+    report = _envelope(
+        "cfo_governance_report.json",
+        {"probe": "negative"},
+        guard_results=[
+            {
+                "guard": "owner_approval_required",
+                "input_ref": "high-impact-proposal",
+                "expected": "owner_pending",
+                "actual": "auto_approved",
+                "result": "fail",
+            }
+        ],
+        failures=[{"code": "high_impact_auto_approved", "message": "high impact CFO proposal bypassed Owner"}],
+    )
+
+    assert report["result"] == "fail"
+    assert report["failures"][0]["code"] == "high_impact_auto_approved"

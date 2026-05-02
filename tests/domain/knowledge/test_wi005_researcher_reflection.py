@@ -1,6 +1,6 @@
 from velentrade.domain.knowledge.reflection import AgentFirstDraft, ReflectionLearningWorkflow
 from velentrade.domain.knowledge.researcher import ResearcherWorkflow
-from velentrade.domain.knowledge.wi005_reports import build_wi005_knowledge_reports
+from velentrade.domain.knowledge.wi005_reports import _envelope, build_wi005_knowledge_reports
 
 
 def test_researcher_capture_organize_and_proposals_are_gateway_bound():
@@ -61,3 +61,23 @@ def test_wi005_knowledge_reports_have_contract_payloads():
         assert report["result"] == "pass"
         assert report["work_item_refs"] == ["WI-005"]
         assert report["failures"] == []
+
+
+def test_knowledge_report_fails_when_guard_or_failure_fails():
+    report = _envelope(
+        "reflection_learning_report.json",
+        {"probe": "negative"},
+        guard_results=[
+            {
+                "guard": "no_hot_patch",
+                "input_ref": "prompt-update",
+                "expected": "new_task_only",
+                "actual": "in_flight_context_changed",
+                "result": "fail",
+            }
+        ],
+        failures=[{"code": "hot_patch_detected", "message": "reflection changed an in-flight ContextSnapshot"}],
+    )
+
+    assert report["result"] == "fail"
+    assert report["failures"][0]["code"] == "hot_patch_detected"

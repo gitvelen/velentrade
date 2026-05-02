@@ -1,4 +1,4 @@
-from velentrade.domain.finance.boundary import FinanceAssetUpdate, FinanceProfileService
+from velentrade.domain.finance.boundary import FinanceAssetUpdate, FinanceProfileService, _report_envelope
 
 
 def test_finance_profile_blocks_non_a_assets_from_trade_and_projects_manual_todo():
@@ -43,3 +43,26 @@ def test_finance_asset_boundary_report_has_required_evidence_fields():
         "manual_todo_tasks",
     }
     assert report["non_a_asset_trade_denials"][0]["reason_code"] == "non_a_asset_no_trade"
+
+
+def test_finance_report_fails_when_guard_or_failure_fails():
+    report = _report_envelope(
+        "finance_asset_boundary_report.json",
+        "TC-ACC-023-01",
+        "ACC-023",
+        "REQ-023",
+        {"probe": "negative"},
+        guard_results=[
+            {
+                "guard": "non_a_asset_no_trade",
+                "input_ref": "fund-trade",
+                "expected": "denied",
+                "actual": "allowed",
+                "result": "fail",
+            }
+        ],
+        failures=[{"code": "non_a_trade_allowed", "message": "fund trade entered approval chain"}],
+    )
+
+    assert report["result"] == "fail"
+    assert report["failures"][0]["code"] == "non_a_trade_allowed"

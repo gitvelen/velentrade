@@ -141,7 +141,11 @@ def _trigger_candidates(scores: list[float | None], inputs: AttributionInput, co
         triggers.append("rolling_drop")
     if inputs.repeated_degradation:
         triggers.append("repeated_degradation")
-    if any(status == "miss" for _, status in inputs.conditions) or condition_hit.get("score") == 0.0:
+    condition_failed = any(
+        status == "miss" or (name.startswith("invalidation") and status == "hit")
+        for name, status in inputs.conditions
+    )
+    if condition_failed or condition_hit.get("score") == 0.0:
         triggers.append("condition_failure")
     if inputs.periodic_window or inputs.period in {"weekly", "monthly", "quarterly"}:
         triggers.append("periodic_window")
