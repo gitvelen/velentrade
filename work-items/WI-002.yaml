@@ -52,13 +52,17 @@ r8_runbook_scope:
 scope:
   - "实现 Request Brief confirmation、Task Envelope、S0-S7 阶段节点、Reopen Event、ContextSnapshot、DefaultContextBinding/MemoryCollection/AgentCapability 版本纳入快照、高影响治理状态机、低/中影响自动验证生效链、transition guard、incident 状态机和 Celery `start_agent_run` 调度。"
   - "实现 Data Domain Registry、Source Registry、Data Request、Data Readiness Report、completeness/accuracy/timeliness quality gate、fallback、cache、conflict report、execution_core freshness gate、service orchestration 和 market state 默认生效。"
+  - "实现许可安全的公开 HTTP CSV 行情 adapter、真实源 Source Registry 元数据、字段归一化、限频/许可声明、fallback/cache 降级和 execution_core 阻断；自动化验证使用本地 HTTP/假传输，不把外网 live provider 可用性伪装成 pass。"
   - "固化 workflow command guard、Data Request/Readiness schema、服务输出无治理权、Decision Service 调用不越权、ContextSnapshot hash/immutability、Memory/Knowledge/DefaultContext/AgentCapability 新版本绑定和新任务/新 attempt 生效边界。"
   - "生成 s0_s7_workflow_report、data_quality_degradation_report、service_boundary_report、market_state_report、config_governance_report，并在相关报告中记录 runner 调度失败不会伪造 Agent artifact。"
 out_of_scope:
-  - "不实现具体 A 股 IC 决策、DecisionPacket/偏离守卫语义、前端页面、财务知识链、DevOps health 页面或真实供应商 adapter。"
+  - "不实现具体 A 股 IC 决策、DecisionPacket/偏离守卫语义、前端页面、财务知识链、DevOps health 页面、付费/需密钥供应商 adapter、真实券商或真实下单 adapter。"
   - "不修改 WI-001 已交付核心 schema 的语义，除非回到 Design。"
 
 allowed_paths:
+  - work-items/WI-002.yaml
+  - design-appendices/workflow-data-service-design.md
+  - src/velentrade/db/seed.py
   - src/velentrade/domain/workflow/**
   - src/velentrade/domain/data/**
   - src/velentrade/domain/services/**
@@ -73,7 +77,14 @@ forbidden_paths:
   - versions/**
   - spec.md
   - design.md
-  - work-items/**
+  - work-items/WI-001.yaml
+  - work-items/WI-003.yaml
+  - work-items/WI-004.yaml
+  - work-items/WI-005.yaml
+  - work-items/WI-006.yaml
+  - work-items/WI-007.yaml
+  - work-items/WI-008.yaml
+  - work-items/WI-009.yaml
   - contracts/**
   - deployment.md
   - src/velentrade/domain/investment/**

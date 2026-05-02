@@ -175,6 +175,20 @@ Data Request
  -> Data Readiness Report
 ```
 
+### 5.1 公开 HTTP 数据源最小实现
+
+WI-002 的真实数据采集最小实现不绑定付费或需密钥供应商；默认交付一个可由 Source Registry 配置的 `public_http_csv_daily_quote` adapter。该 adapter 必须真实执行 HTTP fetch、解析公开 CSV 行情响应、归一化为 `symbol/trade_date/open/high/low/close/volume/source_timestamp/source_id`，并把 `license_summary`、`rate_limit`、`endpoint_template`、`cache_ttl_seconds`、`adapter_kind` 写入 source metadata。自动化测试不得依赖外网可用性；必须用本地 HTTP 或 fake transport 验证真实 fetch/parse/quality/fallback/cache 路径。外网 live provider smoke 只能作为单独运行证据记录，失败不得被伪装成自动化 pass。
+
+Source Registry 默认至少区分三类来源：
+
+| adapter_kind | 用途 | completion_level |
+|---|---|---|
+| `public_http_csv_daily_quote` | 公开 HTTP CSV 日线行情；可用于 `research` / `decision_core`，不得用于 `execution_core` 新成交。 | `in_memory_domain` 或更高，取决于是否接入持久化/运行环境 |
+| `fixture_contract` | 合同 fixture 与离线测试。 | `fixture_contract` |
+| `cache_snapshot` | 最近一次成功采集的展示/研究缓存；不得生成新的执行授权。 | `in_memory_domain` |
+
+公开源失败或字段缺失时必须先按 `fallback_order` 尝试替代源；若仍失败，`decision_core` 输出 degraded/blocked，`execution_core` 一律 `blocked`。缓存命中只能用于展示、研究或降级诊断；用于 `decision_core` 时质量上限为 `0.7`，用于 `execution_core` 时必须阻断纸面执行。
+
 质量分：
 
 ```text
