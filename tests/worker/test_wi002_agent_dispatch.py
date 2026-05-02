@@ -38,7 +38,11 @@ class TimedOutRunner:
 
 
 class SuccessfulRunner:
+    def __init__(self):
+        self.calls = 0
+
     def start(self, request):
+        self.calls += 1
         return AgentRunResult(
             agent_run_id=request.agent_run_id,
             status="completed",
@@ -96,12 +100,14 @@ def test_worker_dispatch_is_idempotent_for_same_agent_run():
         workflow_id="wf-1",
         allowed_command_types=["request_evidence"],
     )
-    dispatcher = AgentRunDispatcher(gateway=gateway, runner=SuccessfulRunner())
+    runner = SuccessfulRunner()
+    dispatcher = AgentRunDispatcher(gateway=gateway, runner=runner)
 
     first = dispatcher.start_agent_run(run, model_profile_id="fake_test")
     second = dispatcher.start_agent_run(run, model_profile_id="fake_test")
 
     assert first.status == "completed"
     assert second.status == "completed"
+    assert runner.calls == 1
     assert len(gateway.artifact_ledger) == 1
     assert dispatcher.dispatch_events[-1]["reason_code"] == "agent_run_already_dispatched"
