@@ -10,6 +10,21 @@
 - 当前处于 Design 阶段，本文登记 planned 测试用例、fixture、WI 映射和后续 `RUN-*` 证据位置；Implementation、Testing、Deployment 阶段再追加 `RUN-*` 证据。
 - 所有 V1 验收均为 P0，默认自动化验证；若后续任何 P0 无法自动化，必须回到 Requirement 或 review 明确接受例外理由。
 
+## 0.1 事故更正：RUN 证据完成等级
+
+2026-05-01 复核发现，既有 `RUN-FULL-*` 记录仅证明 pytest/vitest/static scan/fixture report 通过，不证明 PostgreSQL/Alembic、Redis/Celery、FastAPI endpoint、浏览器级前端交互、真实数据采集或跨 WI runtime 已完成。为避免继续误导，原 `test_scope: full-integration` 已降级为 `test_scope: fixture-integration`，并为既有 RUN 记录补充 `completion_level: fixture_contract`。
+
+当前状态：
+
+- `fixture_contract`: 已有 pytest/vitest/static/report fixture 证据，但不能声称真实系统完成。
+- `in_memory_domain`: 部分 domain dataclass 行为可由现有测试支撑，但尚未逐 RUN 复核升级。
+- `api_connected`: 已完成 WI-001 foundation 级证据；`FastAPI` app/router、`/api/team`、`/api/gateway/*`、`/api/collaboration/commands`、`/api/workflows/*`、`/api/knowledge/memory-items*` 已有自动化验证，但投资/财务/知识/治理的完整业务读模型尚未全部接通。
+- `db_persistent`: 已完成 WI-001 foundation 级证据；`Alembic`、PostgreSQL schema、seed、Postgres smoke、API->DB mirror 已有自动化验证，但并非所有 domain workflow 都已持久化。
+- `integrated_runtime`: 未完成；已有 `docker-compose`、`Redis/Celery`、runtime smoke 和前端浏览器级交互验证，但尚无 PostgreSQL + Redis/Celery + API + 前端浏览器 + 跨 WI 数据流的闭环联调。
+- `owner_verified`: 未完成；人工验收仍未通过。
+
+后续只有满足 `../lessons_learned.md` R10-R13 的真实证据，才允许重新追加 `test_scope: full-integration` 的 pass 记录。
+
 ## 1. 关键 fixture 与不变量计划
 
 Design 阶段应优先把以下 fixture 落到测试数据工厂或 contract fixture 中，并将每个 fixture 映射到相关页面、服务、workflow 或 schema 验证命令。
@@ -665,6 +680,7 @@ Design approved 前，`reviews/design-review.yaml` 必须记录 R8 cold-start dr
   verification_type: automated
   test_type: static_and_integration
   test_scope: branch-local
+  completion_level: fixture_contract
   executed_at: 2026-04-30
   artifact_ref: tests/domain/test_wi001_foundation.py
   result: pass
@@ -677,6 +693,7 @@ Design approved 前，`reviews/design-review.yaml` 必须记录 R8 cold-start dr
   verification_type: automated
   test_type: static
   test_scope: branch-local
+  completion_level: fixture_contract
   executed_at: 2026-04-30
   artifact_ref: tests/domain/test_wi001_foundation.py
   result: pass
@@ -689,6 +706,7 @@ Design approved 前，`reviews/design-review.yaml` 必须记录 R8 cold-start dr
   verification_type: automated
   test_type: contract
   test_scope: branch-local
+  completion_level: fixture_contract
   executed_at: 2026-04-30
   artifact_ref: tests/domain/test_wi001_foundation.py
   result: pass
@@ -701,6 +719,7 @@ Design approved 前，`reviews/design-review.yaml` 必须记录 R8 cold-start dr
   verification_type: automated
   test_type: security_contract
   test_scope: branch-local
+  completion_level: fixture_contract
   executed_at: 2026-04-30
   artifact_ref: tests/domain/test_wi001_foundation.py
   result: pass
@@ -713,6 +732,7 @@ Design approved 前，`reviews/design-review.yaml` 必须记录 R8 cold-start dr
   verification_type: automated
   test_type: integration
   test_scope: branch-local
+  completion_level: fixture_contract
   executed_at: 2026-04-30
   artifact_ref: tests/domain/test_wi001_foundation.py
   result: pass
@@ -725,6 +745,7 @@ Design approved 前，`reviews/design-review.yaml` 必须记录 R8 cold-start dr
   verification_type: automated
   test_type: security
   test_scope: branch-local
+  completion_level: fixture_contract
   executed_at: 2026-04-30
   artifact_ref: tests/security/test_security_boundaries.py
   result: pass
@@ -737,6 +758,7 @@ Design approved 前，`reviews/design-review.yaml` 必须记录 R8 cold-start dr
   verification_type: automated
   test_type: static
   test_scope: branch-local
+  completion_level: fixture_contract
   executed_at: 2026-04-30
   artifact_ref: tests/requirements/test_requirement_structure.py
   result: pass
@@ -749,6 +771,7 @@ Design approved 前，`reviews/design-review.yaml` 必须记录 R8 cold-start dr
   verification_type: automated
   test_type: integration
   test_scope: branch-local
+  completion_level: fixture_contract
   executed_at: 2026-04-30
   artifact_ref: tests/domain/workflow/test_wi002_workflow_runtime.py
   result: pass
@@ -761,6 +784,7 @@ Design approved 前，`reviews/design-review.yaml` 必须记录 R8 cold-start dr
   verification_type: automated
   test_type: integration
   test_scope: branch-local
+  completion_level: fixture_contract
   executed_at: 2026-04-30
   artifact_ref: tests/domain/data/test_wi002_data_quality.py
   result: pass
@@ -773,6 +797,7 @@ Design approved 前，`reviews/design-review.yaml` 必须记录 R8 cold-start dr
   verification_type: automated
   test_type: contract
   test_scope: branch-local
+  completion_level: fixture_contract
   executed_at: 2026-04-30
   artifact_ref: tests/domain/services/test_wi002_services.py
   result: pass
@@ -785,6 +810,7 @@ Design approved 前，`reviews/design-review.yaml` 必须记录 R8 cold-start dr
   verification_type: automated
   test_type: integration
   test_scope: branch-local
+  completion_level: fixture_contract
   executed_at: 2026-04-30
   artifact_ref: tests/domain/services/test_wi002_services.py
   result: pass
@@ -797,6 +823,7 @@ Design approved 前，`reviews/design-review.yaml` 必须记录 R8 cold-start dr
   verification_type: automated
   test_type: integration
   test_scope: branch-local
+  completion_level: fixture_contract
   executed_at: 2026-04-30
   artifact_ref: tests/domain/governance/test_wi002_governance.py
   result: pass
@@ -809,6 +836,7 @@ Design approved 前，`reviews/design-review.yaml` 必须记录 R8 cold-start dr
   verification_type: automated
   test_type: integration
   test_scope: branch-local
+  completion_level: fixture_contract
   executed_at: 2026-04-30
   artifact_ref: tests/domain/investment/intake/test_wi003_opportunity_registry.py
   result: pass
@@ -821,6 +849,7 @@ Design approved 前，`reviews/design-review.yaml` 必须记录 R8 cold-start dr
   verification_type: automated
   test_type: integration
   test_scope: branch-local
+  completion_level: fixture_contract
   executed_at: 2026-04-30
   artifact_ref: tests/domain/investment/topic_queue/test_wi003_topic_queue.py
   result: pass
@@ -833,6 +862,7 @@ Design approved 前，`reviews/design-review.yaml` 必须记录 R8 cold-start dr
   verification_type: automated
   test_type: contract
   test_scope: branch-local
+  completion_level: fixture_contract
   executed_at: 2026-04-30
   artifact_ref: tests/domain/investment/context/test_wi003_context_package.py
   result: pass
@@ -845,6 +875,7 @@ Design approved 前，`reviews/design-review.yaml` 必须记录 R8 cold-start dr
   verification_type: automated
   test_type: e2e
   test_scope: branch-local
+  completion_level: fixture_contract
   executed_at: 2026-04-30
   artifact_ref: frontend/src/workbench.contract.test.ts
   result: pass
@@ -857,6 +888,7 @@ Design approved 前，`reviews/design-review.yaml` 必须记录 R8 cold-start dr
   verification_type: automated
   test_type: e2e
   test_scope: branch-local
+  completion_level: fixture_contract
   executed_at: 2026-04-30
   artifact_ref: tests/e2e/test_wi004_frontend_static.py
   result: pass
@@ -869,6 +901,7 @@ Design approved 前，`reviews/design-review.yaml` 必须记录 R8 cold-start dr
   verification_type: automated
   test_type: e2e
   test_scope: branch-local
+  completion_level: fixture_contract
   executed_at: 2026-05-01
   artifact_ref: npm --prefix frontend test && npm --prefix frontend run build && route smoke on http://127.0.0.1:8443 for /, /investment, /investment/wf-001, /investment/wf-001/trace, /finance, /knowledge, /governance, /governance/team, /governance/team/quant_analyst, /governance/team/quant_analyst/config, /governance/approvals/ap-001
   result: pass
@@ -881,6 +914,7 @@ Design approved 前，`reviews/design-review.yaml` 必须记录 R8 cold-start dr
   verification_type: automated
   test_type: e2e
   test_scope: branch-local
+  completion_level: fixture_contract
   executed_at: 2026-05-01
   artifact_ref: python -m pytest tests/e2e -q && npm --prefix frontend test
   result: pass
@@ -893,6 +927,7 @@ Design approved 前，`reviews/design-review.yaml` 必须记录 R8 cold-start dr
   verification_type: automated
   test_type: integration
   test_scope: branch-local
+  completion_level: fixture_contract
   executed_at: 2026-04-30
   artifact_ref: tests/domain/finance/test_wi005_finance_boundary.py
   result: pass
@@ -905,6 +940,7 @@ Design approved 前，`reviews/design-review.yaml` 必须记录 R8 cold-start dr
   verification_type: automated
   test_type: integration
   test_scope: branch-local
+  completion_level: fixture_contract
   executed_at: 2026-04-30
   artifact_ref: tests/domain/attribution/test_wi005_attribution_cfo_factor.py
   result: pass
@@ -917,6 +953,7 @@ Design approved 前，`reviews/design-review.yaml` 必须记录 R8 cold-start dr
   verification_type: automated
   test_type: integration
   test_scope: branch-local
+  completion_level: fixture_contract
   executed_at: 2026-04-30
   artifact_ref: tests/domain/attribution/test_wi005_attribution_cfo_factor.py
   result: pass
@@ -929,6 +966,7 @@ Design approved 前，`reviews/design-review.yaml` 必须记录 R8 cold-start dr
   verification_type: automated
   test_type: integration
   test_scope: branch-local
+  completion_level: fixture_contract
   executed_at: 2026-04-30
   artifact_ref: tests/domain/attribution/test_wi005_attribution_cfo_factor.py
   result: pass
@@ -941,6 +979,7 @@ Design approved 前，`reviews/design-review.yaml` 必须记录 R8 cold-start dr
   verification_type: automated
   test_type: integration
   test_scope: branch-local
+  completion_level: fixture_contract
   executed_at: 2026-04-30
   artifact_ref: tests/domain/knowledge/test_wi005_researcher_reflection.py
   result: pass
@@ -953,6 +992,7 @@ Design approved 前，`reviews/design-review.yaml` 必须记录 R8 cold-start dr
   verification_type: automated
   test_type: integration
   test_scope: branch-local
+  completion_level: fixture_contract
   executed_at: 2026-04-30
   artifact_ref: tests/domain/knowledge/test_wi005_researcher_reflection.py
   result: pass
@@ -965,6 +1005,7 @@ Design approved 前，`reviews/design-review.yaml` 必须记录 R8 cold-start dr
   verification_type: automated
   test_type: integration
   test_scope: branch-local
+  completion_level: fixture_contract
   executed_at: 2026-04-30
   artifact_ref: tests/domain/devops/test_wi006_incident_runtime.py
   result: pass
@@ -977,6 +1018,7 @@ Design approved 前，`reviews/design-review.yaml` 必须记录 R8 cold-start dr
   verification_type: automated
   test_type: contract
   test_scope: branch-local
+  completion_level: fixture_contract
   executed_at: 2026-04-30
   artifact_ref: tests/domain/investment/analysis/test_wi007_analysis.py
   result: pass
@@ -989,6 +1031,7 @@ Design approved 前，`reviews/design-review.yaml` 必须记录 R8 cold-start dr
   verification_type: automated
   test_type: unit_and_integration
   test_scope: branch-local
+  completion_level: fixture_contract
   executed_at: 2026-04-30
   artifact_ref: tests/domain/investment/analysis/test_wi007_analysis.py
   result: pass
@@ -1001,6 +1044,7 @@ Design approved 前，`reviews/design-review.yaml` 必须记录 R8 cold-start dr
   verification_type: automated
   test_type: integration
   test_scope: branch-local
+  completion_level: fixture_contract
   executed_at: 2026-04-30
   artifact_ref: tests/domain/investment/debate/test_wi007_debate.py
   result: pass
@@ -1013,6 +1057,7 @@ Design approved 前，`reviews/design-review.yaml` 必须记录 R8 cold-start dr
   verification_type: automated
   test_type: integration
   test_scope: branch-local
+  completion_level: fixture_contract
   executed_at: 2026-04-30
   artifact_ref: tests/domain/decision/test_wi008_decision_service.py
   result: pass
@@ -1025,6 +1070,7 @@ Design approved 前，`reviews/design-review.yaml` 必须记录 R8 cold-start dr
   verification_type: automated
   test_type: integration
   test_scope: branch-local
+  completion_level: fixture_contract
   executed_at: 2026-04-30
   artifact_ref: tests/domain/investment/risk/test_wi008_risk_owner.py
   result: pass
@@ -1037,6 +1083,7 @@ Design approved 前，`reviews/design-review.yaml` 必须记录 R8 cold-start dr
   verification_type: automated
   test_type: integration
   test_scope: branch-local
+  completion_level: fixture_contract
   executed_at: 2026-04-30
   artifact_ref: tests/domain/investment/paper_account/test_wi009_account.py
   result: pass
@@ -1049,6 +1096,7 @@ Design approved 前，`reviews/design-review.yaml` 必须记录 R8 cold-start dr
   verification_type: automated
   test_type: integration
   test_scope: branch-local
+  completion_level: fixture_contract
   executed_at: 2026-04-30
   artifact_ref: tests/domain/investment/execution/test_wi009_execution.py
   result: pass
@@ -1061,10 +1109,154 @@ Design approved 前，`reviews/design-review.yaml` 必须记录 R8 cold-start dr
   verification_type: automated
   test_type: integration
   test_scope: branch-local
+  completion_level: fixture_contract
   executed_at: 2026-04-30
   artifact_ref: tests/domain/investment/position/test_wi009_position.py
   result: pass
   residual_risk: none
+  reopen_required: false
+
+- acceptance_ref: ACC-004
+  run_id: RUN-FIX-ACC004-20260501
+  test_case_ref: TC-ACC-004-01
+  verification_type: automated
+  test_type: security_contract
+  test_scope: branch-local
+  completion_level: fixture_contract
+  executed_at: 2026-05-01
+  artifact_ref: python -m pytest tests/domain/test_wi001_foundation.py tests/domain/workflow/test_wi002_workflow_runtime.py -q
+  result: pass
+  residual_risk: none
+  reopen_required: false
+
+- acceptance_ref: ACC-009
+  run_id: RUN-FIX-ACC009-20260501
+  test_case_ref: TC-ACC-009-01
+  verification_type: automated
+  test_type: integration
+  test_scope: branch-local
+  completion_level: fixture_contract
+  executed_at: 2026-05-01
+  artifact_ref: python -m pytest tests/domain/data tests/domain/investment/execution tests/domain/workflow/test_wi002_reports.py -q
+  result: pass
+  residual_risk: none
+  reopen_required: false
+
+- acceptance_ref: ACC-015
+  run_id: RUN-FIX-ACC015-20260501
+  test_case_ref: TC-ACC-015-01
+  verification_type: automated
+  test_type: contract
+  test_scope: branch-local
+  completion_level: fixture_contract
+  executed_at: 2026-05-01
+  artifact_ref: python -m pytest tests/domain/investment/analysis -q
+  result: pass
+  residual_risk: none
+  reopen_required: false
+
+- acceptance_ref: ACC-016
+  run_id: RUN-FIX-ACC016-20260501
+  test_case_ref: TC-ACC-016-01
+  verification_type: automated
+  test_type: unit_and_integration
+  test_scope: branch-local
+  completion_level: fixture_contract
+  executed_at: 2026-05-01
+  artifact_ref: python -m pytest tests/domain/investment/analysis -q
+  result: pass
+  residual_risk: none
+  reopen_required: false
+
+- acceptance_ref: ACC-019
+  run_id: RUN-FIX-ACC019-20260501
+  test_case_ref: TC-ACC-019-01
+  verification_type: automated
+  test_type: integration
+  test_scope: branch-local
+  completion_level: fixture_contract
+  executed_at: 2026-05-01
+  artifact_ref: python -m pytest tests/domain/workflow/test_wi002_workflow_runtime.py tests/domain/governance tests/domain/investment/risk -q
+  result: pass
+  residual_risk: none
+  reopen_required: false
+
+- acceptance_ref: ACC-021
+  run_id: RUN-FIX-ACC021-20260501
+  test_case_ref: TC-ACC-021-01
+  verification_type: automated
+  test_type: integration
+  test_scope: branch-local
+  completion_level: fixture_contract
+  executed_at: 2026-05-01
+  artifact_ref: python -m pytest tests/domain/investment/execution -q
+  result: pass
+  residual_risk: none
+  reopen_required: false
+
+- acceptance_ref: ACC-030
+  run_id: RUN-FIX-ACC030-20260501
+  test_case_ref: TC-ACC-030-01
+  verification_type: automated
+  test_type: integration
+  test_scope: branch-local
+  completion_level: fixture_contract
+  executed_at: 2026-05-01
+  artifact_ref: python -m pytest tests/domain/governance tests/domain/workflow/test_wi002_reports.py -q
+  result: pass
+  residual_risk: none
+  reopen_required: false
+
+- acceptance_ref: ACC-002
+  run_id: RUN-WI001-ACC002-20260502
+  test_case_ref: TC-ACC-002-01
+  verification_type: automated
+  test_type: integration
+  test_scope: branch-local
+  completion_level: api_connected
+  executed_at: 2026-05-02
+  artifact_ref: python -m pytest tests/api/test_wi001_api_foundation.py tests/core/test_wi001_seed_bundle.py tests/agent_runner/test_runner_service.py -q
+  result: pass
+  residual_risk: investment/finance domain read models are not all API-connected yet
+  reopen_required: false
+
+- acceptance_ref: ACC-003
+  run_id: RUN-WI001-ACC003-20260502
+  test_case_ref: TC-ACC-003-01
+  verification_type: automated
+  test_type: contract
+  test_scope: branch-local
+  completion_level: api_connected
+  executed_at: 2026-05-02
+  artifact_ref: python -m pytest tests/api/test_wi001_api_foundation.py tests/core/test_wi001_seed_bundle.py -q
+  result: pass
+  residual_risk: Agent 团队业务页仍以 fixture/read model 为主，尚未全量切到 API 查询
+  reopen_required: false
+
+- acceptance_ref: ACC-004
+  run_id: RUN-WI001-ACC004-20260502
+  test_case_ref: TC-ACC-004-01
+  verification_type: automated
+  test_type: security_contract
+  test_scope: branch-local
+  completion_level: db_persistent
+  executed_at: 2026-05-02
+  artifact_ref: python -m pytest tests/api/test_wi001_api_db_persistence.py tests/core/test_wi001_postgres_smoke.py tests/core/test_wi001_db_foundation.py -q
+  result: pass
+  residual_risk: 财务业务 workflow 仍未全部接到真实持久化路径
+  reopen_required: false
+
+- acceptance_ref: ACC-005
+  run_id: RUN-WI001-ACC005-20260502
+  test_case_ref: TC-ACC-005-01
+  verification_type: automated
+  test_type: integration
+  test_scope: branch-local
+  completion_level: db_persistent
+  executed_at: 2026-05-02
+  artifact_ref: python -m pytest tests/api/test_wi001_api_db_persistence.py tests/core/test_wi001_postgres_smoke.py tests/core/test_wi001_seed_bundle.py -q
+  result: pass
+  residual_risk: 跨 WI 协作链虽可落库与回读，但完整业务闭环联调仍未完成
   reopen_required: false
 
 - acceptance_ref: ACC-001
@@ -1072,7 +1264,8 @@ Design approved 前，`reviews/design-review.yaml` 必须记录 R8 cold-start dr
   test_case_ref: TC-ACC-001-01
   verification_type: automated
   test_type: static
-  test_scope: full-integration
+  test_scope: fixture-integration
+  completion_level: fixture_contract
   executed_at: 2026-04-30
   artifact_ref: python -m pytest tests/core tests/domain tests/security tests/requirements tests/agent_runner tests/model_gateway tests/worker tests/e2e -q
   result: pass
@@ -1084,7 +1277,8 @@ Design approved 前，`reviews/design-review.yaml` 必须记录 R8 cold-start dr
   test_case_ref: TC-ACC-002-01
   verification_type: automated
   test_type: static
-  test_scope: full-integration
+  test_scope: fixture-integration
+  completion_level: fixture_contract
   executed_at: 2026-04-30
   artifact_ref: python -m pytest tests/core tests/domain tests/security tests/requirements tests/agent_runner tests/model_gateway tests/worker tests/e2e -q
   result: pass
@@ -1096,7 +1290,8 @@ Design approved 前，`reviews/design-review.yaml` 必须记录 R8 cold-start dr
   test_case_ref: TC-ACC-003-01
   verification_type: automated
   test_type: contract
-  test_scope: full-integration
+  test_scope: fixture-integration
+  completion_level: fixture_contract
   executed_at: 2026-04-30
   artifact_ref: python -m pytest tests/core tests/domain tests/security tests/requirements tests/agent_runner tests/model_gateway tests/worker tests/e2e -q
   result: pass
@@ -1108,7 +1303,8 @@ Design approved 前，`reviews/design-review.yaml` 必须记录 R8 cold-start dr
   test_case_ref: TC-ACC-004-01
   verification_type: automated
   test_type: security_contract
-  test_scope: full-integration
+  test_scope: fixture-integration
+  completion_level: fixture_contract
   executed_at: 2026-04-30
   artifact_ref: python -m pytest tests/core tests/domain tests/security tests/requirements tests/agent_runner tests/model_gateway tests/worker tests/e2e -q
   result: pass
@@ -1120,7 +1316,8 @@ Design approved 前，`reviews/design-review.yaml` 必须记录 R8 cold-start dr
   test_case_ref: TC-ACC-005-01
   verification_type: automated
   test_type: integration
-  test_scope: full-integration
+  test_scope: fixture-integration
+  completion_level: fixture_contract
   executed_at: 2026-04-30
   artifact_ref: python -m pytest tests/core tests/domain tests/security tests/requirements tests/agent_runner tests/model_gateway tests/worker tests/e2e -q
   result: pass
@@ -1132,7 +1329,8 @@ Design approved 前，`reviews/design-review.yaml` 必须记录 R8 cold-start dr
   test_case_ref: TC-ACC-006-01
   verification_type: automated
   test_type: e2e
-  test_scope: full-integration
+  test_scope: fixture-integration
+  completion_level: fixture_contract
   executed_at: 2026-04-30
   artifact_ref: npm --prefix frontend test && npm --prefix frontend run build && python -m pytest tests/e2e -q
   result: pass
@@ -1144,7 +1342,8 @@ Design approved 前，`reviews/design-review.yaml` 必须记录 R8 cold-start dr
   test_case_ref: TC-ACC-007-01
   verification_type: automated
   test_type: e2e
-  test_scope: full-integration
+  test_scope: fixture-integration
+  completion_level: fixture_contract
   executed_at: 2026-04-30
   artifact_ref: npm --prefix frontend test && npm --prefix frontend run build && python -m pytest tests/e2e -q
   result: pass
@@ -1156,7 +1355,8 @@ Design approved 前，`reviews/design-review.yaml` 必须记录 R8 cold-start dr
   test_case_ref: TC-ACC-008-01
   verification_type: automated
   test_type: integration
-  test_scope: full-integration
+  test_scope: fixture-integration
+  completion_level: fixture_contract
   executed_at: 2026-04-30
   artifact_ref: python -m pytest tests/core tests/domain tests/security tests/requirements tests/agent_runner tests/model_gateway tests/worker tests/e2e -q
   result: pass
@@ -1168,7 +1368,8 @@ Design approved 前，`reviews/design-review.yaml` 必须记录 R8 cold-start dr
   test_case_ref: TC-ACC-009-01
   verification_type: automated
   test_type: integration
-  test_scope: full-integration
+  test_scope: fixture-integration
+  completion_level: fixture_contract
   executed_at: 2026-04-30
   artifact_ref: python -m pytest tests/core tests/domain tests/security tests/requirements tests/agent_runner tests/model_gateway tests/worker tests/e2e -q
   result: pass
@@ -1180,7 +1381,8 @@ Design approved 前，`reviews/design-review.yaml` 必须记录 R8 cold-start dr
   test_case_ref: TC-ACC-010-01
   verification_type: automated
   test_type: contract
-  test_scope: full-integration
+  test_scope: fixture-integration
+  completion_level: fixture_contract
   executed_at: 2026-04-30
   artifact_ref: python -m pytest tests/core tests/domain tests/security tests/requirements tests/agent_runner tests/model_gateway tests/worker tests/e2e -q
   result: pass
@@ -1192,7 +1394,8 @@ Design approved 前，`reviews/design-review.yaml` 必须记录 R8 cold-start dr
   test_case_ref: TC-ACC-011-01
   verification_type: automated
   test_type: integration
-  test_scope: full-integration
+  test_scope: fixture-integration
+  completion_level: fixture_contract
   executed_at: 2026-04-30
   artifact_ref: python -m pytest tests/core tests/domain tests/security tests/requirements tests/agent_runner tests/model_gateway tests/worker tests/e2e -q
   result: pass
@@ -1204,7 +1407,8 @@ Design approved 前，`reviews/design-review.yaml` 必须记录 R8 cold-start dr
   test_case_ref: TC-ACC-012-01
   verification_type: automated
   test_type: integration
-  test_scope: full-integration
+  test_scope: fixture-integration
+  completion_level: fixture_contract
   executed_at: 2026-04-30
   artifact_ref: python -m pytest tests/core tests/domain tests/security tests/requirements tests/agent_runner tests/model_gateway tests/worker tests/e2e -q
   result: pass
@@ -1216,7 +1420,8 @@ Design approved 前，`reviews/design-review.yaml` 必须记录 R8 cold-start dr
   test_case_ref: TC-ACC-013-01
   verification_type: automated
   test_type: integration
-  test_scope: full-integration
+  test_scope: fixture-integration
+  completion_level: fixture_contract
   executed_at: 2026-04-30
   artifact_ref: python -m pytest tests/core tests/domain tests/security tests/requirements tests/agent_runner tests/model_gateway tests/worker tests/e2e -q
   result: pass
@@ -1228,7 +1433,8 @@ Design approved 前，`reviews/design-review.yaml` 必须记录 R8 cold-start dr
   test_case_ref: TC-ACC-014-01
   verification_type: automated
   test_type: contract
-  test_scope: full-integration
+  test_scope: fixture-integration
+  completion_level: fixture_contract
   executed_at: 2026-04-30
   artifact_ref: python -m pytest tests/core tests/domain tests/security tests/requirements tests/agent_runner tests/model_gateway tests/worker tests/e2e -q
   result: pass
@@ -1240,7 +1446,8 @@ Design approved 前，`reviews/design-review.yaml` 必须记录 R8 cold-start dr
   test_case_ref: TC-ACC-015-01
   verification_type: automated
   test_type: contract
-  test_scope: full-integration
+  test_scope: fixture-integration
+  completion_level: fixture_contract
   executed_at: 2026-04-30
   artifact_ref: python -m pytest tests/core tests/domain tests/security tests/requirements tests/agent_runner tests/model_gateway tests/worker tests/e2e -q
   result: pass
@@ -1252,7 +1459,8 @@ Design approved 前，`reviews/design-review.yaml` 必须记录 R8 cold-start dr
   test_case_ref: TC-ACC-016-01
   verification_type: automated
   test_type: unit_and_integration
-  test_scope: full-integration
+  test_scope: fixture-integration
+  completion_level: fixture_contract
   executed_at: 2026-04-30
   artifact_ref: python -m pytest tests/core tests/domain tests/security tests/requirements tests/agent_runner tests/model_gateway tests/worker tests/e2e -q
   result: pass
@@ -1264,7 +1472,8 @@ Design approved 前，`reviews/design-review.yaml` 必须记录 R8 cold-start dr
   test_case_ref: TC-ACC-017-01
   verification_type: automated
   test_type: integration
-  test_scope: full-integration
+  test_scope: fixture-integration
+  completion_level: fixture_contract
   executed_at: 2026-04-30
   artifact_ref: python -m pytest tests/core tests/domain tests/security tests/requirements tests/agent_runner tests/model_gateway tests/worker tests/e2e -q
   result: pass
@@ -1276,7 +1485,8 @@ Design approved 前，`reviews/design-review.yaml` 必须记录 R8 cold-start dr
   test_case_ref: TC-ACC-018-01
   verification_type: automated
   test_type: integration
-  test_scope: full-integration
+  test_scope: fixture-integration
+  completion_level: fixture_contract
   executed_at: 2026-04-30
   artifact_ref: python -m pytest tests/core tests/domain tests/security tests/requirements tests/agent_runner tests/model_gateway tests/worker tests/e2e -q
   result: pass
@@ -1288,7 +1498,8 @@ Design approved 前，`reviews/design-review.yaml` 必须记录 R8 cold-start dr
   test_case_ref: TC-ACC-019-01
   verification_type: automated
   test_type: integration
-  test_scope: full-integration
+  test_scope: fixture-integration
+  completion_level: fixture_contract
   executed_at: 2026-04-30
   artifact_ref: python -m pytest tests/core tests/domain tests/security tests/requirements tests/agent_runner tests/model_gateway tests/worker tests/e2e -q
   result: pass
@@ -1300,7 +1511,8 @@ Design approved 前，`reviews/design-review.yaml` 必须记录 R8 cold-start dr
   test_case_ref: TC-ACC-020-01
   verification_type: automated
   test_type: integration
-  test_scope: full-integration
+  test_scope: fixture-integration
+  completion_level: fixture_contract
   executed_at: 2026-04-30
   artifact_ref: python -m pytest tests/core tests/domain tests/security tests/requirements tests/agent_runner tests/model_gateway tests/worker tests/e2e -q
   result: pass
@@ -1312,7 +1524,8 @@ Design approved 前，`reviews/design-review.yaml` 必须记录 R8 cold-start dr
   test_case_ref: TC-ACC-021-01
   verification_type: automated
   test_type: integration
-  test_scope: full-integration
+  test_scope: fixture-integration
+  completion_level: fixture_contract
   executed_at: 2026-04-30
   artifact_ref: python -m pytest tests/core tests/domain tests/security tests/requirements tests/agent_runner tests/model_gateway tests/worker tests/e2e -q
   result: pass
@@ -1324,7 +1537,8 @@ Design approved 前，`reviews/design-review.yaml` 必须记录 R8 cold-start dr
   test_case_ref: TC-ACC-022-01
   verification_type: automated
   test_type: integration
-  test_scope: full-integration
+  test_scope: fixture-integration
+  completion_level: fixture_contract
   executed_at: 2026-04-30
   artifact_ref: python -m pytest tests/core tests/domain tests/security tests/requirements tests/agent_runner tests/model_gateway tests/worker tests/e2e -q
   result: pass
@@ -1336,7 +1550,8 @@ Design approved 前，`reviews/design-review.yaml` 必须记录 R8 cold-start dr
   test_case_ref: TC-ACC-006-01
   verification_type: automated
   test_type: e2e
-  test_scope: full-integration
+  test_scope: fixture-integration
+  completion_level: fixture_contract
   executed_at: 2026-05-01
   artifact_ref: python -m pytest tests/core tests/domain tests/security tests/requirements tests/agent_runner tests/model_gateway tests/worker tests/e2e -q && npm --prefix frontend test && npm --prefix frontend run build && route smoke on http://127.0.0.1:8443 for all WI-004 menu and drill-down routes
   result: pass
@@ -1348,7 +1563,8 @@ Design approved 前，`reviews/design-review.yaml` 必须记录 R8 cold-start dr
   test_case_ref: TC-ACC-007-01
   verification_type: automated
   test_type: e2e
-  test_scope: full-integration
+  test_scope: fixture-integration
+  completion_level: fixture_contract
   executed_at: 2026-05-01
   artifact_ref: python -m pytest tests/core tests/domain tests/security tests/requirements tests/agent_runner tests/model_gateway tests/worker tests/e2e -q && npm --prefix frontend test && npm --prefix frontend run build && route smoke on http://127.0.0.1:8443 for governance team, approval, task/manual separation routes
   result: pass
@@ -1360,7 +1576,8 @@ Design approved 前，`reviews/design-review.yaml` 必须记录 R8 cold-start dr
   test_case_ref: TC-ACC-023-01
   verification_type: automated
   test_type: integration
-  test_scope: full-integration
+  test_scope: fixture-integration
+  completion_level: fixture_contract
   executed_at: 2026-04-30
   artifact_ref: python -m pytest tests/core tests/domain tests/security tests/requirements tests/agent_runner tests/model_gateway tests/worker tests/e2e -q
   result: pass
@@ -1372,7 +1589,8 @@ Design approved 前，`reviews/design-review.yaml` 必须记录 R8 cold-start dr
   test_case_ref: TC-ACC-024-01
   verification_type: automated
   test_type: integration
-  test_scope: full-integration
+  test_scope: fixture-integration
+  completion_level: fixture_contract
   executed_at: 2026-04-30
   artifact_ref: python -m pytest tests/core tests/domain tests/security tests/requirements tests/agent_runner tests/model_gateway tests/worker tests/e2e -q
   result: pass
@@ -1384,7 +1602,8 @@ Design approved 前，`reviews/design-review.yaml` 必须记录 R8 cold-start dr
   test_case_ref: TC-ACC-025-01
   verification_type: automated
   test_type: integration
-  test_scope: full-integration
+  test_scope: fixture-integration
+  completion_level: fixture_contract
   executed_at: 2026-04-30
   artifact_ref: python -m pytest tests/core tests/domain tests/security tests/requirements tests/agent_runner tests/model_gateway tests/worker tests/e2e -q
   result: pass
@@ -1396,7 +1615,8 @@ Design approved 前，`reviews/design-review.yaml` 必须记录 R8 cold-start dr
   test_case_ref: TC-ACC-026-01
   verification_type: automated
   test_type: integration
-  test_scope: full-integration
+  test_scope: fixture-integration
+  completion_level: fixture_contract
   executed_at: 2026-04-30
   artifact_ref: python -m pytest tests/core tests/domain tests/security tests/requirements tests/agent_runner tests/model_gateway tests/worker tests/e2e -q
   result: pass
@@ -1408,7 +1628,8 @@ Design approved 前，`reviews/design-review.yaml` 必须记录 R8 cold-start dr
   test_case_ref: TC-ACC-027-01
   verification_type: automated
   test_type: integration
-  test_scope: full-integration
+  test_scope: fixture-integration
+  completion_level: fixture_contract
   executed_at: 2026-04-30
   artifact_ref: python -m pytest tests/core tests/domain tests/security tests/requirements tests/agent_runner tests/model_gateway tests/worker tests/e2e -q
   result: pass
@@ -1420,7 +1641,8 @@ Design approved 前，`reviews/design-review.yaml` 必须记录 R8 cold-start dr
   test_case_ref: TC-ACC-028-01
   verification_type: automated
   test_type: integration
-  test_scope: full-integration
+  test_scope: fixture-integration
+  completion_level: fixture_contract
   executed_at: 2026-04-30
   artifact_ref: python -m pytest tests/core tests/domain tests/security tests/requirements tests/agent_runner tests/model_gateway tests/worker tests/e2e -q
   result: pass
@@ -1432,7 +1654,8 @@ Design approved 前，`reviews/design-review.yaml` 必须记录 R8 cold-start dr
   test_case_ref: TC-ACC-029-01
   verification_type: automated
   test_type: integration
-  test_scope: full-integration
+  test_scope: fixture-integration
+  completion_level: fixture_contract
   executed_at: 2026-04-30
   artifact_ref: python -m pytest tests/core tests/domain tests/security tests/requirements tests/agent_runner tests/model_gateway tests/worker tests/e2e -q
   result: pass
@@ -1444,7 +1667,8 @@ Design approved 前，`reviews/design-review.yaml` 必须记录 R8 cold-start dr
   test_case_ref: TC-ACC-030-01
   verification_type: automated
   test_type: integration
-  test_scope: full-integration
+  test_scope: fixture-integration
+  completion_level: fixture_contract
   executed_at: 2026-04-30
   artifact_ref: python -m pytest tests/core tests/domain tests/security tests/requirements tests/agent_runner tests/model_gateway tests/worker tests/e2e -q
   result: pass
@@ -1456,7 +1680,8 @@ Design approved 前，`reviews/design-review.yaml` 必须记录 R8 cold-start dr
   test_case_ref: TC-ACC-031-01
   verification_type: automated
   test_type: security
-  test_scope: full-integration
+  test_scope: fixture-integration
+  completion_level: fixture_contract
   executed_at: 2026-04-30
   artifact_ref: python -m pytest tests/core tests/domain tests/security tests/requirements tests/agent_runner tests/model_gateway tests/worker tests/e2e -q
   result: pass
@@ -1468,7 +1693,8 @@ Design approved 前，`reviews/design-review.yaml` 必须记录 R8 cold-start dr
   test_case_ref: TC-ACC-032-01
   verification_type: automated
   test_type: static
-  test_scope: full-integration
+  test_scope: fixture-integration
+  completion_level: fixture_contract
   executed_at: 2026-04-30
   artifact_ref: python -m pytest tests/core tests/domain tests/security tests/requirements tests/agent_runner tests/model_gateway tests/worker tests/e2e -q
   result: pass
