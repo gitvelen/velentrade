@@ -222,6 +222,43 @@ def test_api_writes_are_mirrored_into_postgres():
         assert persisted_owner_memory_response.status_code == 200
         assert persisted_owner_memory_response.json()["data"]["memory_type"] == "owner_observation"
 
+        brief_response = client.post(
+            "/api/requests/briefs",
+            json={
+                "raw_text": "请正式研究浦发银行",
+                "source": "owner_command",
+                "requested_scope": {
+                    "intent": "formal_investment_decision",
+                    "asset_scope": "a_share_common_stock",
+                    "target_action": "approve_trade",
+                },
+            },
+        )
+        brief = brief_response.json()["data"]
+        task_response = client.post(
+            f"/api/requests/briefs/{brief['brief_id']}/confirmation",
+            json={"decision": "confirm", "client_seen_version": 1},
+        )
+        assert task_response.status_code == 200
+        workflow_id = task_response.json()["data"]["workflow_id"]
+
+        start_response = client.post(
+            f"/api/workflows/{workflow_id}/commands",
+            json={"command_type": "start_stage", "payload": {"stage": "S0"}, "client_seen_stage_version": 1},
+        )
+        assert start_response.status_code == 200
+
+        persisted_workflow_response = fresh_client.get(f"/api/workflows/{workflow_id}")
+        assert persisted_workflow_response.status_code == 200
+        persisted_workflow = persisted_workflow_response.json()["data"]
+        assert persisted_workflow["workflow_id"] == workflow_id
+        assert persisted_workflow["stages"][0]["stage"] == "S0"
+        assert persisted_workflow["stages"][0]["node_status"] == "running"
+
+        persisted_dossier_response = fresh_client.get(f"/api/workflows/{workflow_id}/dossier")
+        assert persisted_dossier_response.status_code == 200
+        assert persisted_dossier_response.json()["data"]["stage_rail"][0]["node_status"] == "running"
+
         with engine.connect() as connection:
             counts = {
                 "artifact": connection.execute(text("select count(*) from artifact")).scalar_one(),
@@ -232,6 +269,9 @@ def test_api_writes_are_mirrored_into_postgres():
                 "memory_version": connection.execute(text("select count(*) from memory_version")).scalar_one(),
                 "memory_extraction_result": connection.execute(text("select count(*) from memory_extraction_result")).scalar_one(),
                 "memory_relation": connection.execute(text("select count(*) from memory_relation")).scalar_one(),
+                "task_envelope": connection.execute(text("select count(*) from task_envelope")).scalar_one(),
+                "workflow": connection.execute(text("select count(*) from workflow")).scalar_one(),
+                "workflow_stage": connection.execute(text("select count(*) from workflow_stage")).scalar_one(),
             }
 
         assert counts == {
@@ -243,4 +283,7 @@ def test_api_writes_are_mirrored_into_postgres():
             "memory_version": 2,
             "memory_extraction_result": 2,
             "memory_relation": 1,
+            "task_envelope": 1,
+            "workflow": 1,
+            "workflow_stage": 8,
         }

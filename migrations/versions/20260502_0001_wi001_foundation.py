@@ -38,6 +38,101 @@ def upgrade() -> None:
         sa.PrimaryKeyConstraint("artifact_id"),
     )
     op.create_table(
+        "task_envelope",
+        sa.Column("task_id", sa.String(), nullable=False),
+        sa.Column("task_type", sa.String(), nullable=False),
+        sa.Column("priority", sa.String(), nullable=False),
+        sa.Column("owner_role", sa.String(), nullable=False),
+        sa.Column("current_state", sa.String(), nullable=False),
+        sa.Column("blocked_reason", sa.Text(), nullable=True),
+        sa.Column("reason_code", sa.String(), nullable=False),
+        sa.Column("artifact_refs", postgresql.JSONB(astext_type=sa.Text()), nullable=False),
+        sa.Column("created_at", sa.DateTime(timezone=True), nullable=False),
+        sa.Column("updated_at", sa.DateTime(timezone=True), nullable=False),
+        sa.Column("closed_at", sa.DateTime(timezone=True), nullable=True),
+        sa.PrimaryKeyConstraint("task_id"),
+    )
+    op.create_table(
+        "workflow",
+        sa.Column("workflow_id", sa.String(), nullable=False),
+        sa.Column("task_id", sa.String(), nullable=False),
+        sa.Column("workflow_type", sa.String(), nullable=False),
+        sa.Column("current_stage", sa.String(), nullable=False),
+        sa.Column("current_attempt_no", sa.Integer(), nullable=False),
+        sa.Column("status", sa.String(), nullable=False),
+        sa.Column("context_snapshot_id", sa.String(), nullable=False),
+        sa.Column("created_at", sa.DateTime(timezone=True), nullable=False),
+        sa.Column("updated_at", sa.DateTime(timezone=True), nullable=False),
+        sa.PrimaryKeyConstraint("workflow_id"),
+    )
+    op.create_table(
+        "workflow_attempt",
+        sa.Column("workflow_id", sa.String(), nullable=False),
+        sa.Column("attempt_no", sa.Integer(), nullable=False),
+        sa.Column("context_snapshot_id", sa.String(), nullable=False),
+        sa.Column("started_at", sa.DateTime(timezone=True), nullable=False),
+        sa.Column("ended_at", sa.DateTime(timezone=True), nullable=True),
+        sa.Column("status", sa.String(), nullable=False),
+        sa.Column("superseded_by_attempt_no", sa.Integer(), nullable=True),
+        sa.UniqueConstraint("workflow_id", "attempt_no", name="uq_workflow_attempt"),
+    )
+    op.create_table(
+        "workflow_stage",
+        sa.Column("workflow_id", sa.String(), nullable=False),
+        sa.Column("attempt_no", sa.Integer(), nullable=False),
+        sa.Column("stage", sa.String(), nullable=False),
+        sa.Column("node_status", sa.String(), nullable=False),
+        sa.Column("responsible_role", sa.String(), nullable=False),
+        sa.Column("input_artifact_refs", postgresql.JSONB(astext_type=sa.Text()), nullable=False),
+        sa.Column("output_artifact_refs", postgresql.JSONB(astext_type=sa.Text()), nullable=False),
+        sa.Column("reason_code", sa.String(), nullable=True),
+        sa.Column("started_at", sa.DateTime(timezone=True), nullable=True),
+        sa.Column("completed_at", sa.DateTime(timezone=True), nullable=True),
+        sa.Column("stage_version", sa.Integer(), nullable=False),
+        sa.UniqueConstraint("workflow_id", "attempt_no", "stage", name="uq_workflow_stage"),
+    )
+    op.create_table(
+        "reopen_event",
+        sa.Column("reopen_event_id", sa.String(), nullable=False),
+        sa.Column("workflow_id", sa.String(), nullable=False),
+        sa.Column("from_stage", sa.String(), nullable=False),
+        sa.Column("target_stage", sa.String(), nullable=False),
+        sa.Column("reason_code", sa.String(), nullable=False),
+        sa.Column("requested_by", sa.String(), nullable=False),
+        sa.Column("approved_by_or_guard", sa.String(), nullable=False),
+        sa.Column("invalidated_artifacts", postgresql.JSONB(astext_type=sa.Text()), nullable=False),
+        sa.Column("preserved_artifacts", postgresql.JSONB(astext_type=sa.Text()), nullable=False),
+        sa.Column("attempt_no", sa.Integer(), nullable=False),
+        sa.Column("created_at", sa.DateTime(timezone=True), nullable=False),
+        sa.PrimaryKeyConstraint("reopen_event_id"),
+    )
+    op.create_table(
+        "approval_record",
+        sa.Column("approval_id", sa.String(), nullable=False),
+        sa.Column("approval_type", sa.String(), nullable=False),
+        sa.Column("approval_object_ref", sa.String(), nullable=False),
+        sa.Column("trigger_reason", sa.String(), nullable=False),
+        sa.Column("recommended_decision", sa.String(), nullable=False),
+        sa.Column("decision", sa.String(), nullable=False),
+        sa.Column("effective_scope", sa.String(), nullable=False),
+        sa.Column("evidence_refs", postgresql.JSONB(astext_type=sa.Text()), nullable=False),
+        sa.Column("created_at", sa.DateTime(timezone=True), nullable=False),
+        sa.Column("decided_at", sa.DateTime(timezone=True), nullable=True),
+        sa.PrimaryKeyConstraint("approval_id"),
+    )
+    op.create_table(
+        "manual_todo",
+        sa.Column("manual_todo_id", sa.String(), nullable=False),
+        sa.Column("task_id", sa.String(), nullable=False),
+        sa.Column("reason_code", sa.String(), nullable=False),
+        sa.Column("risk_hint", sa.Text(), nullable=True),
+        sa.Column("due_at", sa.DateTime(timezone=True), nullable=True),
+        sa.Column("status", sa.String(), nullable=False),
+        sa.Column("created_at", sa.DateTime(timezone=True), nullable=False),
+        sa.Column("closed_at", sa.DateTime(timezone=True), nullable=True),
+        sa.PrimaryKeyConstraint("manual_todo_id"),
+    )
+    op.create_table(
         "collaboration_session",
         sa.Column("session_id", sa.String(), nullable=False),
         sa.Column("workflow_id", sa.String(), nullable=False),
@@ -357,4 +452,11 @@ def downgrade() -> None:
     op.drop_table("collaboration_command")
     op.drop_table("agent_run")
     op.drop_table("collaboration_session")
+    op.drop_table("manual_todo")
+    op.drop_table("approval_record")
+    op.drop_table("reopen_event")
+    op.drop_table("workflow_stage")
+    op.drop_table("workflow_attempt")
+    op.drop_table("workflow")
+    op.drop_table("task_envelope")
     op.drop_table("artifact")

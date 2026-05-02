@@ -27,6 +27,110 @@ Table(
 )
 
 Table(
+    "task_envelope",
+    Base.metadata,
+    Column("task_id", String, primary_key=True),
+    Column("task_type", String, nullable=False),
+    Column("priority", String, nullable=False),
+    Column("owner_role", String, nullable=False),
+    Column("current_state", String, nullable=False),
+    Column("blocked_reason", Text, nullable=True),
+    Column("reason_code", String, nullable=False),
+    Column("artifact_refs", JSONB, nullable=False),
+    Column("created_at", DateTime(timezone=True), nullable=False),
+    Column("updated_at", DateTime(timezone=True), nullable=False),
+    Column("closed_at", DateTime(timezone=True), nullable=True),
+)
+
+Table(
+    "workflow",
+    Base.metadata,
+    Column("workflow_id", String, primary_key=True),
+    Column("task_id", String, nullable=False),
+    Column("workflow_type", String, nullable=False),
+    Column("current_stage", String, nullable=False),
+    Column("current_attempt_no", Integer, nullable=False),
+    Column("status", String, nullable=False),
+    Column("context_snapshot_id", String, nullable=False),
+    Column("created_at", DateTime(timezone=True), nullable=False),
+    Column("updated_at", DateTime(timezone=True), nullable=False),
+)
+
+Table(
+    "workflow_attempt",
+    Base.metadata,
+    Column("workflow_id", String, nullable=False),
+    Column("attempt_no", Integer, nullable=False),
+    Column("context_snapshot_id", String, nullable=False),
+    Column("started_at", DateTime(timezone=True), nullable=False),
+    Column("ended_at", DateTime(timezone=True), nullable=True),
+    Column("status", String, nullable=False),
+    Column("superseded_by_attempt_no", Integer, nullable=True),
+    UniqueConstraint("workflow_id", "attempt_no", name="uq_workflow_attempt"),
+)
+
+Table(
+    "workflow_stage",
+    Base.metadata,
+    Column("workflow_id", String, nullable=False),
+    Column("attempt_no", Integer, nullable=False),
+    Column("stage", String, nullable=False),
+    Column("node_status", String, nullable=False),
+    Column("responsible_role", String, nullable=False),
+    Column("input_artifact_refs", JSONB, nullable=False),
+    Column("output_artifact_refs", JSONB, nullable=False),
+    Column("reason_code", String, nullable=True),
+    Column("started_at", DateTime(timezone=True), nullable=True),
+    Column("completed_at", DateTime(timezone=True), nullable=True),
+    Column("stage_version", Integer, nullable=False),
+    UniqueConstraint("workflow_id", "attempt_no", "stage", name="uq_workflow_stage"),
+)
+
+Table(
+    "reopen_event",
+    Base.metadata,
+    Column("reopen_event_id", String, primary_key=True),
+    Column("workflow_id", String, nullable=False),
+    Column("from_stage", String, nullable=False),
+    Column("target_stage", String, nullable=False),
+    Column("reason_code", String, nullable=False),
+    Column("requested_by", String, nullable=False),
+    Column("approved_by_or_guard", String, nullable=False),
+    Column("invalidated_artifacts", JSONB, nullable=False),
+    Column("preserved_artifacts", JSONB, nullable=False),
+    Column("attempt_no", Integer, nullable=False),
+    Column("created_at", DateTime(timezone=True), nullable=False),
+)
+
+Table(
+    "approval_record",
+    Base.metadata,
+    Column("approval_id", String, primary_key=True),
+    Column("approval_type", String, nullable=False),
+    Column("approval_object_ref", String, nullable=False),
+    Column("trigger_reason", String, nullable=False),
+    Column("recommended_decision", String, nullable=False),
+    Column("decision", String, nullable=False),
+    Column("effective_scope", String, nullable=False),
+    Column("evidence_refs", JSONB, nullable=False),
+    Column("created_at", DateTime(timezone=True), nullable=False),
+    Column("decided_at", DateTime(timezone=True), nullable=True),
+)
+
+Table(
+    "manual_todo",
+    Base.metadata,
+    Column("manual_todo_id", String, primary_key=True),
+    Column("task_id", String, nullable=False),
+    Column("reason_code", String, nullable=False),
+    Column("risk_hint", Text, nullable=True),
+    Column("due_at", DateTime(timezone=True), nullable=True),
+    Column("status", String, nullable=False),
+    Column("created_at", DateTime(timezone=True), nullable=False),
+    Column("closed_at", DateTime(timezone=True), nullable=True),
+)
+
+Table(
     "collaboration_session",
     Base.metadata,
     Column("session_id", String, primary_key=True),

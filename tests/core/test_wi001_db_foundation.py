@@ -12,6 +12,13 @@ def test_sqlalchemy_metadata_contains_wi001_foundation_tables_and_columns():
     table_names = set(Base.metadata.tables)
     assert {
         "artifact",
+        "task_envelope",
+        "workflow",
+        "workflow_attempt",
+        "workflow_stage",
+        "reopen_event",
+        "approval_record",
+        "manual_todo",
         "collaboration_session",
         "agent_run",
         "collaboration_command",
@@ -61,6 +68,19 @@ def test_sqlalchemy_metadata_contains_wi001_foundation_tables_and_columns():
         "updated_at",
     }.issubset(memory_columns)
 
+    workflow_stage_columns = set(Base.metadata.tables["workflow_stage"].columns.keys())
+    assert {
+        "workflow_id",
+        "attempt_no",
+        "stage",
+        "node_status",
+        "responsible_role",
+        "input_artifact_refs",
+        "output_artifact_refs",
+        "reason_code",
+        "stage_version",
+    }.issubset(workflow_stage_columns)
+
 
 def test_alembic_is_configured_with_a_wi001_foundation_revision():
     config = Config(str(Path("alembic.ini")))
@@ -73,5 +93,7 @@ def test_alembic_is_configured_with_a_wi001_foundation_revision():
     assert revision is not None
     text = Path(revision.path).read_text(encoding="utf-8")
     assert "artifact" in text
+    assert "task_envelope" in text
+    assert "workflow_stage" in text
     assert "collaboration_session" in text
     assert "memory_item" in text

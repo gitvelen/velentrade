@@ -28,6 +28,102 @@ class SqlAlchemyGatewayMirror:
         self.engine = engine
         self.tables = Base.metadata.tables
 
+    def mirror_task(self, task) -> None:
+        payload = {
+            "task_id": task.task_id,
+            "task_type": task.task_type,
+            "priority": task.priority,
+            "owner_role": task.owner_role,
+            "current_state": task.current_state,
+            "blocked_reason": task.blocked_reason,
+            "reason_code": task.reason_code,
+            "artifact_refs": list(task.artifact_refs),
+            "created_at": _as_datetime(task.created_at),
+            "updated_at": _as_datetime(task.updated_at),
+            "closed_at": _as_datetime(task.closed_at),
+        }
+        table = self.tables["task_envelope"]
+        with self.engine.begin() as connection:
+            connection.execute(table.delete().where(table.c.task_id == task.task_id))
+            connection.execute(table.insert(), [payload])
+
+    def mirror_workflow(self, workflow) -> None:
+        workflow_table = self.tables["workflow"]
+        attempt_table = self.tables["workflow_attempt"]
+        stage_table = self.tables["workflow_stage"]
+        with self.engine.begin() as connection:
+            connection.execute(stage_table.delete().where(stage_table.c.workflow_id == workflow.workflow_id))
+            connection.execute(attempt_table.delete().where(attempt_table.c.workflow_id == workflow.workflow_id))
+            connection.execute(workflow_table.delete().where(workflow_table.c.workflow_id == workflow.workflow_id))
+            connection.execute(
+                workflow_table.insert(),
+                [
+                    {
+                        "workflow_id": workflow.workflow_id,
+                        "task_id": workflow.task_id,
+                        "workflow_type": workflow.workflow_type,
+                        "current_stage": workflow.current_stage,
+                        "current_attempt_no": workflow.current_attempt_no,
+                        "status": workflow.status,
+                        "context_snapshot_id": workflow.context_snapshot_id,
+                        "created_at": _as_datetime(workflow.created_at),
+                        "updated_at": _as_datetime(workflow.updated_at),
+                    }
+                ],
+            )
+            connection.execute(
+                attempt_table.insert(),
+                [
+                    {
+                        "workflow_id": workflow.workflow_id,
+                        "attempt_no": workflow.current_attempt_no,
+                        "context_snapshot_id": workflow.context_snapshot_id,
+                        "started_at": _as_datetime(workflow.created_at),
+                        "ended_at": None,
+                        "status": workflow.status,
+                        "superseded_by_attempt_no": None,
+                    }
+                ],
+            )
+            connection.execute(
+                stage_table.insert(),
+                [
+                    {
+                        "workflow_id": stage.workflow_id,
+                        "attempt_no": stage.attempt_no,
+                        "stage": stage.stage,
+                        "node_status": stage.node_status,
+                        "responsible_role": stage.responsible_role,
+                        "input_artifact_refs": list(stage.input_artifact_refs),
+                        "output_artifact_refs": list(stage.output_artifact_refs),
+                        "reason_code": stage.reason_code,
+                        "started_at": _as_datetime(stage.started_at),
+                        "completed_at": _as_datetime(stage.completed_at),
+                        "stage_version": stage.stage_version,
+                    }
+                    for stage in workflow.stages
+                ],
+            )
+
+    def mirror_reopen_event(self, event) -> None:
+        payload = {
+            "reopen_event_id": event.reopen_event_id,
+            "workflow_id": event.workflow_id,
+            "from_stage": event.from_stage,
+            "target_stage": event.target_stage,
+            "reason_code": event.reason_code,
+            "requested_by": event.requested_by,
+            "approved_by_or_guard": event.approved_by_or_guard,
+            "invalidated_artifacts": list(event.invalidated_artifacts),
+            "preserved_artifacts": list(event.preserved_artifacts),
+            "attempt_no": event.attempt_no,
+            "created_at": _as_datetime(event.created_at),
+        }
+        table = self.tables["reopen_event"]
+        with self.engine.begin() as connection:
+            connection.execute(table.delete().where(table.c.reopen_event_id == event.reopen_event_id))
+            connection.execute(table.insert(), [payload])
+
     def mirror_artifact(
         self,
         artifact_row: dict[str, Any],
@@ -276,6 +372,45 @@ class SqlAlchemyGatewayMirror:
         artifact["created_at"] = _as_iso(artifact["created_at"])
         return artifact
 
+    def list_task_read_models(self) -> list[dict[str, Any]]:
+        table = self.tables["task_envelope"]
+        with self.engine.connect() as connection:
+            rows = connection.execute(select(table).order_by(table.c.created_at.asc())).mappings().all()
+        return [self._task_row_to_read_model(row) for row in rows]
+
+    def get_task_read_model(self, task_id: str) -> dict[str, Any] | None:
+        table = self.tables["task_envelope"]
+        with self.engine.connect() as connection:
+            row = connection.execute(select(table).where(table.c.task_id == task_id)).mappings().one_or_none()
+        return self._task_row_to_read_model(row) if row is not None else None
+
+    def get_workflow_read_model(self, workflow_id: str) -> dict[str, Any] | None:
+        workflow_table = self.tables["workflow"]
+        stage_table = self.tables["workflow_stage"]
+        with self.engine.connect() as connection:
+            workflow = connection.execute(
+                select(workflow_table).where(workflow_table.c.workflow_id == workflow_id)
+            ).mappings().one_or_none()
+            if workflow is None:
+                return None
+            stages = connection.execute(
+                select(stage_table)
+                .where(stage_table.c.workflow_id == workflow_id)
+                .order_by(stage_table.c.attempt_no.asc(), stage_table.c.stage.asc())
+            ).mappings().all()
+        return {
+            "workflow_id": workflow["workflow_id"],
+            "task_id": workflow["task_id"],
+            "workflow_type": workflow["workflow_type"],
+            "current_stage": workflow["current_stage"],
+            "current_attempt_no": workflow["current_attempt_no"],
+            "status": workflow["status"],
+            "context_snapshot_id": workflow["context_snapshot_id"],
+            "created_at": _as_iso(workflow["created_at"]),
+            "updated_at": _as_iso(workflow["updated_at"]),
+            "stages": [self._stage_row_to_read_model(stage) for stage in stages],
+        }
+
     def list_events(self, workflow_id: str) -> list[dict[str, Any]]:
         with self.engine.connect() as connection:
             rows = connection.execute(
@@ -371,6 +506,36 @@ class SqlAlchemyGatewayMirror:
             "why_included": "fenced_background_context_only",
             "created_at": _as_iso(item["created_at"]),
             "updated_at": _as_iso(item["updated_at"]),
+        }
+
+    def _task_row_to_read_model(self, row) -> dict[str, Any]:
+        return {
+            "task_id": row["task_id"],
+            "task_type": row["task_type"],
+            "priority": row["priority"],
+            "owner_role": row["owner_role"],
+            "current_state": row["current_state"],
+            "reason_code": row["reason_code"],
+            "artifact_refs": list(row["artifact_refs"] or []),
+            "created_at": _as_iso(row["created_at"]),
+            "updated_at": _as_iso(row["updated_at"]),
+            "blocked_reason": row["blocked_reason"],
+            "closed_at": _as_iso(row["closed_at"]),
+        }
+
+    def _stage_row_to_read_model(self, row) -> dict[str, Any]:
+        return {
+            "workflow_id": row["workflow_id"],
+            "attempt_no": row["attempt_no"],
+            "stage": row["stage"],
+            "node_status": row["node_status"],
+            "responsible_role": row["responsible_role"],
+            "input_artifact_refs": list(row["input_artifact_refs"] or []),
+            "output_artifact_refs": list(row["output_artifact_refs"] or []),
+            "reason_code": row["reason_code"],
+            "started_at": _as_iso(row["started_at"]),
+            "completed_at": _as_iso(row["completed_at"]),
+            "stage_version": row["stage_version"],
         }
 
     def _write_audit_and_outbox(

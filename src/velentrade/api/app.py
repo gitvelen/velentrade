@@ -321,6 +321,79 @@ def _investment_dossier_read_model(api_runtime: ApiRuntime, workflow) -> dict[st
     }
 
 
+def _investment_dossier_from_workflow_payload(
+    workflow: dict[str, Any],
+    *,
+    task: dict[str, Any] | None,
+    handoffs: list[dict[str, Any]],
+) -> dict[str, Any]:
+    stages = workflow.get("stages", [])
+    return {
+        "workflow": {
+            "workflow_id": workflow["workflow_id"],
+            "task_id": workflow["task_id"],
+            "workflow_type": workflow["workflow_type"],
+            "title": "A 股投研流程",
+            "current_stage": workflow["current_stage"],
+            "state": workflow["status"],
+            "current_attempt_no": workflow["current_attempt_no"],
+            "context_snapshot_id": workflow["context_snapshot_id"],
+        },
+        "stage_rail": [
+            {
+                "stage": stage["stage"],
+                "node_status": stage["node_status"],
+                "responsible_role": stage["responsible_role"],
+                "reason_code": stage["reason_code"],
+                "artifact_count": len(stage["output_artifact_refs"]),
+                "reopen_marker": False,
+                "stage_version": stage["stage_version"],
+            }
+            for stage in stages
+        ],
+        "request_brief": task,
+        "data_readiness": {
+            "quality_band": "pending",
+            "decision_core_status": "pending",
+            "execution_core_status": "blocked",
+            "reason_code": "execution_core_blocked_no_trade",
+        },
+        "ic_context": {"context_snapshot_id": workflow["context_snapshot_id"], "status": "pending"},
+        "chair_brief": {
+            "decision_question": "等待 S1/S2 产物后形成 CIO Chair Brief",
+            "key_tensions": [],
+            "no_preset_decision_attestation": True,
+        },
+        "analyst_stance_matrix": [],
+        "role_payload_drilldowns": [],
+        "consensus": {"consensus_score": None, "action_conviction": None, "status": "pending"},
+        "debate": {"debate_required": False, "rounds": [], "retained_hard_dissent": False},
+        "decision_service": {"status": "pending", "reason_codes": []},
+        "cio_decision": {"status": "pending"},
+        "decision_packet": {"status": "pending", "evidence_refs": []},
+        "decision_guard": {"status": "pending", "owner_exception_or_reopen": None},
+        "optimizer_deviation": {"status": "pending"},
+        "risk_review": {"status": "pending", "verdict": None},
+        "approval": {"status": "not_required", "approval_id": None},
+        "paper_execution": {"status": "blocked", "reason_code": "execution_core_blocked_no_trade"},
+        "attribution": {"status": "pending"},
+        "handoffs": handoffs,
+        "evidence_map": {
+            "artifact_refs": [ref for stage in stages for ref in stage["output_artifact_refs"]],
+            "data_refs": [],
+            "source_quality": [],
+            "conflict_refs": [],
+            "supporting_evidence_only_refs": [],
+        },
+        "forbidden_actions": {
+            "risk_rejected_no_override": {"action_visible": False, "reason_code": "risk_rejected_no_override"},
+            "execution_core_blocked_no_trade": {"action_visible": False, "reason_code": "execution_core_blocked_no_trade"},
+            "non_a_asset_no_trade": {"action_visible": False, "reason_code": "non_a_asset_no_trade"},
+            "low_action_no_execution": {"action_visible": False, "reason_code": "low_action_no_execution"},
+        },
+    }
+
+
 def _approval_read_model(approval: ApprovalRecord) -> dict[str, Any]:
     return {
         "approval_id": approval.approval_id,
@@ -525,21 +598,32 @@ def build_app(runtime: ApiRuntime | None = None) -> FastAPI:
         task = api_runtime.workflow.confirm_request_brief(brief, owner_decision=owner_decision)
         api_runtime.confirmed_brief_ids.add(brief_id)
         workflow_id = None
+        if api_runtime.gateway.store is not None:
+            api_runtime.gateway.store.mirror_task(task)
         if task.current_state == "ready" and task.task_type == "investment_workflow":
             workflow = api_runtime.workflow.create_investment_workflow(task, context_snapshot_id="ctx-v1")
             workflow_id = workflow.workflow_id
+            if api_runtime.gateway.store is not None:
+                api_runtime.gateway.store.mirror_workflow(workflow)
         return _success(_task_read_model(task, workflow_id=workflow_id))
 
     @app.get("/api/tasks")
     def get_tasks():
+        tasks = [_task_read_model(task) for task in api_runtime.workflow.tasks.values()]
+        if not tasks and api_runtime.gateway.store is not None:
+            tasks = api_runtime.gateway.store.list_task_read_models()
         return _success({
-            "task_center": [_task_read_model(task) for task in api_runtime.workflow.tasks.values()],
+            "task_center": tasks,
         })
 
     @app.get("/api/workflows/{workflow_id}")
     def get_workflow(workflow_id: str):
         workflow = api_runtime.workflow.workflows.get(workflow_id)
         if workflow is None:
+            if api_runtime.gateway.store is not None:
+                persisted_workflow = api_runtime.gateway.store.get_workflow_read_model(workflow_id)
+                if persisted_workflow is not None:
+                    return _success(persisted_workflow)
             return _error(404, "NOT_FOUND", f"Unknown workflow: {workflow_id}")
         return _success(_workflow_read_model(workflow))
 
@@ -558,6 +642,8 @@ def build_app(runtime: ApiRuntime | None = None) -> FastAPI:
 
         if request.command_type == "start_stage":
             stage = api_runtime.workflow.start_stage(workflow_id, stage_name)
+            if api_runtime.gateway.store is not None:
+                api_runtime.gateway.store.mirror_workflow(api_runtime.workflow.workflows[workflow_id])
             if stage.node_status == "blocked":
                 return _error(409, "STAGE_GUARD_FAILED", "Workflow stage guard blocked command.", reason_code=stage.reason_code)
             return _success(_workflow_command_result(request.command_type, stage))
@@ -565,6 +651,8 @@ def build_app(runtime: ApiRuntime | None = None) -> FastAPI:
             raw_artifact_refs = request.payload.get("artifact_refs", [])
             artifact_refs = [str(ref) for ref in raw_artifact_refs] if isinstance(raw_artifact_refs, list) else []
             stage = api_runtime.workflow.complete_stage(workflow_id, stage_name, artifact_refs)
+            if api_runtime.gateway.store is not None:
+                api_runtime.gateway.store.mirror_workflow(api_runtime.workflow.workflows[workflow_id])
             if stage.node_status == "blocked":
                 return _error(409, "STAGE_GUARD_FAILED", "Workflow stage guard blocked command.", reason_code=stage.reason_code)
             return _success(_workflow_command_result(request.command_type, stage))
@@ -579,6 +667,8 @@ def build_app(runtime: ApiRuntime | None = None) -> FastAPI:
                 invalidated_artifacts=[str(ref) for ref in request.payload.get("invalidated_artifacts", [])],
                 preserved_artifacts=[str(ref) for ref in request.payload.get("preserved_artifacts", [])],
             )
+            if api_runtime.gateway.store is not None:
+                api_runtime.gateway.store.mirror_reopen_event(event)
             return _success({
                 "accepted": True,
                 "command_type": request.command_type,
@@ -594,6 +684,14 @@ def build_app(runtime: ApiRuntime | None = None) -> FastAPI:
     def get_investment_dossier(workflow_id: str):
         workflow = api_runtime.workflow.workflows.get(workflow_id)
         if workflow is None:
+            if api_runtime.gateway.store is not None:
+                persisted_workflow = api_runtime.gateway.store.get_workflow_read_model(workflow_id)
+                if persisted_workflow is not None:
+                    return _success(_investment_dossier_from_workflow_payload(
+                        persisted_workflow,
+                        task=api_runtime.gateway.store.get_task_read_model(persisted_workflow["task_id"]),
+                        handoffs=api_runtime.gateway.store.list_handoffs(workflow_id),
+                    ))
             return _error(404, "NOT_FOUND", f"Unknown workflow: {workflow_id}")
         return _success(_investment_dossier_read_model(api_runtime, workflow))
 

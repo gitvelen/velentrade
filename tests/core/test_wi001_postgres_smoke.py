@@ -83,12 +83,15 @@ def test_postgres_migration_and_seed_smoke():
                     text(
                         "select table_name from information_schema.tables "
                         "where table_schema = 'public' and table_name in "
-                        "('artifact','memory_item','context_snapshot','model_profile','tool_profile','skill_package','skill_package_version')"
+                        "('artifact','task_envelope','workflow','workflow_stage','memory_item','context_snapshot','model_profile','tool_profile','skill_package','skill_package_version')"
                     )
                 )
             }
             assert {
                 "artifact",
+                "task_envelope",
+                "workflow",
+                "workflow_stage",
                 "memory_item",
                 "context_snapshot",
                 "model_profile",
