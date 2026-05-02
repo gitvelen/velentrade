@@ -20,6 +20,13 @@ class RequestBriefConfirmationRequest(BaseModel):
     client_seen_version: int = Field(ge=1)
 
 
+class WorkflowCommandRequest(BaseModel):
+    command_type: str
+    reason_code: str | None = None
+    payload: dict[str, Any]
+    client_seen_stage_version: int = Field(ge=1)
+
+
 class ApprovalDecisionRequest(BaseModel):
     decision: str
     comment: str | None = None

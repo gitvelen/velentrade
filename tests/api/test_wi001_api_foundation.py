@@ -283,6 +283,79 @@ def test_request_brief_confirmation_and_task_workflow_read_api():
     assert cancel_response.status_code == 409
 
 
+def test_workflow_command_and_dossier_api_surfaces_stage_guard_feedback():
+    client = TestClient(build_app())
+
+    brief_response = client.post(
+        "/api/requests/briefs",
+        json={
+            "raw_text": "请正式研究浦发银行",
+            "source": "owner_command",
+            "requested_scope": {
+                "intent": "formal_investment_decision",
+                "asset_scope": "a_share_common_stock",
+                "target_action": "approve_trade",
+            },
+        },
+    )
+    brief = brief_response.json()["data"]
+    task = client.post(
+        f"/api/requests/briefs/{brief['brief_id']}/confirmation",
+        json={"decision": "confirm", "client_seen_version": 1},
+    ).json()["data"]
+    workflow_id = task["workflow_id"]
+
+    dossier_response = client.get(f"/api/workflows/{workflow_id}/dossier")
+    assert dossier_response.status_code == 200
+    dossier = dossier_response.json()["data"]
+    assert dossier["workflow"]["workflow_id"] == workflow_id
+    assert len(dossier["stage_rail"]) == 8
+    assert dossier["stage_rail"][0]["stage"] == "S0"
+    assert dossier["stage_rail"][0]["stage_version"] == 1
+    assert dossier["forbidden_actions"]["execution_core_blocked_no_trade"]["action_visible"] is False
+
+    start_response = client.post(
+        f"/api/workflows/{workflow_id}/commands",
+        json={
+            "command_type": "start_stage",
+            "payload": {"stage": "S0"},
+            "client_seen_stage_version": 1,
+        },
+    )
+    assert start_response.status_code == 200
+    start_payload = start_response.json()["data"]
+    assert start_payload["accepted"] is True
+    assert start_payload["stage"]["node_status"] == "running"
+    assert start_payload["stage"]["stage_version"] == 2
+
+    stale_response = client.post(
+        f"/api/workflows/{workflow_id}/commands",
+        json={
+            "command_type": "complete_stage",
+            "payload": {"stage": "S0", "artifact_refs": ["artifact-s0-001"]},
+            "client_seen_stage_version": 1,
+        },
+    )
+    assert stale_response.status_code == 409
+    assert stale_response.json()["error"]["code"] == "SNAPSHOT_MISMATCH"
+
+    guard_response = client.post(
+        f"/api/workflows/{workflow_id}/commands",
+        json={
+            "command_type": "complete_stage",
+            "payload": {"stage": "S0", "artifact_refs": []},
+            "client_seen_stage_version": 2,
+        },
+    )
+    assert guard_response.status_code == 409
+    assert guard_response.json()["error"]["code"] == "STAGE_GUARD_FAILED"
+    assert guard_response.json()["error"]["reason_code"] == "missing_required_artifact"
+
+    updated_dossier = client.get(f"/api/workflows/{workflow_id}/dossier").json()["data"]
+    assert updated_dossier["stage_rail"][0]["node_status"] == "blocked"
+    assert updated_dossier["stage_rail"][0]["reason_code"] == "missing_required_artifact"
+
+
 def test_governance_finance_knowledge_devops_and_approval_api_surfaces():
     client = TestClient(build_app())
 

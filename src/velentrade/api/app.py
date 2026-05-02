@@ -38,6 +38,7 @@ from .schemas import (
     GatewayMemoryWriteRequest,
     MemoryRelationWriteRequest,
     RequestBriefConfirmationRequest,
+    WorkflowCommandRequest,
 )
 
 
@@ -211,6 +212,112 @@ def _workflow_read_model(workflow) -> dict[str, Any]:
             }
             for stage in workflow.stages
         ],
+    }
+
+
+def _stage_read_model(stage) -> dict[str, Any]:
+    return {
+        "workflow_id": stage.workflow_id,
+        "attempt_no": stage.attempt_no,
+        "stage": stage.stage,
+        "node_status": stage.node_status,
+        "responsible_role": stage.responsible_role,
+        "input_artifact_refs": list(stage.input_artifact_refs),
+        "output_artifact_refs": list(stage.output_artifact_refs),
+        "reason_code": stage.reason_code,
+        "started_at": stage.started_at,
+        "completed_at": stage.completed_at,
+        "stage_version": stage.stage_version,
+    }
+
+
+def _workflow_stage_by_name(workflow, stage_name: str):
+    return next((stage for stage in workflow.stages if stage.stage == stage_name), None)
+
+
+def _workflow_command_result(command_type: str, stage, *, object_type: str = "workflow_stage", object_id: str | None = None) -> dict[str, Any]:
+    return {
+        "accepted": True,
+        "command_type": command_type,
+        "object_type": object_type,
+        "object_id": object_id or f"{stage.workflow_id}:{stage.stage}:{stage.stage_version}",
+        "stage": _stage_read_model(stage),
+        "reason_code": stage.reason_code,
+        "trace_id": new_id("trace"),
+    }
+
+
+def _investment_dossier_read_model(api_runtime: ApiRuntime, workflow) -> dict[str, Any]:
+    task = api_runtime.workflow.tasks.get(workflow.task_id)
+    handoffs = [
+        _serialize(handoff)
+        for handoff in api_runtime.gateway.handoff_ledger
+        if handoff.workflow_id == workflow.workflow_id
+    ]
+    stage_rail = [
+        {
+            "stage": stage.stage,
+            "node_status": stage.node_status,
+            "responsible_role": stage.responsible_role,
+            "reason_code": stage.reason_code,
+            "artifact_count": len(stage.output_artifact_refs),
+            "reopen_marker": any(event.target_stage == stage.stage for event in api_runtime.workflow.reopen_events),
+            "stage_version": stage.stage_version,
+        }
+        for stage in workflow.stages
+    ]
+    return {
+        "workflow": {
+            "workflow_id": workflow.workflow_id,
+            "task_id": workflow.task_id,
+            "workflow_type": workflow.workflow_type,
+            "title": "A 股投研流程",
+            "current_stage": workflow.current_stage,
+            "state": workflow.status,
+            "current_attempt_no": workflow.current_attempt_no,
+            "context_snapshot_id": workflow.context_snapshot_id,
+        },
+        "stage_rail": stage_rail,
+        "request_brief": _task_read_model(task) if task is not None else None,
+        "data_readiness": {
+            "quality_band": "pending",
+            "decision_core_status": "pending",
+            "execution_core_status": "blocked",
+            "reason_code": "execution_core_blocked_no_trade",
+        },
+        "ic_context": {"context_snapshot_id": workflow.context_snapshot_id, "status": "pending"},
+        "chair_brief": {
+            "decision_question": "等待 S1/S2 产物后形成 CIO Chair Brief",
+            "key_tensions": [],
+            "no_preset_decision_attestation": True,
+        },
+        "analyst_stance_matrix": [],
+        "role_payload_drilldowns": [],
+        "consensus": {"consensus_score": None, "action_conviction": None, "status": "pending"},
+        "debate": {"debate_required": False, "rounds": [], "retained_hard_dissent": False},
+        "decision_service": {"status": "pending", "reason_codes": []},
+        "cio_decision": {"status": "pending"},
+        "decision_packet": {"status": "pending", "evidence_refs": []},
+        "decision_guard": {"status": "pending", "owner_exception_or_reopen": None},
+        "optimizer_deviation": {"status": "pending"},
+        "risk_review": {"status": "pending", "verdict": None},
+        "approval": {"status": "not_required", "approval_id": None},
+        "paper_execution": {"status": "blocked", "reason_code": "execution_core_blocked_no_trade"},
+        "attribution": {"status": "pending"},
+        "handoffs": handoffs,
+        "evidence_map": {
+            "artifact_refs": [ref for stage in workflow.stages for ref in stage.output_artifact_refs],
+            "data_refs": [],
+            "source_quality": [],
+            "conflict_refs": [],
+            "supporting_evidence_only_refs": [],
+        },
+        "forbidden_actions": {
+            "risk_rejected_no_override": {"action_visible": False, "reason_code": "risk_rejected_no_override"},
+            "execution_core_blocked_no_trade": {"action_visible": False, "reason_code": "execution_core_blocked_no_trade"},
+            "non_a_asset_no_trade": {"action_visible": False, "reason_code": "non_a_asset_no_trade"},
+            "low_action_no_execution": {"action_visible": False, "reason_code": "low_action_no_execution"},
+        },
     }
 
 
@@ -435,6 +542,60 @@ def build_app(runtime: ApiRuntime | None = None) -> FastAPI:
         if workflow is None:
             return _error(404, "NOT_FOUND", f"Unknown workflow: {workflow_id}")
         return _success(_workflow_read_model(workflow))
+
+    @app.post("/api/workflows/{workflow_id}/commands")
+    def run_workflow_command(workflow_id: str, request: WorkflowCommandRequest):
+        workflow = api_runtime.workflow.workflows.get(workflow_id)
+        if workflow is None:
+            return _error(404, "NOT_FOUND", f"Unknown workflow: {workflow_id}")
+
+        stage_name = str(request.payload.get("stage", workflow.current_stage))
+        current_stage = _workflow_stage_by_name(workflow, stage_name)
+        if current_stage is None:
+            return _error(422, "VALIDATION_ERROR", f"Unknown stage: {stage_name}", reason_code="unknown_stage")
+        if current_stage.stage_version != request.client_seen_stage_version:
+            return _error(409, "SNAPSHOT_MISMATCH", "Workflow stage version changed.", reason_code="stage_version_mismatch")
+
+        if request.command_type == "start_stage":
+            stage = api_runtime.workflow.start_stage(workflow_id, stage_name)
+            if stage.node_status == "blocked":
+                return _error(409, "STAGE_GUARD_FAILED", "Workflow stage guard blocked command.", reason_code=stage.reason_code)
+            return _success(_workflow_command_result(request.command_type, stage))
+        if request.command_type == "complete_stage":
+            raw_artifact_refs = request.payload.get("artifact_refs", [])
+            artifact_refs = [str(ref) for ref in raw_artifact_refs] if isinstance(raw_artifact_refs, list) else []
+            stage = api_runtime.workflow.complete_stage(workflow_id, stage_name, artifact_refs)
+            if stage.node_status == "blocked":
+                return _error(409, "STAGE_GUARD_FAILED", "Workflow stage guard blocked command.", reason_code=stage.reason_code)
+            return _success(_workflow_command_result(request.command_type, stage))
+        if request.command_type == "request_reopen":
+            target_stage = str(request.payload.get("target_stage", stage_name))
+            event = api_runtime.workflow.request_reopen(
+                workflow_id=workflow_id,
+                from_stage=stage_name,
+                target_stage=target_stage,
+                reason_code=request.reason_code or str(request.payload.get("reason_code", "owner_requested_reopen")),
+                requested_by=str(request.payload.get("requested_by", "owner")),
+                invalidated_artifacts=[str(ref) for ref in request.payload.get("invalidated_artifacts", [])],
+                preserved_artifacts=[str(ref) for ref in request.payload.get("preserved_artifacts", [])],
+            )
+            return _success({
+                "accepted": True,
+                "command_type": request.command_type,
+                "object_type": "reopen_event",
+                "object_id": event.reopen_event_id,
+                "reopen_event": event,
+                "reason_code": event.reason_code,
+                "trace_id": new_id("trace"),
+            })
+        return _error(403, "COMMAND_NOT_ALLOWED", "Unsupported workflow command.", reason_code="unsupported_workflow_command")
+
+    @app.get("/api/workflows/{workflow_id}/dossier")
+    def get_investment_dossier(workflow_id: str):
+        workflow = api_runtime.workflow.workflows.get(workflow_id)
+        if workflow is None:
+            return _error(404, "NOT_FOUND", f"Unknown workflow: {workflow_id}")
+        return _success(_investment_dossier_read_model(api_runtime, workflow))
 
     @app.post("/api/collaboration/commands")
     def create_collaboration_command(request: CollaborationCommandRequest):
