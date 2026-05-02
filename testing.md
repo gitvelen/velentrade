@@ -1064,6 +1064,32 @@ Design approved 前，`reviews/design-review.yaml` 必须记录 R8 cold-start dr
   residual_risk: Reflection/knowledge report envelope now fails when no-hot-patch guard evidence or failures fail; still uses deterministic in-memory fixtures and no Owner acceptance.
   reopen_required: false
 
+- acceptance_ref: ACC-023
+  run_id: RUN-WI005-ACC023-A-SHARE-SYMBOL-GUARD-20260502
+  test_case_ref: TC-ACC-023-01
+  verification_type: automated
+  test_type: regression
+  test_scope: branch-local
+  completion_level: in_memory_domain
+  executed_at: 2026-05-02
+  artifact_ref: python -m pytest tests/domain/finance tests/domain/attribution tests/domain/knowledge -q; python -m compileall src/velentrade
+  result: pass
+  residual_risk: Finance trade boundary now rejects asset_type=a_share with non-numeric exchange-suffixed refs such as AAPL.SH and keeps them projected to planning/risk/manual_todo only; still not a database/API/browser integration run.
+  reopen_required: false
+
+- acceptance_ref: ACC-027
+  run_id: RUN-WI005-ACC027-NON-A-RESEARCH-BOUNDARY-20260502
+  test_case_ref: TC-ACC-027-01
+  verification_type: automated
+  test_type: regression
+  test_scope: branch-local
+  completion_level: in_memory_domain
+  executed_at: 2026-05-02
+  artifact_ref: python -m pytest tests/domain/finance tests/domain/attribution tests/domain/knowledge -q; python -m compileall src/velentrade
+  result: pass
+  residual_risk: Researcher daily brief now keeps high-severity non-A symbols such as GOLD.CNY at P1 supporting-evidence-only instead of P0 formal IC style routing; still uses deterministic in-memory fixtures.
+  reopen_required: false
+
 - acceptance_ref: ACC-029
   run_id: RUN-WI006-ACC029-20260430
   test_case_ref: TC-ACC-029-01
