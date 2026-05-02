@@ -1,5 +1,6 @@
 from velentrade.domain.investment.execution.paper_execution import ExecutionCoreSnapshot, MinuteBar, PaperExecutionService, PaperOrder
 from velentrade.domain.investment.execution.wi009_reports import build_paper_execution_report
+from velentrade.domain.investment.paper_account.wi009_reports import _envelope
 
 
 def test_paper_execution_uses_vwap_fees_slippage_and_t_plus_one():
@@ -38,6 +39,17 @@ def test_cache_hit_cannot_create_new_paper_execution_authorization():
 
     assert receipt.fill_status == "blocked"
     assert receipt.reason_code == "cache_execution_authorization_denied"
+
+
+def test_non_a_asset_symbol_cannot_create_paper_execution():
+    service = PaperExecutionService()
+    order = PaperOrder("order-gold", "wf-1", "memo-1", "GOLD.CNY", "buy", 10_000, {"max_price": 10.5}, "normal", "exec-core-gold")
+
+    receipt = service.execute(order, ExecutionCoreSnapshot.pass_with_bars(_bars()))
+
+    assert receipt.fill_status == "blocked"
+    assert receipt.reason_code == "non_a_asset_no_paper_execution"
+    assert receipt.fill_price is None
 
 
 def test_zero_volume_falls_back_to_twap_and_sell_applies_stamp_tax():
@@ -89,6 +101,29 @@ def test_paper_execution_report_has_contract_payload():
         "t_plus_one_state",
     }
     assert report["cache_execution_authorization_block"] == "cache_execution_authorization_denied"
+
+
+def test_paper_execution_report_fails_when_guard_or_failure_fails():
+    report = _envelope(
+        "paper_execution_report.json",
+        "TC-ACC-021-01",
+        "ACC-021",
+        "REQ-021",
+        {"probe": "negative"},
+        guard_results=[
+            {
+                "guard": "no_real_broker_or_non_a_execution",
+                "input_ref": "order-gold",
+                "expected": "blocked",
+                "actual": "filled",
+                "result": "fail",
+            }
+        ],
+        failures=[{"code": "non_a_paper_execution", "message": "non-A asset received a paper fill"}],
+    )
+
+    assert report["result"] == "fail"
+    assert report["failures"][0]["code"] == "non_a_paper_execution"
 
 
 def _bars():

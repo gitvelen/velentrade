@@ -84,6 +84,8 @@ class PaperExecutionService:
         available_position: float | None = None,
     ) -> PaperExecutionReceipt:
         window = {"urgent": "30m", "normal": "2h", "low": "full_day"}[order.urgency]
+        if not _is_a_share_symbol(order.symbol):
+            return self._receipt(order, window, "blocked", None, 0, "non_a_asset_no_paper_execution", snapshot)
         if snapshot.status != "pass" or not snapshot.bars:
             return self._receipt(order, window, "blocked", None, 0, "execution_core_blocked", snapshot)
         if not snapshot.may_create_execution_authorization:
@@ -169,3 +171,7 @@ def _apply_slippage(order: PaperOrder, price: float, bars: list[MinuteBar]) -> f
         bps += 2
     multiplier = 1 + bps / 10000 if order.side == "buy" else 1 - bps / 10000
     return round(price * multiplier, 4)
+
+
+def _is_a_share_symbol(symbol: str) -> bool:
+    return symbol.endswith((".SH", ".SZ", ".BJ"))
