@@ -76,3 +76,28 @@ def test_decision_core_score_at_point_75_is_degraded_not_blocked():
     assert report.quality_score == 0.75
     assert report.quality_band == "degraded"
     assert report.decision_core_status == "conditional_pass_owner_exception_required"
+
+
+def test_execution_core_low_quality_score_blocks_even_without_missing_critical_fields():
+    service = DataQualityService()
+    request = DataRequest(
+        request_id="exec-low-quality",
+        trace_id="trace-exec-low-quality",
+        data_domain="execution_price",
+        symbol_or_scope="600000.SH",
+        required_usage="execution_core",
+        freshness_requirement="same_trading_day",
+        required_fields=[
+            RequiredField("last_price", present=True, valid=True, critical=True),
+            RequiredField("trade_calendar", present=True, valid=True, critical=True),
+        ],
+        requesting_stage="S6",
+        requesting_agent_or_service="execution_core",
+    )
+
+    report = service.evaluate(request, accuracy=0.2, timeliness=0.95)
+
+    assert report.quality_band == "blocked"
+    assert report.execution_core_status == "blocked"
+    assert report.cache_usage["may_create_execution_authorization"] is False
+    assert report.reason_code == "execution_core_quality_failed"

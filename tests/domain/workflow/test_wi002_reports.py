@@ -1,4 +1,4 @@
-from velentrade.domain.workflow.wi002_reports import build_wi002_reports
+from velentrade.domain.workflow.wi002_reports import _envelope, build_wi002_reports
 
 
 def test_wi002_reports_include_contract_payloads_and_branch_local_evidence_fields():
@@ -72,3 +72,29 @@ def test_wi002_reports_include_contract_payloads_and_branch_local_evidence_field
     assert data_report["source_registry_routing"]["require_real_skips_fixture_only"] is True
     assert data_report["public_source_fallback"]["selected_source_id"] == "backup-public"
     assert data_report["public_source_fallback"]["quality_band"] == "normal"
+
+
+def test_wi002_report_envelope_marks_fail_when_guard_or_failures_fail():
+    report = _envelope(
+        "data_quality_degradation_report.json",
+        {"probe": "negative"},
+        guard_results=[
+            {
+                "guard": "execution_core_guard",
+                "input_ref": "exec-low-quality",
+                "expected": "blocked",
+                "actual": "pass",
+                "result": "fail",
+            }
+        ],
+        failures=[
+            {
+                "code": "execution_core_not_blocked",
+                "message": "execution_core low quality was not blocked",
+                "evidence_ref": "exec-low-quality",
+            }
+        ],
+    )
+
+    assert report["result"] == "fail"
+    assert report["failures"][0]["code"] == "execution_core_not_blocked"

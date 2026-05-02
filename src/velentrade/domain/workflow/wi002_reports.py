@@ -29,8 +29,19 @@ REPORT_TC = {
 }
 
 
-def _envelope(report_id: str, payload: dict[str, Any]) -> dict[str, Any]:
+def _envelope(
+    report_id: str,
+    payload: dict[str, Any],
+    *,
+    guard_results: list[dict[str, Any]] | None = None,
+    failures: list[dict[str, Any]] | None = None,
+) -> dict[str, Any]:
     tc, acc, req = REPORT_TC[report_id]
+    resolved_guard_results = guard_results or [
+        {"guard": "p0_assertions", "input_ref": report_id, "expected": "pass", "actual": "pass", "result": "pass"}
+    ]
+    resolved_failures = failures or []
+    result = "fail" if resolved_failures or any(guard.get("result") != "pass" for guard in resolved_guard_results) else "pass"
     report = {
         "report_id": report_id,
         "generated_at": utc_now(),
@@ -39,18 +50,18 @@ def _envelope(report_id: str, payload: dict[str, Any]) -> dict[str, Any]:
         "work_item_refs": ["WI-002"],
         "test_case_refs": [tc],
         "fixture_refs": [f"FX-{tc}"],
-        "result": "pass",
+        "result": result,
         "checked_requirements": [req],
         "checked_acceptances": [acc],
         "checked_invariants": ["INV-WORKFLOW-SPINE-GUARDED"],
         "artifact_refs": [],
-        "failures": [],
+        "failures": resolved_failures,
         "residual_risk": [],
         "schema_version": "1.0.0",
         "checked_fields": sorted(payload),
         "fixture_inputs": {"fixture": "WI-002 deterministic runtime fixture"},
         "actual_outputs": {"payload_keys": sorted(payload)},
-        "guard_results": [{"guard": "p0_assertions", "input_ref": report_id, "expected": "pass", "actual": "pass", "result": "pass"}],
+        "guard_results": resolved_guard_results,
     }
     report.update(payload)
     return report

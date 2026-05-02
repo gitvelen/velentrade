@@ -92,9 +92,14 @@ class DataQualityService:
         if band == "blocked":
             decision_status = "blocked"
         if request.required_usage == "execution_core" and (band != "normal" or request.freshness_requirement == "realtime"):
-            if critical_blocked or timeliness < self.normal_threshold:
+            if critical_blocked or timeliness < self.normal_threshold or band != "normal":
                 execution_status = "blocked"
-                reason_code = "critical_field_blocked" if critical_blocked else "execution_core_freshness_failed"
+                if critical_blocked:
+                    reason_code = "critical_field_blocked"
+                elif timeliness < self.normal_threshold:
+                    reason_code = "execution_core_freshness_failed"
+                else:
+                    reason_code = "execution_core_quality_failed"
 
         return DataQualityReport(
             request_id=request.request_id,
