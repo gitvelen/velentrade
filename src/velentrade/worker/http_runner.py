@@ -24,6 +24,19 @@ class RunnerHttpClient:
         try:
             with request.urlopen(http_request, timeout=self.timeout_seconds) as response:
                 body = json.loads(response.read().decode("utf-8"))
+        except TimeoutError:
+            return AgentRunResult(
+                agent_run_id=runtime_request.agent_run_id,
+                status="timed_out",
+                artifact_payloads=[],
+                command_proposals=[],
+                diagnostics={"error": "runner_timeout"},
+                process_archive_ref=f"process-{runtime_request.agent_run_id}",
+                tool_trace_summary_ref=f"trace-{runtime_request.agent_run_id}",
+                cost_tokens=0,
+                failure_code="budget_timeout",
+                failure_reason="agent_runner_timeout",
+            )
         except error.HTTPError as exc:
             detail = exc.read().decode("utf-8", errors="replace")
             return AgentRunResult(
