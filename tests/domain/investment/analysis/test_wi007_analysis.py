@@ -120,6 +120,26 @@ def test_consensus_counts_neutral_direction_as_its_own_direction():
     assert result.dominant_direction_share == 0.5
 
 
+def test_consensus_requires_all_four_official_analyst_roles():
+    calculator = ConsensusCalculator()
+    memos = AnalystMemoFactory().fixture_memos()
+
+    try:
+        calculator.calculate(memos[:3])
+    except ValueError as exc:
+        assert str(exc) == "requires_four_official_analyst_memos"
+    else:
+        raise AssertionError("expected requires_four_official_analyst_memos")
+
+    duplicate_macro = [memos[0], memos[0], memos[2], memos[3]]
+    try:
+        calculator.calculate(duplicate_macro)
+    except ValueError as exc:
+        assert str(exc) == "requires_four_official_analyst_memos"
+    else:
+        raise AssertionError("expected requires_four_official_analyst_memos")
+
+
 def test_wi007_analysis_reports_have_contract_payloads():
     reports = build_wi007_analysis_reports()
 
@@ -129,6 +149,7 @@ def test_wi007_analysis_reports_have_contract_payloads():
         assert report["work_item_refs"] == ["WI-007"]
         assert report["failures"] == []
     assert reports["consensus_action_report.json"]["no_execution_when_low_action_conviction"] is True
+    assert reports["consensus_action_report.json"]["four_official_roles_required"] is True
 
 
 def test_analysis_report_fails_when_guard_or_failure_fails():

@@ -5,7 +5,7 @@ from math import sqrt
 from statistics import mean
 from typing import Any
 
-from velentrade.domain.investment.analysis.memo import AnalystMemo
+from velentrade.domain.investment.analysis.memo import AnalystMemo, ROLE_PAYLOAD_FIELDS
 
 
 ACTION_THRESHOLD = 0.65
@@ -25,6 +25,8 @@ class ConsensusResult:
 
 class ConsensusCalculator:
     def calculate(self, memos: list[AnalystMemo]) -> ConsensusResult:
+        if {memo.role for memo in memos} != set(ROLE_PAYLOAD_FIELDS):
+            raise ValueError("requires_four_official_analyst_memos")
         normalized = [memo.direction_score / 5 for memo in memos]
         avg = mean(normalized)
         std = sqrt(sum((item - avg) ** 2 for item in normalized) / len(normalized))

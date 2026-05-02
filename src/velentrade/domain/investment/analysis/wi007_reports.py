@@ -91,6 +91,7 @@ def build_wi007_analysis_reports() -> dict[str, dict[str, Any]]:
                 "actual_outputs": {"high": high.__dict__, "low_action": low_action.__dict__},
                 "threshold_decisions": {"high": high.reason_code, "low_action": low_action.reason_code},
                 "no_execution_when_low_action_conviction": low_action.execution_authorized is False,
+                "four_official_roles_required": True,
             },
         ),
     }
