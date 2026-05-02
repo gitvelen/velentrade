@@ -2312,6 +2312,19 @@ Design approved 前，`reviews/design-review.yaml` 必须记录 R8 cold-start dr
   residual_risk: ICContextPackage and CIO Chair Brief tests verify required refs, role attachments, evidence resolution, missing section reporting and no preset decision; still in-memory only and not a live AgentRun/API/PostgreSQL context distribution.
   reopen_required: false
 
+- acceptance_ref: ACC-013
+  run_id: RUN-WI003-ACC013-SCOPE-PRIORITY-GUARD-20260502
+  test_case_ref: TC-ACC-013-01
+  verification_type: automated
+  test_type: regression
+  test_scope: branch-local
+  completion_level: in_memory_domain
+  executed_at: 2026-05-02
+  artifact_ref: python -m pytest tests/domain/investment/intake tests/domain/investment/topic_queue tests/domain/investment/context -q; python -m compileall src/velentrade
+  result: pass
+  residual_risk: TopicQueue now rejects non-numeric exchange-suffixed symbols such as AAPL.SH and requested_priority values outside P0/P1/P2/None before formal IC admission; still in-memory only and not connected to API/PostgreSQL/browser workflow runtime.
+  reopen_required: false
+
 <!-- CODESPEC:TESTING:RISKS -->
 ## 4. 残留风险与返工判断
 
