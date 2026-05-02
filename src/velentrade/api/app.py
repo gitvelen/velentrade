@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from dataclasses import asdict, is_dataclass
+from dataclasses import asdict, is_dataclass, replace
 from typing import Any
 
 from fastapi import FastAPI
@@ -16,16 +16,22 @@ from velentrade.domain.agents.registry import (
 )
 from velentrade.domain.collaboration.models import AgentRun, CollaborationCommand, HandoffPacket
 from velentrade.domain.common import new_id, utc_now
-from velentrade.domain.finance.boundary import FinanceProfileService
+from velentrade.domain.devops.incident import DevOpsIncidentRuntime
+from velentrade.domain.finance.boundary import FinanceAssetUpdate, FinanceProfileService
 from velentrade.domain.gateway.authority import AuthorityGateway
+from velentrade.domain.governance.runtime import GovernanceRuntime
+from velentrade.domain.investment.owner_exception.approval import ApprovalRecord, OwnerExceptionService
 from velentrade.domain.memory.models import MemoryCapture
 from velentrade.domain.observability.health import ObservabilityCollector
 from velentrade.domain.workflow.runtime import RequestBrief, WorkflowRuntime
 
 from .schemas import (
+    AgentCapabilityDraftRequest,
+    ApprovalDecisionRequest,
     CollaborationCommandRequest,
     CreateRequestBriefRequest,
     CreateMemoryItemRequest,
+    FinanceAssetUpdateRequest,
     GatewayArtifactWriteRequest,
     GatewayEventWriteRequest,
     GatewayHandoffWriteRequest,
@@ -75,9 +81,14 @@ class ApiRuntime:
         self.gateway = AuthorityGateway(self.profiles, store=store)
         self.finance = FinanceProfileService()
         self.observability = ObservabilityCollector()
+        self.devops = DevOpsIncidentRuntime()
+        self.governance = GovernanceRuntime()
+        self.owner_exception = OwnerExceptionService()
+        self.approvals: dict[str, ApprovalRecord] = {}
         self.workflow = WorkflowRuntime()
         self.request_briefs: dict[str, RequestBrief] = {}
         self.confirmed_brief_ids: set[str] = set()
+        self._seed_governance_and_approvals()
         self.agent_runs = {
             f"run-{agent_id}": AgentRun.fake(
                 agent_run_id=f"run-{agent_id}",
@@ -106,6 +117,32 @@ class ApiRuntime:
         )
         self.agent_runs[run_id] = run
         return run
+
+    def _seed_governance_and_approvals(self) -> None:
+        self.governance.create_context_snapshot(
+            snapshot_version="ctx-v1",
+            source_change_ref="baseline",
+            prompt_versions={"quant_analyst": "prompt-v1"},
+            skill_package_versions={"quant_analyst": "skill-v1"},
+            knowledge_item_versions=["knowledge-v1"],
+            memory_collection_versions=["memory-collection-v1"],
+            default_context_versions=["default-context-v1"],
+            agent_capability_versions={"quant_analyst": "capability-v1"},
+            effective_scope="new_task",
+        )
+        if "gov-change-001" not in self.governance.changes:
+            self.governance.submit_change(
+                change_id="gov-change-001",
+                change_type="agent_capability",
+                impact_level="high",
+                proposal_ref="draft-quant-001",
+                target_version_refs={"agent_capability_versions": {"quant_analyst": "capability-v2"}},
+                effective_scope="new_task",
+                rollback_plan_ref="rollback-quant-001",
+            )
+        packet = self.owner_exception.create_packet("candidate-001", "high_impact_agent_capability_change")
+        approval = self.owner_exception.submit_for_approval(packet)
+        self.approvals[approval.approval_id] = approval
 
 
 def _request_brief_read_model(brief: RequestBrief) -> dict[str, Any]:
@@ -177,6 +214,46 @@ def _workflow_read_model(workflow) -> dict[str, Any]:
     }
 
 
+def _approval_read_model(approval: ApprovalRecord) -> dict[str, Any]:
+    return {
+        "approval_id": approval.approval_id,
+        "approval_type": approval.approval_type,
+        "approval_object_ref": approval.approval_object_ref,
+        "trigger_reason": approval.trigger_reason,
+        "comparison_options": approval.comparison_options,
+        "recommended_decision": approval.recommended_decision,
+        "risk_and_impact": approval.risk_and_impact,
+        "evidence_refs": list(approval.evidence_refs),
+        "effective_scope": approval.effective_scope,
+        "timeout_policy": approval.timeout_policy,
+        "decision": approval.decision,
+        "decided_at": approval.decided_at,
+        "version": 1,
+    }
+
+
+def _governance_change_read_model(change) -> dict[str, Any]:
+    return {
+        "change_id": change.change_id,
+        "change_type": change.change_type,
+        "impact_level": change.impact_level,
+        "state": change.state,
+        "proposal_ref": change.proposal_ref,
+        "target_version_refs": change.target_version_refs,
+        "effective_scope": change.effective_scope,
+        "rollback_plan_ref": change.rollback_plan_ref,
+        "created_at": change.created_at,
+        "updated_at": change.updated_at,
+        "comparison_analysis_ref": change.comparison_analysis_ref,
+        "auto_validation_refs": list(change.auto_validation_refs),
+        "owner_approval_ref": change.owner_approval_ref,
+        "context_snapshot_id": change.context_snapshot_id,
+        "state_reason": change.state_reason,
+        "decided_at": change.decided_at,
+        "effective_at": change.effective_at,
+    }
+
+
 def build_app(runtime: ApiRuntime | None = None) -> FastAPI:
     app = FastAPI(title="velentrade-api", version="0.1.0")
     api_runtime = runtime or ApiRuntime()
@@ -206,6 +283,111 @@ def build_app(runtime: ApiRuntime | None = None) -> FastAPI:
     @app.get("/api/devops/health")
     def get_devops_health():
         return _success(api_runtime.observability.devops_health_read_model())
+
+    @app.get("/api/devops/incidents")
+    def get_devops_incidents():
+        report = api_runtime.devops.build_devops_incident_report()
+        incidents_by_id = {item["incident_id"]: dict(item) for item in report["incidents"]}
+        recovery_by_incident = {item["incident_ref"]: item for item in report["recovery_plan"]}
+        return _success([
+            {
+                **incident,
+                "investment_resume_allowed": recovery_by_incident.get(incident_id, {}).get("investment_resume_allowed", False),
+                "risk_review_required": recovery_by_incident.get(incident_id, {}).get("risk_review_required", False),
+            }
+            for incident_id, incident in incidents_by_id.items()
+        ])
+
+    @app.post("/api/finance/assets")
+    def update_finance_asset(request: FinanceAssetUpdateRequest):
+        profile = api_runtime.finance.update_profile([
+            FinanceAssetUpdate(
+                asset_type=request.asset_type,
+                valuation=request.valuation,
+                valuation_date=request.valuation_date,
+                source=request.source,
+                asset_id=request.asset_id,
+            )
+        ])
+        asset = (profile.assets + profile.liabilities)[0]
+        return _success(asset)
+
+    @app.get("/api/knowledge/search")
+    def search_knowledge(q: str | None = None):
+        memory_items = api_runtime.gateway.list_memory_read_models()
+        if not memory_items and api_runtime.gateway.store is not None:
+            memory_items = api_runtime.gateway.store.list_memory_read_models()
+        query = (q or "").lower()
+        results = [
+            item for item in memory_items
+            if not query or query in item.get("title", "").lower() or query in item.get("summary", "").lower()
+        ]
+        return _success({"results": results})
+
+    @app.get("/api/governance/changes")
+    def list_governance_changes():
+        return _success([
+            _governance_change_read_model(change)
+            for change in api_runtime.governance.changes.values()
+        ])
+
+    @app.post("/api/governance/changes/{change_id}/decision")
+    def decide_governance_change(change_id: str, request: ApprovalDecisionRequest):
+        if change_id not in api_runtime.governance.changes:
+            return _error(404, "NOT_FOUND", f"Unknown governance change: {change_id}")
+        approved = request.decision == "approved"
+        change = api_runtime.governance.owner_decide(change_id, approved=approved, approval_ref=new_id("approval"))
+        if approved:
+            change = api_runtime.governance.activate(change_id)
+        return _success(_governance_change_read_model(change))
+
+    @app.post("/api/team/{agent_id}/capability-drafts")
+    def create_agent_capability_draft(agent_id: str, request: AgentCapabilityDraftRequest):
+        if agent_id != request.agent_id:
+            return _error(422, "VALIDATION_ERROR", "agent_id path/body mismatch.", reason_code="agent_id_mismatch")
+        if agent_id not in api_runtime.profiles:
+            return _error(404, "NOT_FOUND", f"Unknown agent: {agent_id}")
+        change_id = new_id("gov-change")
+        impact_level = request.impact_level_hint or "medium"
+        change = api_runtime.governance.submit_change(
+            change_id=change_id,
+            change_type="agent_capability",
+            impact_level=impact_level,
+            proposal_ref=new_id("capability-draft"),
+            target_version_refs={"agent_id": agent_id, "change_set": request.change_set},
+            effective_scope=request.effective_scope,
+            rollback_plan_ref=request.rollback_plan_ref or new_id("rollback"),
+        )
+        return _success({
+            "draft_id": change.proposal_ref,
+            "agent_id": agent_id,
+            "change_set": request.change_set,
+            "diff_summary": request.draft_title,
+            "impact_level": change.impact_level,
+            "state": change.state,
+            "validation_status": "pending",
+            "governance_change_ref": change.change_id,
+            "owner_approval_ref": change.owner_approval_ref,
+            "effective_scope": change.effective_scope,
+            "rollback_plan_ref": change.rollback_plan_ref,
+            "created_at": change.created_at,
+            "updated_at": change.updated_at,
+        })
+
+    @app.get("/api/approvals")
+    def list_approvals():
+        return _success({"approval_center": [_approval_read_model(item) for item in api_runtime.approvals.values()]})
+
+    @app.post("/api/approvals/{approval_id}/decision")
+    def decide_approval(approval_id: str, request: ApprovalDecisionRequest):
+        approval = api_runtime.approvals.get(approval_id)
+        if approval is None:
+            return _error(404, "NOT_FOUND", f"Unknown approval: {approval_id}")
+        if request.decision not in {"approved", "rejected", "request_changes"}:
+            return _error(422, "VALIDATION_ERROR", "Unsupported approval decision.", reason_code="invalid_decision")
+        decided = replace(approval, decision=request.decision, decided_at=utc_now())
+        api_runtime.approvals[approval_id] = decided
+        return _success(_approval_read_model(decided))
 
     @app.post("/api/requests/briefs")
     def create_request_brief(request: CreateRequestBriefRequest):

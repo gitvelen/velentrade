@@ -281,3 +281,83 @@ def test_request_brief_confirmation_and_task_workflow_read_api():
         json={"decision": "cancel", "client_seen_version": 1},
     )
     assert cancel_response.status_code == 409
+
+
+def test_governance_finance_knowledge_devops_and_approval_api_surfaces():
+    client = TestClient(build_app())
+
+    asset_response = client.post(
+        "/api/finance/assets",
+        json={
+            "asset_type": "fund",
+            "valuation": {"amount": 12345, "currency": "CNY"},
+            "valuation_date": "2026-05-02",
+            "source": "owner",
+            "client_seen_version": 1,
+        },
+    )
+    assert asset_response.status_code == 200
+    asset_payload = asset_response.json()["data"]
+    assert asset_payload["asset_type"] == "fund"
+    assert asset_payload["boundary_label"] == "finance_planning_only"
+
+    memory_response = client.post(
+        "/api/knowledge/memory-items",
+        json={
+            "source_type": "owner_note",
+            "source_refs": ["note-search"],
+            "content_markdown": "# API 检索笔记\n- 产业链线索",
+            "suggested_memory_type": "owner_observation",
+            "tags": ["searchable"],
+            "sensitivity": "public_internal",
+            "client_seen_context_snapshot_id": "ctx-v1",
+        },
+    )
+    assert memory_response.status_code == 200
+    search_response = client.get("/api/knowledge/search?q=API")
+    assert search_response.status_code == 200
+    search_payload = search_response.json()["data"]
+    assert any(item["memory_id"] == memory_response.json()["data"]["memory_id"] for item in search_payload["results"])
+
+    incidents_response = client.get("/api/devops/incidents")
+    assert incidents_response.status_code == 200
+    incidents_payload = incidents_response.json()["data"]
+    assert len(incidents_payload) >= 1
+    assert incidents_payload[0]["investment_resume_allowed"] is False
+
+    changes_response = client.get("/api/governance/changes")
+    assert changes_response.status_code == 200
+    changes_payload = changes_response.json()["data"]
+    assert any(item["change_id"] == "gov-change-001" for item in changes_payload)
+
+    draft_response = client.post(
+        "/api/team/quant_analyst/capability-drafts",
+        json={
+            "agent_id": "quant_analyst",
+            "draft_title": "调整默认模型",
+            "change_set": {"model_route": "balanced"},
+            "impact_level_hint": "high",
+            "validation_plan_refs": ["schema"],
+            "rollback_plan_ref": "rollback-1",
+            "effective_scope": "new_task",
+            "client_seen_profile_version": "1.0.0",
+            "client_seen_context_snapshot_id": "ctx-v1",
+        },
+    )
+    assert draft_response.status_code == 200
+    draft_payload = draft_response.json()["data"]
+    assert draft_payload["agent_id"] == "quant_analyst"
+    assert draft_payload["governance_change_ref"].startswith("gov-change-")
+    assert draft_payload["effective_scope"] == "new_task"
+
+    approvals_response = client.get("/api/approvals")
+    assert approvals_response.status_code == 200
+    approval_payload = approvals_response.json()["data"]
+    assert approval_payload["approval_center"][0]["decision"] == "pending"
+
+    decision_response = client.post(
+        f"/api/approvals/{approval_payload['approval_center'][0]['approval_id']}/decision",
+        json={"decision": "request_changes", "client_seen_version": 1, "comment": "补充影响说明"},
+    )
+    assert decision_response.status_code == 200
+    assert decision_response.json()["data"]["decision"] == "request_changes"

@@ -20,6 +20,35 @@ class RequestBriefConfirmationRequest(BaseModel):
     client_seen_version: int = Field(ge=1)
 
 
+class ApprovalDecisionRequest(BaseModel):
+    decision: str
+    comment: str | None = None
+    accepted_risks: list[str] = Field(default_factory=list)
+    requested_changes: list[str] = Field(default_factory=list)
+    client_seen_version: int = Field(ge=1)
+
+
+class AgentCapabilityDraftRequest(BaseModel):
+    agent_id: str
+    draft_title: str = Field(min_length=1, max_length=200)
+    change_set: dict[str, Any]
+    impact_level_hint: str | None = None
+    validation_plan_refs: list[str] = Field(default_factory=list)
+    rollback_plan_ref: str | None = None
+    effective_scope: str
+    client_seen_profile_version: str
+    client_seen_context_snapshot_id: str
+
+
+class FinanceAssetUpdateRequest(BaseModel):
+    asset_id: str | None = None
+    asset_type: str
+    valuation: dict[str, Any]
+    valuation_date: str
+    source: str
+    client_seen_version: int = Field(ge=1)
+
+
 class CollaborationCommandRequest(BaseModel):
     command_type: str
     workflow_id: str
