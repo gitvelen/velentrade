@@ -254,6 +254,109 @@ def _workflow_command_result(command_type: str, stage, *, object_type: str = "wo
     }
 
 
+def _workflow_artifacts(api_runtime: ApiRuntime, workflow_id: str) -> list[dict[str, Any]]:
+    artifacts_by_id: dict[str, dict[str, Any]] = {}
+    if api_runtime.gateway.store is not None:
+        for artifact in api_runtime.gateway.store.list_artifacts(workflow_id):
+            artifacts_by_id[artifact["artifact_id"]] = artifact
+    for artifact in api_runtime.gateway.artifact_ledger:
+        if artifact.get("workflow_id") == workflow_id:
+            artifacts_by_id[artifact["artifact_id"]] = artifact
+    return list(artifacts_by_id.values())
+
+
+def _first_payload(artifacts: list[dict[str, Any]], artifact_type: str) -> dict[str, Any] | None:
+    for artifact in artifacts:
+        if artifact.get("artifact_type") == artifact_type and isinstance(artifact.get("payload"), dict):
+            return artifact["payload"]
+    return None
+
+
+def _artifact_projection(artifacts: list[dict[str, Any]]) -> dict[str, Any]:
+    data_readiness = _first_payload(artifacts, "DataReadinessReport")
+    decision_guard = _first_payload(artifacts, "DecisionGuardResult")
+    risk_review = _first_payload(artifacts, "RiskReviewReport")
+    paper_execution = _first_payload(artifacts, "PaperExecutionReceipt")
+    attribution = _first_payload(artifacts, "AttributionReport")
+    analyst_memos = [
+        artifact["payload"]
+        for artifact in artifacts
+        if artifact.get("artifact_type") == "AnalystMemo" and isinstance(artifact.get("payload"), dict)
+    ]
+    return {
+        "artifact_refs": [artifact["artifact_id"] for artifact in artifacts],
+        "data_readiness": data_readiness,
+        "analyst_stance_matrix": [
+            {
+                "role": memo.get("role", "analyst"),
+                "direction": memo.get("direction", str(memo.get("direction_score", "pending"))),
+                "direction_score": memo.get("direction_score"),
+                "confidence": memo.get("confidence", 0),
+                "hard_dissent": bool(memo.get("hard_dissent", False)),
+            }
+            for memo in analyst_memos
+        ],
+        "decision_guard": decision_guard,
+        "risk_review": risk_review,
+        "paper_execution": paper_execution,
+        "attribution": attribution,
+    }
+
+
+def _apply_artifact_projection(dossier: dict[str, Any], artifacts: list[dict[str, Any]]) -> dict[str, Any]:
+    projection = _artifact_projection(artifacts)
+    if projection["data_readiness"] is not None:
+        dossier["data_readiness"] = {
+            **dossier["data_readiness"],
+            **projection["data_readiness"],
+        }
+    if projection["analyst_stance_matrix"]:
+        dossier["analyst_stance_matrix"] = projection["analyst_stance_matrix"]
+        hard_dissent = any(row["hard_dissent"] for row in projection["analyst_stance_matrix"])
+        dossier["consensus"] = {
+            "consensus_score": 1.0 if not hard_dissent else 0.75,
+            "action_conviction": 0.82,
+            "status": "ready",
+        }
+        dossier["debate"] = {
+            "debate_required": hard_dissent,
+            "rounds": [],
+            "retained_hard_dissent": hard_dissent,
+        }
+    if projection["decision_guard"] is not None:
+        reason_codes = projection["decision_guard"].get("reason_codes", [])
+        dossier["decision_service"] = {"status": "pass" if not reason_codes else "blocked", "reason_codes": reason_codes}
+        dossier["decision_guard"] = {
+            "status": "pass" if not reason_codes else "blocked",
+            "owner_exception_or_reopen": projection["decision_guard"].get("owner_exception_candidate_ref")
+            or projection["decision_guard"].get("reopen_recommendation_ref"),
+            **projection["decision_guard"],
+        }
+    if projection["risk_review"] is not None:
+        dossier["risk_review"] = {
+            "status": projection["risk_review"].get("review_result", "pending"),
+            "verdict": projection["risk_review"].get("review_result"),
+            **projection["risk_review"],
+        }
+    if projection["paper_execution"] is not None:
+        dossier["paper_execution"] = {
+            "status": projection["paper_execution"].get("fill_status", "pending"),
+            "reason_code": projection["paper_execution"].get("reason_code"),
+            **projection["paper_execution"],
+        }
+    if projection["attribution"] is not None:
+        dossier["attribution"] = {
+            "status": projection["attribution"].get("status", "completed"),
+            **projection["attribution"],
+        }
+    if projection["artifact_refs"]:
+        dossier["evidence_map"] = {
+            **dossier["evidence_map"],
+            "artifact_refs": sorted(set(dossier["evidence_map"]["artifact_refs"]) | set(projection["artifact_refs"])),
+        }
+    return dossier
+
+
 def _investment_dossier_read_model(api_runtime: ApiRuntime, workflow) -> dict[str, Any]:
     task = api_runtime.workflow.tasks.get(workflow.task_id)
     handoffs = [
@@ -273,7 +376,7 @@ def _investment_dossier_read_model(api_runtime: ApiRuntime, workflow) -> dict[st
         }
         for stage in workflow.stages
     ]
-    return {
+    dossier = {
         "workflow": {
             "workflow_id": workflow.workflow_id,
             "task_id": workflow.task_id,
@@ -326,6 +429,7 @@ def _investment_dossier_read_model(api_runtime: ApiRuntime, workflow) -> dict[st
             "low_action_no_execution": {"action_visible": False, "reason_code": "low_action_no_execution"},
         },
     }
+    return _apply_artifact_projection(dossier, _workflow_artifacts(api_runtime, workflow.workflow_id))
 
 
 def _investment_dossier_from_workflow_payload(
@@ -333,9 +437,10 @@ def _investment_dossier_from_workflow_payload(
     *,
     task: dict[str, Any] | None,
     handoffs: list[dict[str, Any]],
+    artifacts: list[dict[str, Any]],
 ) -> dict[str, Any]:
     stages = workflow.get("stages", [])
-    return {
+    dossier = {
         "workflow": {
             "workflow_id": workflow["workflow_id"],
             "task_id": workflow["task_id"],
@@ -399,6 +504,7 @@ def _investment_dossier_from_workflow_payload(
             "low_action_no_execution": {"action_visible": False, "reason_code": "low_action_no_execution"},
         },
     }
+    return _apply_artifact_projection(dossier, artifacts)
 
 
 def _approval_read_model(approval: ApprovalRecord) -> dict[str, Any]:
@@ -720,6 +826,7 @@ def build_app(runtime: ApiRuntime | None = None) -> FastAPI:
                         persisted_workflow,
                         task=api_runtime.gateway.store.get_task_read_model(persisted_workflow["task_id"]),
                         handoffs=api_runtime.gateway.store.list_handoffs(workflow_id),
+                        artifacts=api_runtime.gateway.store.list_artifacts(workflow_id),
                     ))
             return _error(404, "NOT_FOUND", f"Unknown workflow: {workflow_id}")
         return _success(_investment_dossier_read_model(api_runtime, workflow))
@@ -749,11 +856,35 @@ def build_app(runtime: ApiRuntime | None = None) -> FastAPI:
 
     @app.post("/api/gateway/artifacts")
     def write_artifact(request: GatewayArtifactWriteRequest):
+        if bool(request.source_agent_run_id) == bool(request.producer_service):
+            return _error(422, "VALIDATION_ERROR", "Exactly one artifact producer is required.", reason_code="invalid_artifact_producer")
+        if request.producer_service is not None:
+            result = api_runtime.gateway.append_service_artifact(
+                workflow_id=request.workflow_id,
+                attempt_no=request.attempt_no,
+                producer_service=request.producer_service,
+                artifact_type=request.artifact_type,
+                payload=request.payload,
+                idempotency_key=request.idempotency_key,
+                schema_version=request.schema_version,
+                source_refs=request.source_refs,
+            )
+            if not result.accepted:
+                return _error(403, "PERMISSION_DENIED", "Artifact type is not allowed.", reason_code=result.reason_code)
+            return _success(result)
+
         run = api_runtime.require_run(request.source_agent_run_id)
         if run is None:
             return _error(404, "NOT_FOUND", "Unknown source_agent_run_id")
-        result = api_runtime.gateway.append_artifact(
+        workflow_run = replace(
             run,
+            workflow_id=request.workflow_id,
+            attempt_no=request.attempt_no,
+            stage=request.stage,
+            context_snapshot_id=request.context_snapshot_id,
+        )
+        result = api_runtime.gateway.append_artifact(
+            workflow_run,
             artifact_type=request.artifact_type,
             payload=request.payload,
             idempotency_key=request.idempotency_key,
@@ -769,8 +900,9 @@ def build_app(runtime: ApiRuntime | None = None) -> FastAPI:
         run = api_runtime.require_run(request.source_agent_run_id)
         if run is None:
             return _error(404, "NOT_FOUND", "Unknown source_agent_run_id")
+        workflow_run = replace(run, workflow_id=request.workflow_id, attempt_no=request.attempt_no, stage=request.stage)
         result = api_runtime.gateway.append_event(
-            run,
+            workflow_run,
             event_type=request.event_type,
             payload=request.payload,
             idempotency_key=request.idempotency_key,

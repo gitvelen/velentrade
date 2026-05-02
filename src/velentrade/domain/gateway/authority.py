@@ -5,6 +5,7 @@ from hashlib import sha256
 from typing import Any
 
 from velentrade.domain.agents.models import CapabilityProfile
+from velentrade.domain.agents.registry import OFFICIAL_SERVICES
 from velentrade.domain.collaboration.models import AgentRun, CollaborationCommand, CollaborationEvent, HandoffPacket
 from velentrade.domain.common import GuardDecision, new_id, utc_now
 from velentrade.domain.memory.models import (
@@ -31,6 +32,18 @@ class GatewayWriteResult:
     audit_event_id: str
     outbox_event_id: str
     reason_code: str | None = None
+
+
+SERVICE_ARTIFACT_TYPES = {
+    "data_collection_quality": {"DataReadinessReport", "DataLineage", "DataQualityReport"},
+    "market_state_evaluation": {"MarketStateReport", "ServiceResult"},
+    "factor_engine": {"FactorAttributionReport", "ServiceResult"},
+    "valuation_engine": {"ValuationResult", "ServiceResult"},
+    "portfolio_optimization": {"DecisionPacket", "DecisionGuardResult", "PortfolioOptimizationResult"},
+    "risk_engine": {"DecisionGuardResult", "RiskReviewReport"},
+    "trade_execution": {"PaperExecutionReceipt", "PaperOrder", "PaperAccount"},
+    "performance_attribution_evaluation": {"AttributionReport", "ReflectionRecord"},
+}
 
 
 @dataclass
@@ -77,6 +90,54 @@ class AuthorityGateway:
                 "trace_id": new_id("trace"),
                 "producer": run.agent_id,
                 "producer_type": "agent",
+                "status": "accepted",
+                "schema_version": schema_version,
+                "payload": payload,
+                "source_refs": source_refs or [],
+                "summary": str(payload.get("summary", "")) if isinstance(payload, dict) else "",
+                "evidence_refs": [],
+                "decision_refs": [],
+                "created_at": utc_now(),
+            }
+            self.artifact_ledger.append(artifact_row)
+            result = GatewayWriteResult(True, "artifact", artifact_id, new_id("audit"), new_id("outbox"))
+            if self.store is not None:
+                self.store.mirror_artifact(
+                    artifact_row,
+                    audit_event_id=result.audit_event_id,
+                    outbox_event_id=result.outbox_event_id,
+                    idempotency_key=idempotency_key,
+                )
+            return result
+
+        return self._idempotent(idempotency_key, write)
+
+    def append_service_artifact(
+        self,
+        *,
+        workflow_id: str,
+        attempt_no: int,
+        producer_service: str,
+        artifact_type: str,
+        payload: dict[str, Any],
+        idempotency_key: str,
+        schema_version: str = "1.0.0",
+        source_refs: list[str] | None = None,
+    ) -> GatewayWriteResult:
+        def write() -> GatewayWriteResult:
+            if producer_service not in OFFICIAL_SERVICES:
+                return GatewayWriteResult(False, "artifact", "", "", "", "unknown_service")
+            if artifact_type not in SERVICE_ARTIFACT_TYPES.get(producer_service, set()):
+                return GatewayWriteResult(False, "artifact", "", "", "", "permission_denied")
+            artifact_id = new_id("artifact")
+            artifact_row = {
+                "artifact_id": artifact_id,
+                "artifact_type": artifact_type,
+                "workflow_id": workflow_id,
+                "attempt_no": attempt_no,
+                "trace_id": new_id("trace"),
+                "producer": producer_service,
+                "producer_type": "service",
                 "status": "accepted",
                 "schema_version": schema_version,
                 "payload": payload,

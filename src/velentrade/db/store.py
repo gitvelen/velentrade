@@ -372,6 +372,20 @@ class SqlAlchemyGatewayMirror:
         artifact["created_at"] = _as_iso(artifact["created_at"])
         return artifact
 
+    def list_artifacts(self, workflow_id: str) -> list[dict[str, Any]]:
+        with self.engine.connect() as connection:
+            rows = connection.execute(
+                select(self.tables["artifact"])
+                .where(self.tables["artifact"].c.workflow_id == workflow_id)
+                .order_by(self.tables["artifact"].c.created_at.asc())
+            ).mappings().all()
+        artifacts = []
+        for row in rows:
+            artifact = dict(row)
+            artifact["created_at"] = _as_iso(artifact["created_at"])
+            artifacts.append(artifact)
+        return artifacts
+
     def list_task_read_models(self) -> list[dict[str, Any]]:
         table = self.tables["task_envelope"]
         with self.engine.connect() as connection:

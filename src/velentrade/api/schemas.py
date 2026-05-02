@@ -71,7 +71,8 @@ class GatewayArtifactWriteRequest(BaseModel):
     workflow_id: str
     attempt_no: int = Field(ge=1)
     stage: str
-    source_agent_run_id: str
+    source_agent_run_id: str | None = None
+    producer_service: str | None = None
     context_snapshot_id: str
     artifact_type: str
     schema_version: str
