@@ -286,6 +286,58 @@ describe("WI-004 workbench interactions", () => {
     expect(document.body.textContent).toContain("在途 AgentRun 继续使用旧快照");
   });
 
+  it("submits capability draft saves through the governance draft API when available", async () => {
+    vi.stubGlobal("fetch", vi.fn(async (input: string | URL | Request, init?: RequestInit) => {
+      const href = typeof input === "string" ? input : input instanceof URL ? input.pathname : input.url;
+      if (href.endsWith("/api/team/quant_analyst")) {
+        return mockJsonResponse({
+          agent_id: "quant_analyst",
+          display_name: "Quant Analyst",
+          capability_summary: "api profile",
+          can_do: [],
+          cannot_do: [],
+          quality_metrics: { schema_pass_rate: 1, evidence_quality: 1 },
+          denied_actions: [],
+        });
+      }
+      if (href.endsWith("/api/team/quant_analyst/capability-config")) {
+        return mockJsonResponse({
+          agent_id: "quant_analyst",
+          editable_fields: [{ field: "default_model_profile" }],
+          forbidden_direct_update_reason: "governance_draft_only",
+          effective_scope_options: ["new_task"],
+        });
+      }
+      if (href.endsWith("/api/team/quant_analyst/capability-drafts")) {
+        expect(init?.method).toBe("POST");
+        return mockJsonResponse({
+          draft_id: "draft-api-1",
+          agent_id: "quant_analyst",
+          governance_change_ref: "gov-change-api-1",
+          impact_level: "high",
+          effective_scope: "new_task",
+        });
+      }
+      if (href.endsWith("/api/team")) {
+        return mockJsonResponse({
+          team_health: { healthy_agent_count: 9 },
+          agent_cards: [],
+        });
+      }
+      throw new Error(`unexpected fetch: ${href}`);
+    }));
+
+    await bootWorkbench("/governance/team/quant_analyst/config");
+    await flushAsyncWork();
+
+    await act(async () => {
+      buttonByName("保存草案").click();
+    });
+    await flushAsyncWork();
+
+    expect(document.body.textContent).toContain("gov-change-api-1");
+  });
+
   it("opens governance changes from the knowledge page through query state", async () => {
     await bootWorkbench("/knowledge");
 
@@ -297,6 +349,31 @@ describe("WI-004 workbench interactions", () => {
     expect(window.location.search).toBe("?change=default-context");
     expect(document.querySelector('[data-panel="changes"]')).not.toBeNull();
     expect(document.body.textContent).toContain("默认上下文提案");
+  });
+
+  it("submits approval decisions through the approval decision API when available", async () => {
+    vi.stubGlobal("fetch", vi.fn(async (input: string | URL | Request, init?: RequestInit) => {
+      const href = typeof input === "string" ? input : input instanceof URL ? input.pathname : input.url;
+      if (href.endsWith("/api/approvals/ap-001/decision")) {
+        expect(init?.method).toBe("POST");
+        return mockJsonResponse({
+          approval_id: "ap-001",
+          decision: "request_changes",
+          effective_scope: "new_task",
+        });
+      }
+      throw new Error(`unexpected fetch: ${href}`);
+    }));
+
+    await bootWorkbench("/governance/approvals/ap-001");
+
+    await act(async () => {
+      buttonByName("要求修改").click();
+    });
+    await flushAsyncWork();
+
+    expect(document.body.textContent).toContain("已提交：要求修改");
+    expect(document.body.textContent).toContain("后端已接收");
   });
 
   it("loads agent team cards from /api/team when the read model endpoint is available", async () => {

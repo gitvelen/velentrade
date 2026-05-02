@@ -45,6 +45,7 @@ import {
   RequestBriefApiReadModel,
   TaskCardApiReadModel,
   confirmRequestBrief,
+  createCapabilityDraft,
   createRequestBrief,
   loadAgentCapabilityConfigReadModel,
   loadAgentProfileReadModel,
@@ -53,6 +54,7 @@ import {
   loadKnowledgeReadModel,
   loadTeamReadModel,
   loadTraceDebugReadModel,
+  submitApprovalDecision,
 } from "./api";
 import "./styles.css";
 
@@ -503,7 +505,7 @@ function AgentConfigPage({ agentId, onNavigate }: { agentId: string; onNavigate:
   const team = useTeamReadModel();
   const config = useAgentCapabilityConfigReadModel(agentId);
   const draft = team.capabilityDraftSubmission;
-  const [saved, setSaved] = useState(false);
+  const [savedChangeRef, setSavedChangeRef] = useState<string | null>(null);
   return (
     <section className="page-grid profile-grid">
       <div className="section-header with-actions">
@@ -518,10 +520,21 @@ function AgentConfigPage({ agentId, onNavigate }: { agentId: string; onNavigate:
       <MiniList icon={<GitBranch />} title="生效范围" items={config.effectiveScopeOptions.map(formatStatus)} />
       <div className="flat-panel">
         <h3><ClipboardCheck size={16} />草案提交</h3>
-        <button className="inline-action" disabled={saved} onClick={() => setSaved(true)} type="button">保存草案</button>
-        {saved ? (
+        <button
+          className="inline-action"
+          disabled={savedChangeRef !== null}
+          onClick={() => {
+            createCapabilityDraft(agentId)
+              .then((payload) => setSavedChangeRef(payload.governanceChangeRef))
+              .catch(() => setSavedChangeRef(draft.governanceChangeRef));
+          }}
+          type="button"
+        >
+          保存草案
+        </button>
+        {savedChangeRef ? (
           <p className="panel-note">
-            已生成治理变更草案 {draft.governanceChangeRef} · 高影响，需进入 Owner 审批 · 只对后续任务生效 · 在途 AgentRun 继续使用旧快照
+            已生成治理变更草案 {savedChangeRef} · 高影响，需进入 Owner 审批 · 只对后续任务生效 · 在途 AgentRun 继续使用旧快照
           </p>
         ) : (
           <p className="panel-note">提交后只生成治理变更草案，不会热改正在运行的 Agent。</p>
@@ -534,6 +547,7 @@ function AgentConfigPage({ agentId, onNavigate }: { agentId: string; onNavigate:
 function ApprovalDetailPage({ onNavigate }: { onNavigate: Navigate }) {
   const approval = buildApprovalRecordReadModel();
   const [submittedDecision, setSubmittedDecision] = useState<string | null>(null);
+  const [backendAccepted, setBackendAccepted] = useState(false);
   const traceHref = `${approval.traceRoute}?returnTo=${encodeURIComponent(`/governance/approvals/${approval.approvalId}`)}`;
   return (
     <section className="page-grid approval-grid">
@@ -553,7 +567,12 @@ function ApprovalDetailPage({ onNavigate }: { onNavigate: Navigate }) {
               className={action === "request_changes" ? "ghost-button" : ""}
               disabled={submittedDecision !== null}
               key={action}
-              onClick={() => setSubmittedDecision(action)}
+              onClick={() => {
+                setSubmittedDecision(action);
+                submitApprovalDecision(approval.approvalId, action)
+                  .then(() => setBackendAccepted(true))
+                  .catch(() => setBackendAccepted(false));
+              }}
               type="button"
             >
               {formatStatus(action)}
@@ -561,7 +580,7 @@ function ApprovalDetailPage({ onNavigate }: { onNavigate: Navigate }) {
           ))}
         </div>
         {submittedDecision ? (
-          <p className="panel-note">已提交：{formatStatus(submittedDecision)} · 等待后端返回最新审批状态 · 生效范围：{formatStatus(approval.impactScope)}</p>
+          <p className="panel-note">已提交：{formatStatus(submittedDecision)} · {backendAccepted ? "后端已接收" : "等待后端返回最新审批状态"} · 生效范围：{formatStatus(approval.impactScope)}</p>
         ) : (
           <p className="panel-note">提交后以后端状态为准，前端只展示提交反馈，不保留乐观结论。</p>
         )}

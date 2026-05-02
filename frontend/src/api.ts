@@ -125,6 +125,19 @@ export type TaskCardApiReadModel = {
   reasonCode: string;
 };
 
+export type CapabilityDraftApiReadModel = {
+  draftId: string;
+  governanceChangeRef: string;
+  impactLevel: string;
+  effectiveScope: string;
+};
+
+export type ApprovalDecisionApiReadModel = {
+  approvalId: string;
+  decision: string;
+  effectiveScope: string;
+};
+
 async function fetchEnvelope<T>(path: string, init?: RequestInit): Promise<T> {
   const response = await fetch(path, init);
   if (!response.ok) {
@@ -367,4 +380,52 @@ function inferRequestedScope(rawText: string) {
     return { intent: "agent_capability_change", asset_scope: "system_config", target_action: "governance_change" };
   }
   return { intent: "formal_investment_decision", asset_scope: "a_share_common_stock", target_action: "approve_trade" };
+}
+
+export async function createCapabilityDraft(agentId: string): Promise<CapabilityDraftApiReadModel> {
+  const payload = await fetchEnvelope<{
+    draft_id?: string;
+    governance_change_ref?: string;
+    impact_level?: string;
+    effective_scope?: string;
+  }>(`/api/team/${agentId}/capability-drafts`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      agent_id: agentId,
+      draft_title: "能力配置草案",
+      change_set: { model_route: "balanced" },
+      impact_level_hint: "high",
+      validation_plan_refs: ["schema"],
+      rollback_plan_ref: "rollback-ui",
+      effective_scope: "new_task",
+      client_seen_profile_version: "1.0.0",
+      client_seen_context_snapshot_id: "ctx-v1",
+    }),
+  });
+
+  return {
+    draftId: payload.draft_id ?? "draft",
+    governanceChangeRef: payload.governance_change_ref ?? "gov-change",
+    impactLevel: payload.impact_level ?? "high",
+    effectiveScope: payload.effective_scope ?? "new_task",
+  };
+}
+
+export async function submitApprovalDecision(approvalId: string, decision: string): Promise<ApprovalDecisionApiReadModel> {
+  const payload = await fetchEnvelope<{
+    approval_id?: string;
+    decision?: string;
+    effective_scope?: string;
+  }>(`/api/approvals/${approvalId}/decision`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ decision, client_seen_version: 1 }),
+  });
+
+  return {
+    approvalId: payload.approval_id ?? approvalId,
+    decision: payload.decision ?? decision,
+    effectiveScope: payload.effective_scope ?? "new_task",
+  };
 }
