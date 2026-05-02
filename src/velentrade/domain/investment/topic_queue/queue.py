@@ -161,9 +161,5 @@ class TopicQueue:
         self.preemption_events.append(audit)
 
     @staticmethod
-    def _preemption_rank(item: TopicQueueEntry) -> tuple[int, float, str]:
-        return (
-            PRIORITY_ORDER.get(item.requested_priority, 3),
-            item.priority_scores["weighted_total"],
-            item.created_at,
-        )
+    def _preemption_rank(item: TopicQueueEntry) -> tuple[float, int, str]:
+        return (item.priority_scores["weighted_total"], PRIORITY_ORDER.get(item.requested_priority, 3), item.created_at)

@@ -87,3 +87,26 @@ def test_global_workflow_cap_prevents_admitting_more_formal_ic_workflows():
     assert blocked.rejected_reason == "topic_concurrency_full"
     assert blocked.hard_gate_results["global_workflow_slot_available"] is False
     assert queue.global_workflow_count == 5
+
+
+def test_p0_preempts_lowest_priority_score_slot_not_high_score_p1_slot():
+    queue = TopicQueue(max_active_ic=3, max_global_workflows=5)
+    high = TopicScore(5, 5, 5, 5)
+    medium = TopicScore(3, 3, 3, 3)
+    low = TopicScore(1, 1, 1, 1)
+
+    queue.submit(_proposal("topic-p1-high", "P1"), high, request_brief_complete=True, decision_core_available=True)
+    queue.submit(_proposal("topic-p1-medium", "P1"), medium, request_brief_complete=True, decision_core_available=True)
+    queue.submit(_proposal("topic-p2-low", "P2"), low, request_brief_complete=True, decision_core_available=True)
+
+    queue.submit(
+        _proposal("topic-p0-risk", "P0"),
+        high,
+        request_brief_complete=True,
+        decision_core_available=True,
+        p0_trigger="holding_risk",
+    )
+
+    assert queue.preemption_events[0]["preempted_topic_id"] == "topic-p2-low"
+    assert queue.entries["topic-p1-high"].formal_ic_status == "active"
+    assert queue.entries["topic-p2-low"].waiting_audit["preserved_artifacts"] == ["evidence-topic-p2-low", "research-topic-p2-low"]

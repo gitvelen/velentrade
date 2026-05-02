@@ -1,4 +1,4 @@
-from velentrade.domain.investment.context.reports import build_wi003_reports
+from velentrade.domain.investment.context.reports import _envelope, build_wi003_reports
 
 
 def test_wi003_reports_include_contract_payload_fields():
@@ -44,3 +44,29 @@ def test_wi003_reports_include_contract_payload_fields():
         "research_package",
         "research_task",
     }
+
+
+def test_wi003_report_envelope_marks_fail_when_guard_or_failures_fail():
+    report = _envelope(
+        "topic_queue_report.json",
+        {"probe": "negative"},
+        guard_results=[
+            {
+                "guard": "p0_preemption_victim",
+                "input_ref": "topic-p0-risk",
+                "expected": "preempt_lowest_score",
+                "actual": "preempt_high_score_p1",
+                "result": "fail",
+            }
+        ],
+        failures=[
+            {
+                "code": "wrong_preemption_victim",
+                "message": "P0 preempted a higher score slot",
+                "evidence_ref": "topic-p0-risk",
+            }
+        ],
+    )
+
+    assert report["result"] == "fail"
+    assert report["failures"][0]["code"] == "wrong_preemption_victim"
