@@ -519,6 +519,7 @@ function AgentConfigPage({ agentId, onNavigate }: { agentId: string; onNavigate:
   const config = useAgentCapabilityConfigReadModel(agentId);
   const draft = team.capabilityDraftSubmission;
   const [savedChangeRef, setSavedChangeRef] = useState<string | null>(null);
+  const [draftSubmitting, setDraftSubmitting] = useState(false);
   return (
     <section className="page-grid profile-grid">
       <div className="section-header with-actions">
@@ -535,17 +536,21 @@ function AgentConfigPage({ agentId, onNavigate }: { agentId: string; onNavigate:
         <h3><ClipboardCheck size={16} />草案提交</h3>
         <button
           className="inline-action"
-          disabled={savedChangeRef !== null}
+          disabled={savedChangeRef !== null || draftSubmitting}
           onClick={() => {
+            setDraftSubmitting(true);
             createCapabilityDraft(agentId)
               .then((payload) => setSavedChangeRef(payload.governanceChangeRef))
-              .catch(() => setSavedChangeRef(draft.governanceChangeRef));
+              .catch(() => setSavedChangeRef(draft.governanceChangeRef))
+              .finally(() => setDraftSubmitting(false));
           }}
           type="button"
         >
-          保存草案
+          {draftSubmitting ? "正在提交..." : "保存草案"}
         </button>
-        {savedChangeRef ? (
+        {draftSubmitting ? (
+          <p className="panel-note">正在提交能力草案，请勿重复点击。</p>
+        ) : savedChangeRef ? (
           <p className="panel-note">
             已生成治理变更草案 {savedChangeRef} · 高影响，需进入 Owner 审批 · 只对后续任务生效 · 在途 AgentRun 继续使用旧快照
           </p>

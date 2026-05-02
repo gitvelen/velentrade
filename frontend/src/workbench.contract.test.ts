@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
 
 import {
+  buildReportEnvelope,
   buildGovernanceReadModel,
   buildRouteManifest,
   buildShellReadModel,
@@ -141,6 +142,36 @@ describe("WI-004 workbench contracts", () => {
       "agent_capability_hot_patch_denied",
     );
     expect(reports["team_capability_config_report.json"].in_flight_agent_run_snapshot_unchanged).toBe(true);
+  });
+
+  it("marks WI-004 verification reports failed when a guard or failure fails", () => {
+    const report = buildReportEnvelope(
+      "web_command_routing_report.json",
+      "TC-ACC-006-01",
+      "ACC-006",
+      { probe: "negative" },
+      {
+        guardResults: [
+          {
+            guard: "button_feedback",
+            input_ref: "save-capability-draft",
+            expected: "visible_feedback",
+            actual: "no_feedback",
+            result: "fail",
+          },
+        ],
+        failures: [
+          {
+            code: "button_without_feedback",
+            message: "button click produced no visible feedback",
+            evidence_ref: "save-capability-draft",
+          },
+        ],
+      },
+    );
+
+    expect(report.result).toBe("fail");
+    expect(report.failures).toHaveLength(1);
   });
 
   it("does not leave enabled buttons without feedback handlers", () => {

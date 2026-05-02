@@ -197,6 +197,11 @@ export type Report = Record<string, unknown> & {
   failures: unknown[];
 };
 
+export type ReportEnvelopeOptions = {
+  guardResults?: Array<Record<string, unknown> & { result?: string }>;
+  failures?: unknown[];
+};
+
 export const topLevelLabels = ["全景", "投资", "财务", "知识", "治理"];
 
 const designPreviewRefs = [
@@ -704,7 +709,7 @@ export function buildWorkbenchReports(): Record<string, Report> {
   const ambiguousCommand = routeOwnerCommand("帮我处理一下");
   const blockedHotPatchCommand = routeOwnerCommand("把量化分析的 Prompt 直接生效");
   return {
-    "web_command_routing_report.json": envelope("web_command_routing_report.json", "TC-ACC-006-01", "ACC-006", {
+    "web_command_routing_report.json": buildReportEnvelope("web_command_routing_report.json", "TC-ACC-006-01", "ACC-006", {
       nav_scan: { top_level_labels: shell.navItems.map((item) => item.label), top_level_team_present: false },
       route_manifest: buildRouteManifest(),
       chinese_ui_scan: { language: "zh-CN", forbidden_english_titles: [] },
@@ -741,7 +746,7 @@ export function buildWorkbenchReports(): Record<string, Report> {
       api_guard_denials: ["DIRECT_WRITE_DENIED", "COMMAND_NOT_ALLOWED", "SNAPSHOT_MISMATCH"],
       screenshot_refs: ["frontend/dist/index.html"],
     }),
-    "governance_task_report.json": envelope("governance_task_report.json", "TC-ACC-007-01", "ACC-007", {
+    "governance_task_report.json": buildReportEnvelope("governance_task_report.json", "TC-ACC-007-01", "ACC-007", {
       task_center_states: governance.taskCenter,
       approval_center_items: governance.approvalCenter,
       manual_todo_isolation: governance.manualTodoIsolation,
@@ -756,7 +761,7 @@ export function buildWorkbenchReports(): Record<string, Report> {
       },
       design_preview_refs: designPreviewRefs,
     }),
-    "team_capability_config_report.json": envelope("team_capability_config_report.json", "TC-ACC-007-01", "ACC-007", {
+    "team_capability_config_report.json": buildReportEnvelope("team_capability_config_report.json", "TC-ACC-007-01", "ACC-007", {
       team_read_model: team.teamHealth,
       agent_cards: team.agentCards,
       agent_profile_read_models: team.agentProfileReadModels,
@@ -773,7 +778,18 @@ export function buildWorkbenchReports(): Record<string, Report> {
   };
 }
 
-function envelope(reportId: string, tc: string, acc: string, payload: Record<string, unknown>): Report {
+export function buildReportEnvelope(
+  reportId: string,
+  tc: string,
+  acc: string,
+  payload: Record<string, unknown>,
+  options: ReportEnvelopeOptions = {},
+): Report {
+  const guardResults = options.guardResults ?? [
+    { guard: "ui_guard_denials", input_ref: reportId, expected: "pass", actual: "pass", result: "pass" },
+  ];
+  const failures = options.failures ?? [];
+  const result = failures.length > 0 || guardResults.some((guard) => guard.result !== "pass") ? "fail" : "pass";
   return {
     report_id: reportId,
     generated_at: "2026-04-30T00:00:00Z",
@@ -782,18 +798,18 @@ function envelope(reportId: string, tc: string, acc: string, payload: Record<str
     work_item_refs: ["WI-004"],
     test_case_refs: [tc],
     fixture_refs: [`FX-${tc}`],
-    result: "pass",
+    result,
     checked_requirements: [acc === "ACC-006" ? "REQ-006" : "REQ-007"],
     checked_acceptances: [acc],
     checked_invariants: ["INV-FRONTEND-READ-MODEL-ONLY"],
     artifact_refs: [],
-    failures: [],
+    failures,
     residual_risk: [],
     schema_version: "1.0.0",
     checked_fields: Object.keys(payload).sort(),
     fixture_inputs: { fixture: "WI-004 fixture-first frontend" },
     actual_outputs: { payload_keys: Object.keys(payload).sort() },
-    guard_results: [{ guard: "ui_guard_denials", input_ref: reportId, expected: "pass", actual: "pass", result: "pass" }],
+    guard_results: guardResults,
     ...payload,
   };
 }

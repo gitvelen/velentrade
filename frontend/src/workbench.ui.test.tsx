@@ -464,7 +464,7 @@ describe("WI-004 workbench interactions", () => {
     expect(document.body.textContent).toContain("后端已接收");
   });
 
-  it("loads agent team cards from /api/team when the read model endpoint is available", async () => {
+  it("merges partial API team cards with the nine-agent roster instead of dropping missing agents", async () => {
     vi.stubGlobal("fetch", vi.fn(async (input: string | URL | Request) => {
       const href = typeof input === "string" ? input : input instanceof URL ? input.pathname : input.url;
       if (href.endsWith("/api/team")) {
@@ -504,7 +504,68 @@ describe("WI-004 workbench interactions", () => {
 
     expect(document.body.textContent).toContain("API 宏观分析员");
     expect(document.body.textContent).toContain("2.1.0");
+    expect(document.querySelectorAll(".agent-card")).toHaveLength(9);
+    expect(document.body.textContent).toContain("CIO");
+    expect(document.body.textContent).toContain("Quant Analyst");
     expect(document.body.textContent).not.toContain("Macro Analyst");
+  });
+
+  it("shows submitting feedback and disables duplicate capability draft saves", async () => {
+    let resolveDraft: ((value: Response) => void) | undefined;
+    vi.stubGlobal("fetch", vi.fn(async (input: string | URL | Request, init?: RequestInit) => {
+      const href = typeof input === "string" ? input : input instanceof URL ? input.pathname : input.url;
+      if (href.endsWith("/api/team/quant_analyst")) {
+        return mockJsonResponse({
+          agent_id: "quant_analyst",
+          display_name: "Quant Analyst",
+          capability_summary: "api profile",
+          can_do: [],
+          cannot_do: [],
+          quality_metrics: { schema_pass_rate: 1, evidence_quality: 1 },
+          denied_actions: [],
+        });
+      }
+      if (href.endsWith("/api/team/quant_analyst/capability-config")) {
+        return mockJsonResponse({
+          agent_id: "quant_analyst",
+          editable_fields: [{ field: "default_model_profile" }],
+          forbidden_direct_update_reason: "governance_draft_only",
+          effective_scope_options: ["new_task"],
+        });
+      }
+      if (href.endsWith("/api/team/quant_analyst/capability-drafts")) {
+        expect(init?.method).toBe("POST");
+        return await new Promise<Response>((resolve) => {
+          resolveDraft = resolve;
+        });
+      }
+      if (href.endsWith("/api/team")) {
+        return mockJsonResponse({ team_health: { healthy_agent_count: 9 }, agent_cards: [] });
+      }
+      throw new Error(`unexpected fetch: ${href}`);
+    }));
+
+    await bootWorkbench("/governance/team/quant_analyst/config");
+    await flushAsyncWork();
+
+    const saveButton = buttonByName("保存草案");
+    await act(async () => {
+      saveButton.click();
+    });
+
+    expect(saveButton.disabled).toBe(true);
+    expect(saveButton.textContent).toContain("正在提交");
+    expect(document.body.textContent).toContain("正在提交能力草案");
+
+    resolveDraft?.(mockJsonResponse({
+      draft_id: "draft-api-1",
+      agent_id: "quant_analyst",
+      governance_change_ref: "gov-change-api-1",
+      impact_level: "high",
+      effective_scope: "new_task",
+    }));
+    await flushAsyncWork();
+    expect(document.body.textContent).toContain("gov-change-api-1");
   });
 
   it("loads agent profile and capability config from /api/team endpoints when available", async () => {

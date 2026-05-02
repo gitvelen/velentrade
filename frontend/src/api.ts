@@ -224,21 +224,49 @@ export async function loadTeamReadModel(): Promise<TeamReadModel> {
       pendingDraftCount: payload.team_health?.pending_draft_count ?? fallback.teamHealth.pendingDraftCount,
       failedOrDeniedCount: payload.team_health?.failed_or_denied_count ?? fallback.teamHealth.failedOrDeniedCount,
     },
-    agentCards: (payload.agent_cards ?? []).map((card) => ({
-      agentId: card.agent_id ?? "unknown",
-      displayName: card.display_name ?? "未知 Agent",
-      role: card.role ?? card.agent_id ?? "unknown",
-      profileVersion: card.profile_version ?? "unknown",
-      skillPackageVersion: card.skill_package_version ?? "unknown",
-      promptVersion: card.prompt_version ?? "unknown",
-      contextSnapshotVersion: card.context_snapshot_version ?? "unknown",
-      recentQualityScore: card.recent_quality_score ?? 0,
-      failureCount: card.failure_count ?? 0,
-      deniedActionCount: card.denied_action_count ?? 0,
-      configDraftEntry: card.config_draft_entry ?? "governance_draft_only",
-      weaknessTags: card.weakness_tags ?? [],
-    })),
+    agentCards: mergeAgentCards(fallback.agentCards, payload.agent_cards ?? []),
   };
+}
+
+function mergeAgentCards(
+  fallbackCards: TeamReadModel["agentCards"],
+  apiCards: NonNullable<ApiTeamReadModel["agent_cards"]>,
+): TeamReadModel["agentCards"] {
+  const normalizedApiCards = new Map(
+    apiCards.map((card) => [
+      card.agent_id ?? "unknown",
+      {
+        agentId: card.agent_id ?? "unknown",
+        displayName: card.display_name ?? "未知 Agent",
+        role: card.role ?? card.agent_id ?? "unknown",
+        profileVersion: card.profile_version ?? "unknown",
+        skillPackageVersion: card.skill_package_version ?? "unknown",
+        promptVersion: card.prompt_version ?? "unknown",
+        contextSnapshotVersion: card.context_snapshot_version ?? "unknown",
+        recentQualityScore: card.recent_quality_score ?? 0,
+        failureCount: card.failure_count ?? 0,
+        deniedActionCount: card.denied_action_count ?? 0,
+        configDraftEntry: card.config_draft_entry ?? "governance_draft_only",
+        weaknessTags: card.weakness_tags ?? [],
+      },
+    ]),
+  );
+  const merged = fallbackCards.map((fallbackCard) => {
+    const apiCard = normalizedApiCards.get(fallbackCard.agentId);
+    if (!apiCard) {
+      return fallbackCard;
+    }
+    return {
+      ...fallbackCard,
+      ...apiCard,
+      weaknessTags: apiCard.weaknessTags.length ? apiCard.weaknessTags : fallbackCard.weaknessTags,
+    };
+  });
+  const fallbackIds = new Set(fallbackCards.map((card) => card.agentId));
+  return [
+    ...merged,
+    ...Array.from(normalizedApiCards.values()).filter((card) => !fallbackIds.has(card.agentId)),
+  ];
 }
 
 export async function loadAgentProfileReadModel(agentId: string): Promise<AgentProfileReadModel> {
