@@ -1181,6 +1181,32 @@ Design approved 前，`reviews/design-review.yaml` 必须记录 R8 cold-start dr
   residual_risk: none
   reopen_required: false
 
+- acceptance_ref: ACC-018
+  run_id: RUN-WI008-ACC018-DATA-QUALITY-GUARD-20260502
+  test_case_ref: TC-ACC-018-01
+  verification_type: automated
+  test_type: regression
+  test_scope: branch-local
+  completion_level: in_memory_domain
+  executed_at: 2026-05-02
+  artifact_ref: python -m pytest tests/domain/decision tests/domain/investment/risk tests/domain/investment/owner_exception -q; python -m compileall src/velentrade
+  result: pass
+  residual_risk: Decision Service now turns data_quality blockers into data_quality_guard reason codes and reopen recommendations, and decision report envelopes fail on guard/failure evidence; still not a cross-WI S4-S6 runtime integration.
+  reopen_required: false
+
+- acceptance_ref: ACC-019
+  run_id: RUN-WI008-ACC019-REPORT-NEGATIVE-20260502
+  test_case_ref: TC-ACC-019-01
+  verification_type: automated
+  test_type: regression
+  test_scope: branch-local
+  completion_level: in_memory_domain
+  executed_at: 2026-05-02
+  artifact_ref: python -m pytest tests/domain/decision tests/domain/investment/risk tests/domain/investment/owner_exception -q; python -m compileall src/velentrade
+  result: pass
+  residual_risk: Risk/Owner exception report envelope now fails when rejected-risk no-override guard evidence or failures fail; still uses deterministic in-memory fixtures.
+  reopen_required: false
+
 - acceptance_ref: ACC-020
   run_id: RUN-WI009-ACC020-20260430
   test_case_ref: TC-ACC-020-01
