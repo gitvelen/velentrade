@@ -16,6 +16,8 @@ def build_position_disposal_report() -> dict[str, Any]:
         "risk_review_guard": task.risk_gate_present,
         "execution_core_guard": task.execution_core_guard_present,
         "risk_gate_present": task.risk_gate_present,
+        "workflow_route": task.workflow_route,
+        "reason_code": task.reason_code,
         "audit_trace": task.audit_trace,
     }
     return _envelope("position_disposal_report.json", "TC-ACC-022-01", "ACC-022", "REQ-022", payload)

@@ -30,6 +30,20 @@ def test_execution_core_block_and_price_miss_are_explicit():
     assert unfilled.reason_code == "price_range_not_hit"
 
 
+def test_urgent_execution_only_uses_first_thirty_minute_window():
+    service = PaperExecutionService()
+    urgent_order = PaperOrder("order-urgent-window", "wf-1", "memo-1", "600000.SH", "buy", 10_000, {"max_price": 10.0}, "urgent", "exec-core-window")
+    normal_order = PaperOrder("order-normal-window", "wf-1", "memo-1", "600000.SH", "buy", 10_000, {"max_price": 10.0}, "normal", "exec-core-window")
+    snapshot = ExecutionCoreSnapshot.pass_with_bars(_window_boundary_bars())
+
+    urgent_receipt = service.execute(urgent_order, snapshot)
+    normal_receipt = service.execute(normal_order, snapshot)
+
+    assert urgent_receipt.fill_status == "expired"
+    assert urgent_receipt.reason_code == "price_range_not_hit"
+    assert normal_receipt.fill_status == "filled"
+
+
 def test_cache_hit_cannot_create_new_paper_execution_authorization():
     service = PaperExecutionService()
     order = PaperOrder("order-cache", "wf-1", "memo-1", "600000.SH", "buy", 10_000, {"max_price": 10.5}, "normal", "exec-core-cache")
@@ -88,6 +102,7 @@ def test_paper_execution_report_has_contract_payload():
     assert report["work_item_refs"] == ["WI-009"]
     assert set(report) >= {
         "order_windows",
+        "selected_window_bar_counts",
         "minute_bar_fixture",
         "pricing_method",
         "vwap_or_twap_calculation",
@@ -101,6 +116,7 @@ def test_paper_execution_report_has_contract_payload():
         "t_plus_one_state",
     }
     assert report["cache_execution_authorization_block"] == "cache_execution_authorization_denied"
+    assert report["selected_window_bar_counts"] == {"urgent": 30, "normal": 120, "low": "all_available"}
 
 
 def test_paper_execution_report_fails_when_guard_or_failure_fails():
@@ -140,3 +156,15 @@ def _zero_volume_bars():
         MinuteBar("2026-04-30T09:32:00+08:00", 10.1, 10.3, 10.0, 10.2, 0),
         MinuteBar("2026-04-30T09:33:00+08:00", 10.2, 10.4, 10.1, 10.3, 0),
     ]
+
+
+def _window_boundary_bars():
+    early_bars = [
+        MinuteBar(f"2026-04-30T10:{minute:02d}:00+08:00", 10.4, 10.6, 10.3, 10.5, 1000)
+        for minute in range(30)
+    ]
+    later_bars = [
+        MinuteBar(f"2026-04-30T11:{minute:02d}:00+08:00", 9.0, 9.2, 8.9, 9.0, 1000)
+        for minute in range(31)
+    ]
+    return early_bars + later_bars

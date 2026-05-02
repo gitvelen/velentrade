@@ -90,10 +90,13 @@ class PaperExecutionService:
             return self._receipt(order, window, "blocked", None, 0, "execution_core_blocked", snapshot)
         if not snapshot.may_create_execution_authorization:
             return self._receipt(order, window, "blocked", None, 0, "cache_execution_authorization_denied", snapshot)
-        price, method = _vwap_or_twap(snapshot.bars)
-        if not _price_hits(order, price, snapshot.bars):
+        window_bars = _select_window_bars(order, snapshot.bars)
+        if not window_bars:
+            return self._receipt(order, window, "expired" if order.urgency == "urgent" else "unfilled", None, 0, "execution_window_empty", snapshot)
+        price, method = _vwap_or_twap(window_bars)
+        if not _price_hits(order, price, window_bars):
             return self._receipt(order, window, "expired" if order.urgency == "urgent" else "unfilled", None, 0, "price_range_not_hit", snapshot, method)
-        slipped = _apply_slippage(order, price, snapshot.bars)
+        slipped = _apply_slippage(order, price, window_bars)
         quantity = order.target_quantity_or_weight
         fill_status = "filled"
         reason_code = None
@@ -154,6 +157,11 @@ def _vwap_or_twap(bars: list[MinuteBar]) -> tuple[float, str]:
     if total_volume:
         return sum(bar.typical_price * bar.volume for bar in bars) / total_volume, "minute_vwap"
     return sum(bar.typical_price for bar in bars) / len(bars), "minute_twap"
+
+
+def _select_window_bars(order: PaperOrder, bars: list[MinuteBar]) -> list[MinuteBar]:
+    window_size = {"urgent": 30, "normal": 120, "low": len(bars)}[order.urgency]
+    return bars[:window_size]
 
 
 def _price_hits(order: PaperOrder, price: float, bars: list[MinuteBar]) -> bool:

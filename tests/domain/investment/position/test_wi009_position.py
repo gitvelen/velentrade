@@ -13,9 +13,31 @@ def test_position_monitor_creates_disposal_task_without_skipping_risk():
     assert task.audit_trace
 
 
+def test_position_disposal_routes_back_to_workflow_risk_review():
+    monitor = PositionMonitor()
+    task = monitor.handle_triggers("600000.SH", ["execution_failure"])
+
+    assert task.workflow_route == "S5_risk_review"
+    assert task.reason_code == "position_disposal_requires_risk_review"
+    assert task.direct_execution_allowed is False
+
+
 def test_position_disposal_report_has_contract_payload():
     report = build_position_disposal_report()
 
     assert report["result"] == "pass"
     assert report["work_item_refs"] == ["WI-009"]
-    assert set(report) >= {"triggers", "trigger_events", "position_disposal_tasks", "priority_changes", "risk_review_guard", "execution_core_guard", "risk_gate_present", "audit_trace"}
+    assert set(report) >= {
+        "triggers",
+        "trigger_events",
+        "position_disposal_tasks",
+        "priority_changes",
+        "risk_review_guard",
+        "execution_core_guard",
+        "risk_gate_present",
+        "workflow_route",
+        "reason_code",
+        "audit_trace",
+    }
+    assert report["workflow_route"] == "S5_risk_review"
+    assert report["reason_code"] == "position_disposal_requires_risk_review"

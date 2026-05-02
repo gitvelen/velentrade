@@ -36,6 +36,7 @@ def build_paper_execution_report() -> dict[str, Any]:
     )
     payload = {
         "order_windows": {"urgent": "30m", "normal": "2h", "low": "full_day"},
+        "selected_window_bar_counts": {"urgent": 30, "normal": 120, "low": "all_available"},
         "minute_bar_fixture": [bar.__dict__ for bar in bars],
         "pricing_method": {"filled": filled.pricing_method, "twap_sell": twap_sell.pricing_method},
         "vwap_or_twap_calculation": {"filled_price": filled.fill_price, "twap_sell_price": twap_sell.fill_price, "fallback": "twap_when_zero_volume"},

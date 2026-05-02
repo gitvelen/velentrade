@@ -14,6 +14,8 @@ class PositionDisposalTask:
     risk_gate_present: bool
     execution_core_guard_present: bool
     direct_execution_allowed: bool
+    workflow_route: str
+    reason_code: str
     audit_trace: list[str]
 
 
@@ -28,5 +30,7 @@ class PositionMonitor:
             risk_gate_present=True,
             execution_core_guard_present=True,
             direct_execution_allowed=False,
+            workflow_route="S5_risk_review",
+            reason_code="position_disposal_requires_risk_review",
             audit_trace=[new_id("audit") for _ in triggers],
         )
