@@ -1246,6 +1246,19 @@ Design approved 前，`reviews/design-review.yaml` 必须记录 R8 cold-start dr
   residual_risk: none
   reopen_required: false
 
+- acceptance_ref: ACC-021
+  run_id: RUN-WI009-ACC021-NON-A-REPORT-NEGATIVE-20260502
+  test_case_ref: TC-ACC-021-01
+  verification_type: automated
+  test_type: regression
+  test_scope: branch-local
+  completion_level: in_memory_domain
+  executed_at: 2026-05-02
+  artifact_ref: python -m pytest tests/domain/investment/paper_account tests/domain/investment/execution tests/domain/investment/position -q; python -m compileall src/velentrade
+  result: pass
+  residual_risk: PaperExecution now blocks non-A symbols with non_a_asset_no_paper_execution, and paper execution report envelopes fail on guard/failure evidence; still not a full S6 browser/API/PostgreSQL runtime execution chain.
+  reopen_required: false
+
 - acceptance_ref: ACC-004
   run_id: RUN-FIX-ACC004-20260501
   test_case_ref: TC-ACC-004-01
