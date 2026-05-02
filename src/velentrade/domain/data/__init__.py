@@ -6,8 +6,11 @@ from velentrade.domain.data.sources import (
     DataSourceRegistry,
     NormalizedDataSet,
     PublicHttpCsvDailyQuoteAdapter,
+    PublicHttpJsonKlineDailyQuoteAdapter,
     SourceFetchError,
     StaticDataSourceAdapter,
+    eastmoney_secid_mapper,
+    tencent_market_symbol_mapper,
 )
 
 __all__ = [
@@ -21,6 +24,9 @@ __all__ = [
     "DataCollectionService",
     "NormalizedDataSet",
     "PublicHttpCsvDailyQuoteAdapter",
+    "PublicHttpJsonKlineDailyQuoteAdapter",
     "StaticDataSourceAdapter",
+    "eastmoney_secid_mapper",
+    "tencent_market_symbol_mapper",
     "SourceFetchError",
 ]

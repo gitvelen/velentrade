@@ -1,10 +1,11 @@
 from __future__ import annotations
 
 import csv
+import json
 from dataclasses import dataclass, field
 from io import StringIO
 from typing import Callable, Protocol
-from urllib.request import urlopen
+from urllib.request import Request, urlopen
 
 from velentrade.domain.data.quality import DataQualityReport, DataQualityService, DataRequest, RequiredField
 
@@ -86,7 +87,8 @@ class PublicHttpCsvDailyQuoteAdapter:
 
     def _urllib_fetch_text(self, url: str) -> str:
         try:
-            with urlopen(url, timeout=10) as response:  # noqa: S310 - URL is controlled by Source Registry.
+            http_request = Request(url, headers={"User-Agent": "velentrade-data-service/0.1"})
+            with urlopen(http_request, timeout=10) as response:  # noqa: S310 - URL is controlled by Source Registry.
                 return response.read().decode("utf-8")
         except Exception as exc:  # pragma: no cover - deterministic tests inject fetch_text.
             raise SourceFetchError(str(exc)) from exc
@@ -116,6 +118,129 @@ class PublicHttpCsvDailyQuoteAdapter:
                 record["volume"] = int(float(normalized["volume"]))
             records.append(record)
         return records
+
+
+def eastmoney_secid_mapper(symbol: str) -> str:
+    code, separator, exchange = symbol.partition(".")
+    if not separator:
+        raise SourceFetchError(f"Eastmoney source requires exchange suffix for {symbol}")
+    normalized_exchange = exchange.upper()
+    if normalized_exchange == "SH":
+        return f"1.{code}"
+    if normalized_exchange == "SZ":
+        return f"0.{code}"
+    raise SourceFetchError(f"Eastmoney source does not support exchange {exchange}")
+
+
+def tencent_market_symbol_mapper(symbol: str) -> str:
+    code, separator, exchange = symbol.partition(".")
+    if not separator:
+        raise SourceFetchError(f"Tencent source requires exchange suffix for {symbol}")
+    normalized_exchange = exchange.upper()
+    if normalized_exchange == "SH":
+        return f"sh{code}"
+    if normalized_exchange == "SZ":
+        return f"sz{code}"
+    raise SourceFetchError(f"Tencent source does not support exchange {exchange}")
+
+
+class PublicHttpJsonKlineDailyQuoteAdapter(PublicHttpCsvDailyQuoteAdapter):
+    def fetch(self, request: DataRequest) -> NormalizedDataSet:
+        if not self.source.endpoint_template:
+            raise SourceFetchError(f"source {self.source.source_id} has no endpoint_template")
+        url = self.source.endpoint_template.format(symbol=self._symbol_mapper(request.symbol_or_scope))
+        payload = json.loads(self._fetch_text(url))
+        records = self._parse_klines(payload, request.symbol_or_scope)
+        if not records:
+            raise SourceFetchError(f"source {self.source.source_id} returned no quote rows")
+        provider_metadata = self._provider_metadata(payload)
+        return NormalizedDataSet(
+            source_id=self.source.source_id,
+            records=records,
+            metadata={
+                "adapter_kind": self.source.adapter_kind,
+                "license_summary": self.source.license_summary,
+                "rate_limit": self.source.rate_limit,
+                "provider_name": provider_metadata.get("provider_name"),
+                "provider_code": provider_metadata.get("provider_code"),
+            },
+        )
+
+    def _parse_klines(self, payload: dict[str, object], symbol: str) -> list[dict[str, object]]:
+        if "rc" in payload and payload.get("rc") not in (0, "0"):
+            raise SourceFetchError(f"source {self.source.source_id} returned rc={payload.get('rc')}")
+        if "code" in payload and payload.get("code") not in (0, "0"):
+            raise SourceFetchError(f"source {self.source.source_id} returned code={payload.get('code')}")
+        data = payload.get("data")
+        if not isinstance(data, dict):
+            raise SourceFetchError(f"source {self.source.source_id} returned no data object")
+        klines = data.get("klines")
+        if isinstance(klines, list):
+            return self._parse_eastmoney_klines(klines, symbol)
+        for market_code, market_payload in data.items():
+            if isinstance(market_payload, dict):
+                tencent_klines = market_payload.get("qfqday") or market_payload.get("day")
+                if isinstance(tencent_klines, list):
+                    return self._parse_tencent_klines(tencent_klines, symbol)
+        raise SourceFetchError(f"source {self.source.source_id} returned no klines")
+
+    def _parse_eastmoney_klines(self, klines: list[object], symbol: str) -> list[dict[str, object]]:
+        records: list[dict[str, object]] = []
+        for line in klines:
+            if not isinstance(line, str):
+                continue
+            fields = line.split(",")
+            if len(fields) < 6:
+                continue
+            trade_date, open_price, close, high, low, volume = fields[:6]
+            record = self._quote_record(symbol, trade_date, open_price, high, low, close, volume)
+            if len(fields) >= 7 and fields[6] not in ("", "-"):
+                record["amount"] = float(fields[6])
+            records.append(record)
+        return records
+
+    def _parse_tencent_klines(self, klines: list[object], symbol: str) -> list[dict[str, object]]:
+        records: list[dict[str, object]] = []
+        for row in klines:
+            if not isinstance(row, list) or len(row) < 6:
+                continue
+            trade_date, open_price, close, high, low, volume = row[:6]
+            records.append(self._quote_record(symbol, trade_date, open_price, high, low, close, volume))
+        return records
+
+    def _quote_record(
+        self,
+        symbol: str,
+        trade_date: object,
+        open_price: object,
+        high: object,
+        low: object,
+        close: object,
+        volume: object,
+    ) -> dict[str, object]:
+        trade_date_value = str(trade_date)
+        return {
+            "symbol": symbol,
+            "trade_date": trade_date_value,
+            "open": float(open_price),
+            "high": float(high),
+            "low": float(low),
+            "close": float(close),
+            "volume": int(float(volume)),
+            "source_timestamp": trade_date_value,
+            "source_id": self.source.source_id,
+        }
+
+    def _provider_metadata(self, payload: dict[str, object]) -> dict[str, object]:
+        data = payload.get("data")
+        if not isinstance(data, dict):
+            return {}
+        if "code" in data or "name" in data:
+            return {"provider_code": data.get("code"), "provider_name": data.get("name")}
+        for market_code, market_payload in data.items():
+            if isinstance(market_payload, dict) and (market_payload.get("qfqday") or market_payload.get("day")):
+                return {"provider_code": market_code, "provider_name": market_payload.get("name")}
+        return {}
 
 
 class StaticDataSourceAdapter:

@@ -7,10 +7,13 @@ from velentrade.domain.data.sources import (
     DataCollectionService,
     DataSourceDefinition,
     DataSourceRegistry,
+    PublicHttpJsonKlineDailyQuoteAdapter,
     NormalizedDataSet,
     PublicHttpCsvDailyQuoteAdapter,
     SourceFetchError,
     StaticDataSourceAdapter,
+    eastmoney_secid_mapper,
+    tencent_market_symbol_mapper,
 )
 
 
@@ -50,6 +53,25 @@ def _public_source(source_id: str = "public-http-daily") -> DataSourceDefinition
     )
 
 
+def _eastmoney_source(source_id: str = "eastmoney-public-kline") -> DataSourceDefinition:
+    return DataSourceDefinition(
+        source_id=source_id,
+        data_domain="a_share_market",
+        allowed_usage=("research", "decision_core"),
+        priority="T2",
+        status="active",
+        license_summary="Eastmoney public quote endpoint; no API key; review provider terms and rate limits before production use",
+        rate_limit={"requests_per_minute": 20},
+        adapter_kind="public_http_json_kline_daily_quote",
+        endpoint_template=(
+            "https://push2his.eastmoney.com/api/qt/stock/kline/get?"
+            "secid={symbol}&fields1=f1,f2,f3&fields2=f51,f52,f53,f54,f55,f56,f57"
+            "&klt=101&fqt=1&beg=19900101&end=20500101"
+        ),
+        cache_ttl_seconds=86400,
+    )
+
+
 def test_public_http_csv_adapter_fetches_and_normalizes_quote_with_metadata():
     fetched_urls: list[str] = []
 
@@ -83,6 +105,109 @@ def test_public_http_csv_adapter_fetches_and_normalizes_quote_with_metadata():
             "source_id": "public-http-daily",
         }
     ]
+
+
+def test_public_http_json_kline_adapter_fetches_and_normalizes_eastmoney_quote():
+    fetched_urls: list[str] = []
+
+    def fetch_text(url: str) -> str:
+        fetched_urls.append(url)
+        return (
+            '{"rc":0,"data":{"code":"600000","market":1,"name":"浦发银行",'
+            '"klines":["2026-04-01,10.20,10.24,10.37,10.18,574165,590411590.00"]}}'
+        )
+
+    source = _eastmoney_source()
+    adapter = PublicHttpJsonKlineDailyQuoteAdapter(
+        source,
+        fetch_text=fetch_text,
+        symbol_mapper=eastmoney_secid_mapper,
+    )
+
+    data = adapter.fetch(_decision_request())
+
+    assert fetched_urls == [source.endpoint_template.format(symbol="1.600000")]
+    assert data.source_id == "eastmoney-public-kline"
+    assert data.metadata["adapter_kind"] == "public_http_json_kline_daily_quote"
+    assert data.metadata["provider_name"] == "浦发银行"
+    assert data.records == [
+        {
+            "symbol": "600000.SH",
+            "trade_date": "2026-04-01",
+            "open": 10.20,
+            "high": 10.37,
+            "low": 10.18,
+            "close": 10.24,
+            "volume": 574165,
+            "amount": 590411590.0,
+            "source_timestamp": "2026-04-01",
+            "source_id": "eastmoney-public-kline",
+        }
+    ]
+
+
+def test_public_http_json_kline_adapter_fetches_and_normalizes_tencent_quote():
+    fetched_urls: list[str] = []
+
+    def fetch_text(url: str) -> str:
+        fetched_urls.append(url)
+        return (
+            '{"code":0,"msg":"","data":{"sh600000":{"qfqday":['
+            '["2026-04-17","9.970","9.860","10.000","9.850","579330.000"]'
+            ']}}}'
+        )
+
+    source = DataSourceDefinition(
+        source_id="tencent-public-kline",
+        data_domain="a_share_market",
+        allowed_usage=("research", "decision_core"),
+        priority="T2",
+        status="active",
+        license_summary="Tencent public quote endpoint; no API key; review provider terms and rate limits before production use",
+        rate_limit={"requests_per_minute": 20},
+        adapter_kind="public_http_json_kline_daily_quote",
+        endpoint_template="https://web.ifzq.gtimg.cn/appstock/app/fqkline/get?param={symbol},day,,,10,qfq",
+        cache_ttl_seconds=86400,
+    )
+    adapter = PublicHttpJsonKlineDailyQuoteAdapter(
+        source,
+        fetch_text=fetch_text,
+        symbol_mapper=tencent_market_symbol_mapper,
+    )
+
+    data = adapter.fetch(_decision_request())
+
+    assert fetched_urls == [source.endpoint_template.format(symbol="sh600000")]
+    assert data.source_id == "tencent-public-kline"
+    assert data.metadata["adapter_kind"] == "public_http_json_kline_daily_quote"
+    assert data.metadata["provider_code"] == "sh600000"
+    assert data.records == [
+        {
+            "symbol": "600000.SH",
+            "trade_date": "2026-04-17",
+            "open": 9.970,
+            "high": 10.000,
+            "low": 9.850,
+            "close": 9.860,
+            "volume": 579330,
+            "source_timestamp": "2026-04-17",
+            "source_id": "tencent-public-kline",
+        }
+    ]
+
+
+def test_eastmoney_symbol_mapper_requires_a_share_exchange_suffix():
+    assert eastmoney_secid_mapper("600000.SH") == "1.600000"
+    assert eastmoney_secid_mapper("000001.SZ") == "0.000001"
+    with pytest.raises(SourceFetchError):
+        eastmoney_secid_mapper("AAPL.US")
+
+
+def test_tencent_symbol_mapper_requires_a_share_exchange_suffix():
+    assert tencent_market_symbol_mapper("600000.SH") == "sh600000"
+    assert tencent_market_symbol_mapper("000001.SZ") == "sz000001"
+    with pytest.raises(SourceFetchError):
+        tencent_market_symbol_mapper("AAPL.US")
 
 
 def test_registry_requires_real_source_and_skips_fixture_only_sources():

@@ -177,13 +177,14 @@ Data Request
 
 ### 5.1 公开 HTTP 数据源最小实现
 
-WI-002 的真实数据采集最小实现不绑定付费或需密钥供应商；默认交付一个可由 Source Registry 配置的 `public_http_csv_daily_quote` adapter。该 adapter 必须真实执行 HTTP fetch、解析公开 CSV 行情响应、归一化为 `symbol/trade_date/open/high/low/close/volume/source_timestamp/source_id`，并把 `license_summary`、`rate_limit`、`endpoint_template`、`cache_ttl_seconds`、`adapter_kind` 写入 source metadata。自动化测试不得依赖外网可用性；必须用本地 HTTP 或 fake transport 验证真实 fetch/parse/quality/fallback/cache 路径。外网 live provider smoke 只能作为单独运行证据记录，失败不得被伪装成自动化 pass。
+WI-002 的真实数据采集最小实现不绑定付费或需密钥供应商；默认交付可由 Source Registry 配置的 `public_http_csv_daily_quote` adapter，并允许补充无需密钥的 `public_http_json_kline_daily_quote` adapter 用于公开 A 股日线 K 线。adapter 必须真实执行 HTTP fetch、解析公开 CSV/JSON 行情响应、归一化为 `symbol/trade_date/open/high/low/close/volume/source_timestamp/source_id`，并把 `license_summary`、`rate_limit`、`endpoint_template`、`cache_ttl_seconds`、`adapter_kind` 写入 source metadata。自动化测试不得依赖外网可用性；必须用本地 HTTP 或 fake transport 验证真实 fetch/parse/quality/fallback/cache 路径。外网 live provider smoke 只能作为单独运行证据记录，失败不得被伪装成自动化 pass。
 
 Source Registry 默认至少区分三类来源：
 
 | adapter_kind | 用途 | completion_level |
 |---|---|---|
 | `public_http_csv_daily_quote` | 公开 HTTP CSV 日线行情；可用于 `research` / `decision_core`，不得用于 `execution_core` 新成交。 | `in_memory_domain` 或更高，取决于是否接入持久化/运行环境 |
+| `public_http_json_kline_daily_quote` | 公开 HTTP JSON 日线 K 线；用于无需密钥的 A 股研究/决策核心候选数据，不得用于 `execution_core` 新成交。 | `in_memory_domain` 或更高，外网 live provider smoke 单独记录 |
 | `fixture_contract` | 合同 fixture 与离线测试。 | `fixture_contract` |
 | `cache_snapshot` | 最近一次成功采集的展示/研究缓存；不得生成新的执行授权。 | `in_memory_domain` |
 
