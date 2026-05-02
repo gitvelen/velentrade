@@ -1636,6 +1636,19 @@ Design approved 前，`reviews/design-review.yaml` 必须记录 R8 cold-start dr
   residual_risk: Partial /api/team responses are merged with the nine-agent official roster, and capability draft save shows submitting feedback while blocking duplicate clicks; still not Owner manual acceptance.
   reopen_required: false
 
+- acceptance_ref: ACC-007
+  run_id: RUN-WI004-ACC007-APPROVAL-BACKEND-FEEDBACK-20260502
+  test_case_ref: TC-ACC-007-01
+  verification_type: automated
+  test_type: frontend
+  test_scope: branch-local-api-connected
+  completion_level: api_connected
+  executed_at: 2026-05-02
+  artifact_ref: npm --prefix frontend test; npm --prefix frontend run build; python -m pytest tests/e2e -q
+  result: pass
+  residual_risk: Approval action buttons now show submitting feedback, lock duplicate clicks, and render the backend returned approval decision/effective_scope instead of keeping only the local clicked action. Still not Owner manual acceptance.
+  reopen_required: false
+
 - acceptance_ref: ACC-001
   run_id: RUN-FULL-ACC001-20260430
   test_case_ref: TC-ACC-001-01
