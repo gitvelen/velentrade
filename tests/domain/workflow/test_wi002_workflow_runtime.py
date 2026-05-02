@@ -43,6 +43,43 @@ def test_s0_s7_workflow_uses_contract_statuses_and_reopen_is_event_not_node_stat
     assert runtime.artifact_status["memo-v1"] == "superseded"
 
 
+def test_reopen_starts_new_attempt_at_target_stage_with_preserved_upstream():
+    runtime = WorkflowRuntime()
+    brief = RequestBrief.create(
+        brief_id="brief-reopen-attempt",
+        raw_input_ref="owner-input-reopen-attempt",
+        route_type="investment_workflow",
+        route_confidence=0.92,
+        asset_scope="a_share_common_stock",
+        authorization_boundary="research_only_until_owner_approval",
+    )
+    task = runtime.confirm_request_brief(brief, owner_decision="confirmed")
+    workflow = runtime.create_investment_workflow(task, context_snapshot_id="ctx-v1")
+    runtime.start_stage(workflow.workflow_id, "S0")
+    runtime.complete_stage(workflow.workflow_id, "S0", artifact_refs=["artifact-s0"])
+    runtime.start_stage(workflow.workflow_id, "S1")
+    runtime.complete_stage(workflow.workflow_id, "S1", artifact_refs=["artifact-s1"])
+
+    reopen = runtime.request_reopen(
+        workflow.workflow_id,
+        from_stage="S4",
+        target_stage="S2",
+        reason_code="retained_hard_dissent",
+        requested_by="risk_officer",
+        invalidated_artifacts=["memo-v1"],
+        preserved_artifacts=["artifact-s0", "artifact-s1"],
+    )
+    reopened_workflow = runtime.workflows[workflow.workflow_id]
+
+    assert reopen.attempt_no == 2
+    assert reopened_workflow.current_attempt_no == 2
+    assert reopened_workflow.current_stage == "S2"
+    assert {stage.attempt_no for stage in reopened_workflow.stages} == {2}
+    assert [stage.node_status for stage in reopened_workflow.stages[:2]] == ["skipped", "skipped"]
+    assert reopened_workflow.stages[2].node_status == "not_started"
+    assert runtime.start_stage(workflow.workflow_id, "S2").node_status == "running"
+
+
 def test_stage_guards_block_out_of_order_start_and_record_reason_code():
     runtime = WorkflowRuntime()
     brief = RequestBrief.create(
@@ -60,6 +97,26 @@ def test_stage_guards_block_out_of_order_start_and_record_reason_code():
 
     assert blocked.node_status == "blocked"
     assert blocked.reason_code == "upstream_stage_not_completed"
+
+
+def test_stage_completion_requires_running_stage():
+    runtime = WorkflowRuntime()
+    brief = RequestBrief.create(
+        brief_id="brief-complete-not-running",
+        raw_input_ref="owner-input-complete-not-running",
+        route_type="investment_workflow",
+        route_confidence=0.9,
+        asset_scope="a_share_common_stock",
+        authorization_boundary="research_only_until_owner_approval",
+    )
+    task = runtime.confirm_request_brief(brief, owner_decision="confirmed")
+    workflow = runtime.create_investment_workflow(task, context_snapshot_id="ctx-v1")
+
+    blocked = runtime.complete_stage(workflow.workflow_id, "S1", artifact_refs=["artifact-s1"])
+
+    assert blocked.node_status == "blocked"
+    assert blocked.reason_code == "stage_not_running"
+    assert runtime.artifact_status.get("artifact-s1") is None
 
 
 def test_stage_completion_rejects_memory_refs_as_formal_artifacts():

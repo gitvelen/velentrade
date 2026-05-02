@@ -322,6 +322,11 @@ class WorkflowRuntime:
     def complete_stage(self, workflow_id: str, stage: str, artifact_refs: list[str]) -> WorkflowStage:
         workflow = self.workflows[workflow_id]
         index = self._stage_index(workflow, stage)
+        if workflow.stages[index].node_status != "running":
+            blocked = workflow.stages[index].with_status("blocked", "stage_not_running")
+            workflow.stages[index] = blocked
+            self.workflows[workflow_id] = replace(workflow, updated_at=utc_now())
+            return blocked
         if not artifact_refs:
             blocked = workflow.stages[index].with_status("blocked", "missing_required_artifact")
             workflow.stages[index] = blocked
@@ -366,6 +371,26 @@ class WorkflowRuntime:
             created_at=utc_now(),
         )
         self.reopen_events.append(event)
+        target_index = INVESTMENT_STAGES.index(target_stage)
+        reopened_stages = [
+            WorkflowStage(
+                workflow_id=workflow.workflow_id,
+                attempt_no=event.attempt_no,
+                stage=stage,
+                node_status="skipped" if index < target_index else "not_started",
+                responsible_role=RESPONSIBLE_ROLES[stage],
+                output_artifact_refs=preserved_artifacts if index < target_index else [],
+                reason_code="preserved_by_reopen" if index < target_index else None,
+            )
+            for index, stage in enumerate(INVESTMENT_STAGES)
+        ]
+        self.workflows[workflow_id] = replace(
+            workflow,
+            current_stage=target_stage,
+            current_attempt_no=event.attempt_no,
+            stages=reopened_stages,
+            updated_at=utc_now(),
+        )
         return event
 
 

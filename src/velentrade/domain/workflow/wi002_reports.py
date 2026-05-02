@@ -81,6 +81,7 @@ def _workflow_report() -> dict[str, Any]:
     workflow = runtime.create_investment_workflow(task, "ctx-v1")
     runtime.start_stage(workflow.workflow_id, "S0")
     runtime.complete_stage(workflow.workflow_id, "S0", ["artifact-s0"])
+    blocked_completion = runtime.complete_stage(workflow.workflow_id, "S2", ["artifact-s2"])
     reopen = runtime.request_reopen(
         workflow.workflow_id,
         from_stage="S4",
@@ -100,6 +101,13 @@ def _workflow_report() -> dict[str, Any]:
             "reopen_events": [reopen.__dict__],
             "superseded_artifacts": ["memo-v1"],
             "stop_conditions": ["missing_required_artifact", "upstream_stage_not_completed"],
+            "stage_completion_guard": blocked_completion.reason_code,
+            "reopen_attempt_transition": {
+                "event_attempt_no": reopen.attempt_no,
+                "current_attempt_no": current.current_attempt_no,
+                "current_stage": current.current_stage,
+                "preserved_upstream_statuses": [stage.node_status for stage in current.stages[:2]],
+            },
         },
     )
 

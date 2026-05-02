@@ -31,6 +31,16 @@ def _find_free_port() -> int:
         return int(sock.getsockname()[1])
 
 
+def _get_and_release_async_result(async_result, *, timeout: int):
+    try:
+        return async_result.get(timeout=timeout)
+    finally:
+        try:
+            async_result.forget()
+        finally:
+            async_result.backend = None
+
+
 @contextlib.contextmanager
 def _postgres_container():
     port = _find_free_port()
@@ -168,13 +178,16 @@ def test_celery_dispatch_persists_runner_artifact_via_postgres_and_redis():
         )
 
         with celery_worker.start_worker(app, perform_ping_check=False):
-            result = app.send_task(
-                "velentrade.worker.start_agent_run",
-                kwargs={
-                    "run_payload": asdict(run),
-                    "model_profile_id": "fake_test",
-                },
-            ).get(timeout=60)
+            result = _get_and_release_async_result(
+                app.send_task(
+                    "velentrade.worker.start_agent_run",
+                    kwargs={
+                        "run_payload": asdict(run),
+                        "model_profile_id": "fake_test",
+                    },
+                ),
+                timeout=60,
+            )
 
         assert result["status"] == "completed"
         assert result["agent_run_id"] == run.agent_run_id
@@ -256,10 +269,13 @@ def test_celery_data_collection_task_persists_provider_result_via_postgres_and_r
         request = _data_request()
 
         with celery_worker.start_worker(app, perform_ping_check=False):
-            result = app.send_task(
-                "velentrade.worker.collect_data_request",
-                kwargs={"request_payload": asdict(request)},
-            ).get(timeout=60)
+            result = _get_and_release_async_result(
+                app.send_task(
+                    "velentrade.worker.collect_data_request",
+                    kwargs={"request_payload": asdict(request)},
+                ),
+                timeout=60,
+            )
 
         assert result["completion_level"] == "db_persistent"
         assert result["selected_source_id"] == "tencent-public-kline"

@@ -12,6 +12,8 @@ def test_wi002_reports_include_contract_payloads_and_branch_local_evidence_field
             "reopen_events",
             "superseded_artifacts",
             "stop_conditions",
+            "stage_completion_guard",
+            "reopen_attempt_transition",
         },
         "data_quality_degradation_report.json": {
             "data_request_schema",
@@ -72,6 +74,11 @@ def test_wi002_reports_include_contract_payloads_and_branch_local_evidence_field
     assert data_report["source_registry_routing"]["require_real_skips_fixture_only"] is True
     assert data_report["public_source_fallback"]["selected_source_id"] == "backup-public"
     assert data_report["public_source_fallback"]["quality_band"] == "normal"
+    workflow_report = reports["s0_s7_workflow_report.json"]
+    assert workflow_report["stage_completion_guard"] == "stage_not_running"
+    assert workflow_report["reopen_attempt_transition"]["current_attempt_no"] == 2
+    assert workflow_report["reopen_attempt_transition"]["current_stage"] == "S2"
+    assert workflow_report["reopen_attempt_transition"]["preserved_upstream_statuses"] == ["skipped", "skipped"]
 
 
 def test_wi002_report_envelope_marks_fail_when_guard_or_failures_fail():
