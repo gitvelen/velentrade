@@ -1324,6 +1324,19 @@ Design approved 前，`reviews/design-review.yaml` 必须记录 R8 cold-start dr
   residual_risk: Approval/capability/governance UI actions call API adapters, but Owner has not performed live browser acceptance.
   reopen_required: false
 
+- acceptance_ref: ACC-006
+  run_id: RUN-WI004-DEV-API-PROXY-20260502
+  test_case_ref: TC-ACC-006-01
+  verification_type: automated
+  test_type: frontend
+  test_scope: branch-local-api-connected
+  completion_level: api_connected
+  executed_at: 2026-05-02
+  artifact_ref: python -m pytest tests/e2e/test_wi004_frontend_static.py::test_vite_dev_server_proxies_api_calls_to_fastapi -q; npm --prefix frontend test; npm --prefix frontend run build; python -m pytest tests/e2e -q
+  result: pass
+  residual_risk: Vite dev server now proxies /api to FastAPI for real dev-browser clicks; still no Playwright/browser-to-live-FastAPI automated run.
+  reopen_required: false
+
 - acceptance_ref: ACC-001
   run_id: RUN-FULL-ACC001-20260430
   test_case_ref: TC-ACC-001-01
