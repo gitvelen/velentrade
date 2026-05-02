@@ -2273,6 +2273,19 @@ Design approved 前，`reviews/design-review.yaml` 必须记录 R8 cold-start dr
   residual_risk: position_disposal_report now includes the frozen contract field priority_escalation while retaining priority_changes compatibility; still not wired to API/PostgreSQL workflow runtime.
   reopen_required: false
 
+- acceptance_ref: ACC-021
+  run_id: RUN-WI009-ACC021-SCOPE-QUANTITY-GUARD-20260502
+  test_case_ref: TC-ACC-021-01
+  verification_type: automated
+  test_type: regression
+  test_scope: branch-local
+  completion_level: in_memory_domain
+  executed_at: 2026-05-02
+  artifact_ref: python -m pytest tests/domain/investment/paper_account tests/domain/investment/execution tests/domain/investment/position -q; python -m compileall src/velentrade
+  result: pass
+  residual_risk: PaperExecution now rejects non-numeric exchange-suffixed symbols such as AAPL.SH and non-positive target quantities before pricing or fill generation; still in-memory only and not connected to PostgreSQL/API/browser S6 runtime.
+  reopen_required: false
+
 - acceptance_ref: ACC-012
   run_id: RUN-WI003-ACC012-REGISTRATION-BOUNDARY-20260502
   test_case_ref: TC-ACC-012-01
