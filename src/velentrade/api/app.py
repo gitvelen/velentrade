@@ -836,18 +836,26 @@ def build_app(runtime: ApiRuntime | None = None) -> FastAPI:
         run = api_runtime.require_run(request.source_agent_run_id)
         if run is None:
             return _error(404, "NOT_FOUND", "Unknown source_agent_run_id")
-        command = CollaborationCommand.request(
-            command_id=new_id("command"),
-            command_type=request.command_type,
-            workflow_id=request.workflow_id,
-            attempt_no=request.attempt_no,
-            stage=request.stage,
-            source_agent_run_id=request.source_agent_run_id,
-            source_agent_id=run.agent_id,
-            target_agent_id_or_service=request.target_agent_id_or_service,
-            payload=request.payload,
-            requested_admission_type=request.requested_admission_type,
-        )
+        try:
+            command = CollaborationCommand.request(
+                command_id=new_id("command"),
+                command_type=request.command_type,
+                workflow_id=request.workflow_id,
+                attempt_no=request.attempt_no,
+                stage=request.stage,
+                source_agent_run_id=request.source_agent_run_id,
+                source_agent_id=run.agent_id,
+                target_agent_id_or_service=request.target_agent_id_or_service,
+                payload=request.payload,
+                requested_admission_type=request.requested_admission_type,
+            )
+        except ValueError:
+            return _error(
+                403,
+                "COMMAND_NOT_ALLOWED",
+                "Command is not allowed for this AgentRun.",
+                reason_code="unknown_command_type",
+            )
         result = api_runtime.gateway.append_command(run, command, idempotency_key=command.command_id)
         if not result.accepted:
             return _error(403, "COMMAND_NOT_ALLOWED", "Command is not allowed for this AgentRun.", reason_code=result.reason_code)

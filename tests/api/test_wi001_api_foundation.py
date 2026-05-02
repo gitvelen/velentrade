@@ -210,6 +210,29 @@ def test_gateway_and_collaboration_endpoints_accept_append_only_requests():
     assert relation_payload["relation_type"] == "supports"
 
 
+def test_collaboration_endpoint_rejects_unknown_command_type_without_500():
+    client = TestClient(build_app())
+
+    response = client.post(
+        "/api/collaboration/commands",
+        json={
+            "command_type": "direct_business_db_write",
+            "workflow_id": "wf-1",
+            "attempt_no": 1,
+            "stage": "S1",
+            "source_agent_run_id": "run-investment_researcher",
+            "target_agent_id_or_service": "artifact",
+            "payload": {"table": "artifact"},
+            "requested_admission_type": "auto_accept",
+        },
+    )
+
+    assert response.status_code == 403
+    payload = response.json()["error"]
+    assert payload["code"] == "COMMAND_NOT_ALLOWED"
+    assert payload["reason_code"] == "unknown_command_type"
+
+
 def test_owner_memory_capture_endpoint_creates_append_only_memory_item():
     client = TestClient(build_app())
 
