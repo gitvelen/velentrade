@@ -1,6 +1,6 @@
 from velentrade.domain.investment.owner_exception.approval import ApprovalRecord, OwnerExceptionService
 from velentrade.domain.investment.risk.runtime import RiskReviewRuntime
-from velentrade.domain.investment.risk.wi008_reports import build_wi008_risk_reports
+from velentrade.domain.investment.risk.wi008_reports import _envelope, build_wi008_risk_reports
 
 
 def test_risk_review_three_states_and_rejected_cannot_be_bypassed():
@@ -94,3 +94,22 @@ def test_wi008_risk_report_has_contract_payloads():
         "high_impact_governance": "governance_expired_no_effect",
         "manual_todo": "manual_todo_expired_only",
     }
+
+
+def test_risk_report_fails_when_guard_or_failure_fails():
+    report = _envelope(
+        {"bypass_attempt_denied": "allowed:owner"},
+        guard_results=[
+            {
+                "guard": "risk_rejected_no_override",
+                "input_ref": "rejected",
+                "expected": "denied",
+                "actual": "allowed:owner",
+                "result": "fail",
+            }
+        ],
+        failures=[{"code": "risk_rejected_bypassed", "message": "Owner bypassed rejected Risk review"}],
+    )
+
+    assert report["result"] == "fail"
+    assert report["failures"][0]["code"] == "risk_rejected_bypassed"

@@ -172,17 +172,20 @@ class DecisionService:
         )
         major = optimizer_available and (single_pp >= 5.0 or portfolio_active >= 0.20)
         low_action = packet.action_conviction < 0.65
+        data_quality_blockers = packet.data_quality_summary.get("blockers", [])
         reason_codes: list[str] = []
         if low_action:
             reason_codes.append("low_action_conviction_no_execution")
+        if data_quality_blockers:
+            reason_codes.append("data_quality_guard")
         if major:
             reason_codes.append("decision_major_deviation_requires_exception_or_reopen")
         if major and not memo.deviation_reason:
             reason_codes.append("missing_deviation_rationale")
         if packet.hard_dissent_state == "retained":
             reason_codes.append("retained_hard_dissent_risk_review")
-        candidate_ref = new_id("decision-exception") if major and memo.deviation_reason and not low_action else None
-        reopen_ref = new_id("reopen-recommendation") if low_action or (major and not memo.deviation_reason) else None
+        candidate_ref = new_id("decision-exception") if major and memo.deviation_reason and not low_action and not data_quality_blockers else None
+        reopen_ref = new_id("reopen-recommendation") if low_action or data_quality_blockers or (major and not memo.deviation_reason) else None
         return DecisionGuardResult(
             guard_id=new_id("decision-guard"),
             workflow_id=packet.workflow_id,
@@ -195,7 +198,7 @@ class DecisionService:
             major_deviation=major,
             low_action_conviction=low_action,
             retained_hard_dissent=packet.hard_dissent_state == "retained",
-            data_quality_blockers=packet.data_quality_summary.get("blockers", []),
+            data_quality_blockers=data_quality_blockers,
             optimizer_available=optimizer_available,
             owner_exception_candidate_ref=candidate_ref,
             reopen_recommendation_ref=reopen_ref,

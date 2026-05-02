@@ -49,7 +49,14 @@ def build_wi008_risk_reports() -> dict[str, dict[str, Any]]:
     return {"risk_owner_exception_report.json": _envelope(payload)}
 
 
-def _envelope(payload: dict[str, Any]) -> dict[str, Any]:
+def _envelope(
+    payload: dict[str, Any],
+    guard_results: list[dict[str, Any]] | None = None,
+    failures: list[dict[str, Any]] | None = None,
+) -> dict[str, Any]:
+    guard_results = guard_results or [{"guard": "risk_rejected_no_override", "input_ref": "rejected", "expected": "denied", "actual": payload["bypass_attempt_denied"], "result": "pass"}]
+    failures = failures or []
+    result = "fail" if failures or any(guard.get("result") != "pass" for guard in guard_results) else "pass"
     report = {
         "report_id": "risk_owner_exception_report.json",
         "generated_at": utc_now(),
@@ -58,18 +65,18 @@ def _envelope(payload: dict[str, Any]) -> dict[str, Any]:
         "work_item_refs": ["WI-008"],
         "test_case_refs": ["TC-ACC-019-01"],
         "fixture_refs": ["FX-RISK-REJECTED-REOPEN"],
-        "result": "pass",
+        "result": result,
         "checked_requirements": ["REQ-019"],
         "checked_acceptances": ["ACC-019"],
         "checked_invariants": ["INV-RISK-REJECTED-NO-OWNER-OVERRIDE"],
         "artifact_refs": [],
-        "failures": [],
+        "failures": failures,
         "residual_risk": [],
         "schema_version": "1.0.0",
         "checked_fields": sorted(payload),
         "fixture_inputs": {"fixture": "WI-008 deterministic risk fixture"},
         "actual_outputs": {"payload_keys": sorted(payload)},
-        "guard_results": [{"guard": "risk_rejected_no_override", "input_ref": "rejected", "expected": "denied", "actual": payload["bypass_attempt_denied"], "result": "pass"}],
+        "guard_results": guard_results,
     }
     report.update(payload)
     return deepcopy(report)
