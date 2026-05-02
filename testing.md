@@ -2273,6 +2273,45 @@ Design approved 前，`reviews/design-review.yaml` 必须记录 R8 cold-start dr
   residual_risk: position_disposal_report now includes the frozen contract field priority_escalation while retaining priority_changes compatibility; still not wired to API/PostgreSQL workflow runtime.
   reopen_required: false
 
+- acceptance_ref: ACC-012
+  run_id: RUN-WI003-ACC012-REGISTRATION-BOUNDARY-20260502
+  test_case_ref: TC-ACC-012-01
+  verification_type: automated
+  test_type: regression
+  test_scope: branch-local
+  completion_level: in_memory_domain
+  executed_at: 2026-05-02
+  artifact_ref: python -m pytest tests/domain/investment/intake tests/domain/investment/topic_queue tests/domain/investment/context -q; python -m compileall src/velentrade
+  result: pass
+  residual_risk: OpportunityRegistry keeps open-source registration and supporting-evidence routes as candidate/research paths without formal IC admission; still in-memory only and not connected to API/PostgreSQL workflow runtime.
+  reopen_required: false
+
+- acceptance_ref: ACC-013
+  run_id: RUN-WI003-ACC013-TOPIC-GATES-20260502
+  test_case_ref: TC-ACC-013-01
+  verification_type: automated
+  test_type: regression
+  test_scope: branch-local
+  completion_level: in_memory_domain
+  executed_at: 2026-05-02
+  artifact_ref: python -m pytest tests/domain/investment/intake tests/domain/investment/topic_queue tests/domain/investment/context -q; python -m compileall src/velentrade
+  result: pass
+  residual_risk: TopicQueue now enforces internal duplicate active/queued symbol detection, accepts SH/SZ/BJ A-share symbols, rejects out-of-range priority score components, preserves global waiting workflow count on P0 preemption, and tie-breaks same-score P1/P2 victims toward P2; still in-memory only and not connected to API/PostgreSQL workflow runtime.
+  reopen_required: false
+
+- acceptance_ref: ACC-014
+  run_id: RUN-WI003-ACC014-CONTEXT-BRIEF-20260502
+  test_case_ref: TC-ACC-014-01
+  verification_type: automated
+  test_type: regression
+  test_scope: branch-local
+  completion_level: in_memory_domain
+  executed_at: 2026-05-02
+  artifact_ref: python -m pytest tests/domain/investment/intake tests/domain/investment/topic_queue tests/domain/investment/context -q; python -m compileall src/velentrade
+  result: pass
+  residual_risk: ICContextPackage and CIO Chair Brief tests verify required refs, role attachments, evidence resolution, missing section reporting and no preset decision; still in-memory only and not a live AgentRun/API/PostgreSQL context distribution.
+  reopen_required: false
+
 <!-- CODESPEC:TESTING:RISKS -->
 ## 4. 残留风险与返工判断
 
