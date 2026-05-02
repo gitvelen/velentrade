@@ -147,3 +147,11 @@ def test_alembic_is_configured_with_a_wi001_foundation_revision():
     assert "paper_order" in text
     assert "collaboration_session" in text
     assert "memory_item" in text
+
+
+def test_alembic_env_prefers_runtime_database_url_env():
+    text = Path("migrations/env.py").read_text(encoding="utf-8")
+
+    assert "VELENTRADE_DATABASE_URL" in text
+    assert "os.getenv" in text
+    assert "config.set_main_option(\"sqlalchemy.url\"" in text

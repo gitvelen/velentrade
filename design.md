@@ -196,7 +196,7 @@ requirement_refs:
 - decision_id: ADR-010
   decision: Docker Compose 单节点部署，包含 postgres、redis、api、worker、beat、agent-runner。
   rationale: 单 Owner V1 不需要 Kubernetes 或多服务治理；Compose 足够覆盖真实依赖和可复核部署。
-  consequences: api/worker 启动前必须执行 Alembic migration；FastAPI 服务 `/api` 和 built frontend static。
+  consequences: api/worker 启动前必须执行 Alembic migration；FastAPI 服务 `/api` 和 built frontend static；Compose runtime 必须使用项目 Dockerfile、预构建镜像或本地 wheelhouse 预装 Python 依赖，禁止在 api/worker/beat/agent-runner 容器启动命令中临时 `pip install -e .`。
 
 ### 共享契约
 
@@ -390,6 +390,12 @@ environment_config:
 | `VELENTRADE_AGENT_RUNNER_URL` | runner API |
 | `VELENTRADE_ENV` | dev/test/prod |
 | `VELENTRADE_LOG_LEVEL` | JSON log level |
+
+runtime_packaging:
+
+- 本地 runtime foundation 允许 `Dockerfile`、预构建本地镜像或 `wheelhouse/` 离线依赖目录，目标是让 docker compose 启动阶段只执行 migration 和服务入口，不再依赖容器启动时访问 PyPI。
+- `Dockerfile` 必须把 Python 包、Alembic 配置、migration、脚本和已构建的 `frontend/dist` 固化进 runtime image；若使用 `wheelhouse/`，只能作为依赖安装输入，不作为业务事实源。
+- `scripts/codespec-deploy` 在 `release_mode: runtime` 下必须先构建或复用 runtime image，再启动 postgres/redis/api/worker/beat/agent-runner 并执行 smoke。
 
 ### 设计附件索引
 

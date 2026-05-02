@@ -22,7 +22,8 @@ test -n "$(find frontend/dist/assets -type f -name '*.css' -print -quit)"
 
 if [ "$release_mode" = "runtime" ]; then
   docker compose down -v --remove-orphans >/dev/null 2>&1 || true
-  docker compose up -d postgres redis agent-runner api worker beat
+  docker compose build migrate api agent-runner worker beat
+  docker compose up -d postgres redis migrate agent-runner api worker beat
 
   python - <<'PY'
 import json

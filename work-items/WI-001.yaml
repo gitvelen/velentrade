@@ -67,7 +67,7 @@ scope:
   - "创建 Python 项目基础、PostgreSQL/Alembic 核心 domain schema、scope registry、Agent/Service registry、artifact ledger、collaboration 基础表、`domain.memory` 下的 memory/context/KnowledgeItem 基础表、agent-runner 基础服务、ModelGateway fake_test profile、session/auth 基础和 verification report writer。"
   - "实现 Agent CapabilityProfile schema、seed SkillPackage manifest schema、TeamReadModel/AgentProfileReadModel 后端聚合基础、AgentRun/Command/Event/Handoff 基础 schema、MemoryItem/MemoryVersion/MemoryExtractionResult/MemoryRelation/MemoryCollection/KnowledgeItem/DefaultContextBinding 基础 schema、AgentRun 输入/输出 envelope、deterministic fake_test runner 路径、组织透明读受控写策略、Authority Gateway typed artifact/event/handoff/memory 写入、runner 直接业务写入拒绝、财务字段加密和日志脱敏基础；KnowledgeItem 基础 schema 放在 `domain.memory`，不进入 `domain.knowledge` 业务包。"
   - "固化 `contracts/domain-artifact-schemas.md` 中 artifact envelope、TaskEnvelope、collaboration 对象、Memory/Knowledge 对象、ContextSnapshot、GovernanceChange 和安全事件的基础模型。"
-  - "补齐本地 runtime foundation：提供 `docker-compose.yml` 串联 postgres/redis/api/worker/beat/agent-runner，并让 deploy hook 至少能对该 compose runtime 做最小 smoke；不引入 Dockerfile。"
+  - "补齐本地 runtime foundation：提供 `docker-compose.yml` 串联 postgres/redis/api/worker/beat/agent-runner，并让 deploy hook 至少能对该 compose runtime 做最小 smoke；允许 Dockerfile、预构建本地镜像或 `wheelhouse/` 离线依赖目录，禁止 api/worker/beat/agent-runner 在容器启动命令中临时 `pip install -e .`。"
   - "生成 scope_boundary_report、registry_validation_report、agent_capability_contract_report、memory_boundary_report、collaboration_trace_report、security_privacy_report、requirement_structure_report。"
 out_of_scope:
   - "不实现 S0-S7 workflow、投资主链、前端页面、真实数据源 adapter、财务业务 workflow、知识晋升/检索业务 workflow、纸面执行或 live LLM provider。"
@@ -75,9 +75,12 @@ out_of_scope:
 
 allowed_paths:
   - design.md
+  - .dockerignore
+  - Dockerfile
   - pyproject.toml
   - alembic.ini
   - docker-compose.yml
+  - wheelhouse/**
   - migrations/**
   - scripts/codespec-deploy
   - work-items/WI-001.yaml
@@ -119,7 +122,6 @@ forbidden_paths:
   - src/velentrade/domain/devops/**
   - src/velentrade/domain/observability/**
   - frontend/**
-  - Dockerfile
 
 dependency_refs: []
 dependency_type: none

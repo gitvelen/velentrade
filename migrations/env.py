@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import os
 from logging.config import fileConfig
 
 from alembic import context
@@ -9,6 +10,10 @@ from velentrade.db.base import Base
 
 
 config = context.config
+
+runtime_database_url = os.getenv("VELENTRADE_DATABASE_URL")
+if runtime_database_url:
+    config.set_main_option("sqlalchemy.url", runtime_database_url)
 
 if config.config_file_name is not None:
     fileConfig(config.config_file_name)

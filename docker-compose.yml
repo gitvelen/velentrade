@@ -1,3 +1,14 @@
+x-velentrade-runtime: &velentrade-runtime
+  build:
+    context: .
+    dockerfile: Dockerfile
+  image: velentrade-runtime:local
+  working_dir: /app
+  environment:
+    VELENTRADE_DATABASE_URL: postgresql+psycopg://velentrade:velentrade@postgres:5432/velentrade
+    VELENTRADE_REDIS_URL: redis://redis:6379/0
+    VELENTRADE_AGENT_RUNNER_URL: http://agent-runner:8100
+
 services:
   postgres:
     image: postgres:16-alpine
@@ -25,104 +36,67 @@ services:
     ports:
       - "6379:6379"
 
+  migrate:
+    <<: *velentrade-runtime
+    depends_on:
+      postgres:
+        condition: service_healthy
+    command: >
+      bash -lc "alembic upgrade head"
+
   api:
-    image: python:3.10-slim
-    working_dir: /app
-    volumes:
-      - .:/app
-      - pip-cache:/root/.cache/pip
-    environment:
-      VELENTRADE_DATABASE_URL: postgresql+psycopg://velentrade:velentrade@postgres:5432/velentrade
-      VELENTRADE_REDIS_URL: redis://redis:6379/0
-      VELENTRADE_AGENT_RUNNER_URL: http://agent-runner:8100
-      PIP_DEFAULT_TIMEOUT: "120"
-      PIP_RETRIES: "10"
-      PIP_DISABLE_PIP_VERSION_CHECK: "1"
+    <<: *velentrade-runtime
     depends_on:
       postgres:
         condition: service_healthy
       redis:
         condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
       agent-runner:
         condition: service_started
     command: >
-      bash -lc "pip install -e . &&
-      alembic upgrade head &&
-      uvicorn --factory velentrade.api.app:build_app --host 0.0.0.0 --port 8000"
+      bash -lc "uvicorn --factory velentrade.api.app:build_app --host 0.0.0.0 --port 8000"
     ports:
       - "8000:8000"
 
   agent-runner:
-    image: python:3.10-slim
-    working_dir: /app
-    volumes:
-      - .:/app
-      - pip-cache:/root/.cache/pip
-    environment:
-      VELENTRADE_DATABASE_URL: postgresql+psycopg://velentrade:velentrade@postgres:5432/velentrade
-      VELENTRADE_REDIS_URL: redis://redis:6379/0
-      VELENTRADE_AGENT_RUNNER_URL: http://agent-runner:8100
-      PIP_DEFAULT_TIMEOUT: "120"
-      PIP_RETRIES: "10"
-      PIP_DISABLE_PIP_VERSION_CHECK: "1"
+    <<: *velentrade-runtime
     depends_on:
       postgres:
         condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
     command: >
-      bash -lc "pip install -e . &&
-      alembic upgrade head &&
-      uvicorn --factory velentrade.agent_runner.service:build_agent_runner_app --host 0.0.0.0 --port 8100"
+      bash -lc "uvicorn --factory velentrade.agent_runner.service:build_agent_runner_app --host 0.0.0.0 --port 8100"
     ports:
       - "8100:8100"
 
   worker:
-    image: python:3.10-slim
-    working_dir: /app
-    volumes:
-      - .:/app
-      - pip-cache:/root/.cache/pip
-    environment:
-      VELENTRADE_DATABASE_URL: postgresql+psycopg://velentrade:velentrade@postgres:5432/velentrade
-      VELENTRADE_REDIS_URL: redis://redis:6379/0
-      VELENTRADE_AGENT_RUNNER_URL: http://agent-runner:8100
-      PIP_DEFAULT_TIMEOUT: "120"
-      PIP_RETRIES: "10"
-      PIP_DISABLE_PIP_VERSION_CHECK: "1"
+    <<: *velentrade-runtime
     depends_on:
       postgres:
         condition: service_healthy
       redis:
         condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
       agent-runner:
         condition: service_started
     command: >
-      bash -lc "pip install -e . &&
-      alembic upgrade head &&
-      celery -A velentrade.worker.celery_runtime:celery_app worker --loglevel=INFO"
+      bash -lc "celery -A velentrade.worker.celery_runtime:celery_app worker --loglevel=INFO"
 
   beat:
-    image: python:3.10-slim
-    working_dir: /app
-    volumes:
-      - .:/app
-      - pip-cache:/root/.cache/pip
-    environment:
-      VELENTRADE_DATABASE_URL: postgresql+psycopg://velentrade:velentrade@postgres:5432/velentrade
-      VELENTRADE_REDIS_URL: redis://redis:6379/0
-      VELENTRADE_AGENT_RUNNER_URL: http://agent-runner:8100
-      PIP_DEFAULT_TIMEOUT: "120"
-      PIP_RETRIES: "10"
-      PIP_DISABLE_PIP_VERSION_CHECK: "1"
+    <<: *velentrade-runtime
     depends_on:
       redis:
         condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
       worker:
         condition: service_started
     command: >
-      bash -lc "pip install -e . &&
-      alembic upgrade head &&
-      celery -A velentrade.worker.celery_runtime:celery_app beat --loglevel=INFO"
+      bash -lc "celery -A velentrade.worker.celery_runtime:celery_app beat --loglevel=INFO"
 
 volumes:
   postgres-data:
-  pip-cache:
