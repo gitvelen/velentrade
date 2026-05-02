@@ -16,8 +16,10 @@ from velentrade.domain.agents.registry import (
 )
 from velentrade.domain.collaboration.models import AgentRun, CollaborationCommand, HandoffPacket
 from velentrade.domain.common import new_id, utc_now
+from velentrade.domain.finance.boundary import FinanceProfileService
 from velentrade.domain.gateway.authority import AuthorityGateway
 from velentrade.domain.memory.models import MemoryCapture
+from velentrade.domain.observability.health import ObservabilityCollector
 
 from .schemas import (
     CollaborationCommandRequest,
@@ -68,6 +70,8 @@ class ApiRuntime:
         self.profiles = build_agent_capability_profiles()
         store = SqlAlchemyGatewayMirror(build_engine(database_url)) if database_url else None
         self.gateway = AuthorityGateway(self.profiles, store=store)
+        self.finance = FinanceProfileService()
+        self.observability = ObservabilityCollector()
         self.agent_runs = {
             f"run-{agent_id}": AgentRun.fake(
                 agent_run_id=f"run-{agent_id}",
@@ -119,6 +123,14 @@ def build_app(runtime: ApiRuntime | None = None) -> FastAPI:
             return _success(build_agent_capability_config_read_model(agent_id))
         except KeyError:
             return _error(404, "NOT_FOUND", f"Unknown agent: {agent_id}")
+
+    @app.get("/api/finance/overview")
+    def get_finance_overview():
+        return _success(api_runtime.finance.finance_overview())
+
+    @app.get("/api/devops/health")
+    def get_devops_health():
+        return _success(api_runtime.observability.devops_health_read_model())
 
     @app.post("/api/collaboration/commands")
     def create_collaboration_command(request: CollaborationCommandRequest):

@@ -198,3 +198,21 @@ def test_owner_memory_capture_endpoint_creates_append_only_memory_item():
     assert payload["promotion_state"] == "validated_context"
     assert payload["why_included"] == "fenced_background_context_only"
     assert payload["source_refs"] == ["note-1"]
+
+
+def test_finance_overview_and_devops_health_endpoints_expose_read_models():
+    client = TestClient(build_app())
+
+    finance_response = client.get("/api/finance/overview")
+    assert finance_response.status_code == 200
+    finance_payload = finance_response.json()["data"]
+    assert any(item["asset_type"] == "fund" for item in finance_payload["asset_profile"])
+    assert finance_payload["finance_health"]["risk_budget"]["budget_ref"] == "risk-budget-finance-v1"
+    assert finance_payload["sensitive_data_notice"]["redaction_applied"] is True
+
+    health_response = client.get("/api/devops/health")
+    assert health_response.status_code == 200
+    health_payload = health_response.json()["data"]
+    assert health_payload["routine_checks"][0]["status"] == "observed"
+    assert "incident_open_total" in health_payload["metrics"]
+    assert health_payload["recovery"][0]["investment_resume_allowed"] is False
