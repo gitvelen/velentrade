@@ -129,6 +129,23 @@ def build_wi001_seed_bundle() -> dict:
             "created_at": now,
         },
         {
+            "source_id": "tencent-public-kline",
+            "data_domain": "a_share_market",
+            "usage_scope": "research,decision_core",
+            "priority": "T2",
+            "status": "active",
+            "license_summary": "Tencent public quote endpoint; no API key; review provider terms and rate limits before production use",
+            "rate_limit": {"requests_per_minute": 20},
+            "adapter_kind": "public_http_json_kline_daily_quote",
+            "payload": {
+                "endpoint_template": "https://web.ifzq.gtimg.cn/appstock/app/fqkline/get?param={symbol},day,,,10,qfq",
+                "cache_ttl_seconds": 86400,
+                "symbol_mapper": "tencent_market_symbol",
+                "completion_level": "in_memory_domain",
+            },
+            "created_at": now,
+        },
+        {
             "source_id": "fixture-announcement",
             "data_domain": "corporate_announcement",
             "usage_scope": "research",

@@ -1,4 +1,5 @@
 from velentrade.domain.data.quality import DataQualityReport, DataQualityService, DataRequest, RequiredField
+from velentrade.domain.data.persistence import SqlAlchemyDataCollectionStore, build_source_registry_from_db
 from velentrade.domain.data.sources import (
     DataCollectionResult,
     DataCollectionService,
@@ -18,6 +19,7 @@ __all__ = [
     "RequiredField",
     "DataQualityReport",
     "DataQualityService",
+    "SqlAlchemyDataCollectionStore",
     "DataSourceDefinition",
     "DataSourceRegistry",
     "DataCollectionResult",
@@ -26,6 +28,7 @@ __all__ = [
     "PublicHttpCsvDailyQuoteAdapter",
     "PublicHttpJsonKlineDailyQuoteAdapter",
     "StaticDataSourceAdapter",
+    "build_source_registry_from_db",
     "eastmoney_secid_mapper",
     "tencent_market_symbol_mapper",
     "SourceFetchError",
