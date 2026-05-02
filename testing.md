@@ -18,7 +18,7 @@
 
 - `fixture_contract`: 已有 pytest/vitest/static/report fixture 证据，但不能声称真实系统完成。
 - `in_memory_domain`: WI-002 公开 HTTP CSV/JSON K 线 adapter、质量门、fallback/cache、execution_core 低质量阻断和 report guard 失败传播等 domain 行为已有自动化验证；WI-003 P0 抢占最低分 active slot 与 report guard 失败传播已有自动化验证；Tencent 公开 A 股 K 线 live provider smoke 作为单独证据通过，但不作为 P0 自动化 pass 的唯一依据。
-- `api_connected`: 已完成 WI-001/WI-004 foundation 级证据；`FastAPI` app/router、`/api/team`、`/api/gateway/*`、`/api/collaboration/commands`、`/api/workflows/*`、`/api/knowledge/memory-items*`、`/api/tasks`、`/api/approvals`、`/api/governance/changes`、`/api/finance/overview`、`/api/devops/health` 已有自动化验证，但真实外部数据采集和跨 WI 浏览器到后端闭环仍未完成。
+- `api_connected`: 已完成 WI-001/WI-004 foundation 级证据；`FastAPI` app/router、`/api/team`、`/api/gateway/*`、`/api/collaboration/commands`、`/api/workflows/*`、`/api/knowledge/memory-items*`、`/api/tasks`、`/api/approvals`、`/api/governance/changes`、`/api/finance/overview`、`/api/devops/health` 已有自动化验证；浏览器已通过 live FastAPI 从 Request Brief confirmation 进入 Investment Dossier read model。真实外部数据 provider 与全 V1 跨 WI 投资链仍未完成。
 - `db_persistent`: 已完成 WI-001 foundation 级证据；`Alembic`、PostgreSQL schema、seed、Postgres smoke、API->DB mirror、Task/Workflow/WorkflowStage 持久化恢复已有自动化验证。WI-002 已完成公开 A 股 K 线 Source Registry seed、PostgreSQL DataRequest/DataLineage/DataQualityReport 落库 smoke、Celery data collection task 和 Postgres latest-success cache restore；外网 live provider smoke 仍只作单独证据，不作为 P0 pass 条件。
 - `integrated_runtime`: WI-001/WI-004 RequestBrief -> Task foundation slice 已完成；同一 `docker-compose` RUN 已验证 PostgreSQL migration、Redis/Celery 服务、FastAPI endpoint、same-origin frontend、Chromium 浏览器点击、agent-runner 和 API restart 后持久化。全 V1 投资/数据/执行闭环仍未完成，不能外推为所有 WI 的 integrated_runtime。
 - `owner_verified`: 未完成；人工验收仍未通过。
@@ -1555,7 +1555,20 @@ Design approved 前，`reviews/design-review.yaml` 必须记录 R8 cold-start dr
   executed_at: 2026-05-02
   artifact_ref: python -m pytest tests/e2e/test_wi004_browser_live_api.py -q; npm --prefix frontend test; npm --prefix frontend run build; python -m pytest tests/e2e -q; python -m pytest tests/core tests/domain tests/security tests/requirements tests/agent_runner tests/model_gateway tests/api tests/worker tests/e2e -q
   result: pass
-  residual_risk: Headless Chromium opens Vite, clicks 自由对话 -> 生成请求预览 -> 确认生成任务卡, and verifies /api/tasks via live FastAPI; this run still does not include PostgreSQL/Redis/Celery in the same browser flow.
+  residual_risk: Headless Chromium opens Vite, clicks 自由对话 -> 生成请求预览 -> 确认生成任务卡 -> 打开投资档案, verifies /api/tasks and Investment Dossier read model via live FastAPI; this run still does not include PostgreSQL/Redis/Celery in the same browser flow.
+  reopen_required: false
+
+- acceptance_ref: ACC-006
+  run_id: RUN-WI004-ACC006-LIVE-DOSSIER-20260502
+  test_case_ref: TC-ACC-006-01
+  verification_type: automated
+  test_type: browser_e2e
+  test_scope: branch-local-browser-api
+  completion_level: api_connected
+  executed_at: 2026-05-02
+  artifact_ref: npm --prefix frontend test; npm --prefix frontend run build; python -m pytest tests/e2e -q
+  result: pass
+  residual_risk: Confirmed investment tasks now expose workflow_id in the frontend adapter and render an 打开投资档案 link that loads /api/workflows/{workflow_id}/dossier from live FastAPI. This is API-connected browser evidence only, not full integrated_runtime with Postgres/Redis/Celery.
   reopen_required: false
 
 - acceptance_ref: ACC-006
