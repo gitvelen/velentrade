@@ -11,6 +11,9 @@ execution_ref="deploy-${revision:0:12}"
 deployment_file="$project_root/deployment.md"
 release_mode="$(awk '/^release_mode:/ {print $2; exit}' "$deployment_file" 2>/dev/null || true)"
 [ -n "$release_mode" ] || release_mode="artifact"
+if [ "${VELENTRADE_RUN_COMPOSE_SMOKE:-0}" = "1" ]; then
+  release_mode="runtime"
+fi
 
 python -m pytest tests/core tests/domain tests/security tests/requirements tests/agent_runner tests/model_gateway tests/worker tests/e2e -q
 python -m compileall src/velentrade >/dev/null

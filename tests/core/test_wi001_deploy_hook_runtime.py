@@ -8,6 +8,7 @@ def test_deploy_hook_supports_runtime_compose_release_mode():
 
     assert "release_mode" in script
     assert "runtime" in script
+    assert "VELENTRADE_RUN_COMPOSE_SMOKE" in script
     assert "docker compose build" in script
     assert "docker compose up -d" in script
     assert "docker compose down -v --remove-orphans" in script
