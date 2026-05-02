@@ -19,7 +19,7 @@
 - `fixture_contract`: 已有 pytest/vitest/static/report fixture 证据，但不能声称真实系统完成。
 - `in_memory_domain`: WI-002 公开 HTTP CSV/JSON K 线 adapter、质量门、fallback/cache、execution_core 低质量阻断和 report guard 失败传播等 domain 行为已有自动化验证；Tencent 公开 A 股 K 线 live provider smoke 作为单独证据通过，但不作为 P0 自动化 pass 的唯一依据。
 - `api_connected`: 已完成 WI-001/WI-004 foundation 级证据；`FastAPI` app/router、`/api/team`、`/api/gateway/*`、`/api/collaboration/commands`、`/api/workflows/*`、`/api/knowledge/memory-items*`、`/api/tasks`、`/api/approvals`、`/api/governance/changes`、`/api/finance/overview`、`/api/devops/health` 已有自动化验证，但真实外部数据采集和跨 WI 浏览器到后端闭环仍未完成。
-- `db_persistent`: 已完成 WI-001 foundation 级证据；`Alembic`、PostgreSQL schema、seed、Postgres smoke、API->DB mirror、Task/Workflow/WorkflowStage 持久化恢复已有自动化验证。WI-002 live provider smoke 仍未接入持久化采集缓存。
+- `db_persistent`: 已完成 WI-001 foundation 级证据；`Alembic`、PostgreSQL schema、seed、Postgres smoke、API->DB mirror、Task/Workflow/WorkflowStage 持久化恢复已有自动化验证。WI-002 已完成公开 A 股 K 线 Source Registry seed、PostgreSQL DataRequest/DataLineage/DataQualityReport 落库 smoke；live provider 定时采集缓存仍未接入。
 - `integrated_runtime`: WI-001/WI-004 RequestBrief -> Task foundation slice 已完成；同一 `docker-compose` RUN 已验证 PostgreSQL migration、Redis/Celery 服务、FastAPI endpoint、same-origin frontend、Chromium 浏览器点击、agent-runner 和 API restart 后持久化。全 V1 投资/数据/执行闭环仍未完成，不能外推为所有 WI 的 integrated_runtime。
 - `owner_verified`: 未完成；人工验收仍未通过。
 
@@ -1883,6 +1883,19 @@ Design approved 前，`reviews/design-review.yaml` 必须记录 R8 cold-start dr
   residual_risk: execution_core 低质量分即使 critical fields present 也会 blocked；WI-002 report envelope 在 guard_results 或 failures 出现 fail 时输出 result=fail，避免常量 pass 自证。
   reopen_required: false
 
+- acceptance_ref: ACC-009
+  run_id: RUN-WI002-ACC009-DB-PERSISTENCE-20260502
+  test_case_ref: TC-ACC-009-01
+  verification_type: automated
+  test_type: postgres_smoke
+  test_scope: branch-local
+  completion_level: db_persistent
+  executed_at: 2026-05-02
+  artifact_ref: python -m pytest tests/domain/workflow tests/domain/data tests/domain/services tests/domain/governance tests/worker -q; python -m compileall src/velentrade
+  result: pass
+  residual_risk: PostgreSQL smoke migrated schema, applied seed with tencent-public-kline metadata, collected fake-transport public JSON K-line data from DB-loaded Source Registry, and persisted data_request/data_lineage/data_quality_report. External live provider scheduling/cache refresh remains unimplemented.
+  reopen_required: false
+
 <!-- CODESPEC:TESTING:RISKS -->
 ## 4. 残留风险与返工判断
 
@@ -1891,6 +1904,6 @@ Design approved 前，`reviews/design-review.yaml` 必须记录 R8 cold-start dr
 - notes:
   - 本阶段已追加 WI-001/WI-004 的 `api_connected` 与 `db_persistent` 级实现证据；历史 `RUN-FULL-*` 仍仅为 `fixture_contract`。
   - Implementation 阶段必须按 `contracts/verification-report-schemas.md` 生成可复核 report artifact。
-  - 公开 HTTP CSV/JSON 数据源 adapter 已达到 `in_memory_domain` 自动化验证；execution_core 低质量阻断和 WI-002 report fail 传播已有负例覆盖；Tencent 公开 A 股 K 线 live provider smoke 已通过但未接入持久化采集缓存。完整 S0-S7/browser -> FastAPI -> PostgreSQL/Redis/Celery 投资链闭环和 Owner 人工验收仍未完成。
+  - 公开 HTTP CSV/JSON 数据源 adapter 已达到 `in_memory_domain` 自动化验证；execution_core 低质量阻断和 WI-002 report fail 传播已有负例覆盖；公开 A 股 K 线 Source Registry 与采集结果已达到 `db_persistent` smoke。Tencent 公开 A 股 K 线 live provider smoke 已通过但未接入定时采集缓存。完整 S0-S7/browser -> FastAPI -> PostgreSQL/Redis/Celery 投资链闭环和 Owner 人工验收仍未完成。
   - 2026-05-02 docker compose runtime blocker 已修复到 WI-001/WI-004 `integrated_runtime` foundation 级：允许 Dockerfile/预构建镜像/`wheelhouse/`，runtime image 在 build 阶段通过 PyPI mirror 或 wheelhouse 安装依赖，api/worker/beat/agent-runner 启动命令不再 `pip install -e .`；同一 compose runtime 已通过 same-origin frontend、Chromium 浏览器点击、RequestBrief->Task、agent-runner fake_test、API restart 后 task 持久化和六个服务 running 检查。仍不能外推到全 V1，因为 S0-S7、真实外部数据、纸面执行和 Owner 人工验收未闭环。
   - 若后续任何 P0 自动化不可行，必须回到 Requirement 或 review 明确记录例外理由。
