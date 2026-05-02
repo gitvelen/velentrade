@@ -1298,6 +1298,19 @@ Design approved 前，`reviews/design-review.yaml` 必须记录 R8 cold-start dr
   residual_risk: API factory now reads VELENTRADE_DATABASE_URL and deploy hook runtime smoke will verify RequestBrief persistence across API restart plus agent-runner endpoint, but docker compose runtime hook was not executed in this branch-local run.
   reopen_required: false
 
+- acceptance_ref: ACC-005
+  run_id: RUN-WI001-SAME-ORIGIN-FRONTEND-20260502
+  test_case_ref: TC-ACC-005-01
+  verification_type: automated
+  test_type: integration
+  test_scope: branch-local-runtime-hook
+  completion_level: api_connected
+  executed_at: 2026-05-02
+  artifact_ref: python -m pytest tests/api/test_wi001_api_foundation.py::test_build_app_serves_frontend_dist_as_same_origin_spa tests/core/test_wi001_deploy_hook_runtime.py -q; python -m pytest tests/core tests/domain tests/security tests/requirements tests/agent_runner tests/model_gateway tests/api tests/worker tests/e2e -q
+  result: pass
+  residual_risk: FastAPI serves frontend/dist as same-origin SPA and deploy hook checks same_origin_frontend_served; still no actual Playwright/browser-to-live-FastAPI automated run.
+  reopen_required: false
+
 - acceptance_ref: ACC-006
   run_id: RUN-WI004-API-CONNECTED-20260502
   test_case_ref: TC-ACC-006-01
