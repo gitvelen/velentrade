@@ -14,6 +14,8 @@ WEIGHTS = {
 }
 P0_TRIGGERS = {"holding_risk", "major_announcement", "execution_failure", "risk_explicit", "owner_explicit"}
 PRIORITY_ORDER = {"P0": 0, "P1": 1, "P2": 2, None: 3}
+VALID_REQUESTED_PRIORITIES = {"P0", "P1", "P2", None}
+VALID_A_SHARE_EXCHANGES = {"SH", "SZ", "BJ"}
 
 
 @dataclass(frozen=True)
@@ -59,6 +61,8 @@ class TopicQueue:
         duplicate_symbols: set[str] | None = None,
     ) -> TopicQueueEntry:
         scores = score.as_dict()
+        if proposal.requested_priority not in VALID_REQUESTED_PRIORITIES:
+            raise ValueError("requested_priority must be one of P0, P1, P2 or None")
         active_or_queued_symbols = {
             entry.symbol
             for entry in self.entries.values()
@@ -66,7 +70,7 @@ class TopicQueue:
         }
         duplicate_symbol_set = active_or_queued_symbols | set(duplicate_symbols or set())
         hard_gates = {
-            "a_share_common_stock": proposal.symbol.endswith((".SH", ".SZ", ".BJ")),
+            "a_share_common_stock": self._is_a_share_symbol(proposal.symbol),
             "request_brief_complete": request_brief_complete,
             "decision_core_available": decision_core_available,
             "research_package_non_empty": bool(proposal.research_package_ref),
@@ -172,3 +176,8 @@ class TopicQueue:
     @staticmethod
     def _preemption_rank(item: TopicQueueEntry) -> tuple[float, int, str]:
         return (item.priority_scores["weighted_total"], -PRIORITY_ORDER.get(item.requested_priority, 3), item.created_at)
+
+    @staticmethod
+    def _is_a_share_symbol(symbol: str) -> bool:
+        code, separator, exchange = symbol.partition(".")
+        return separator == "." and len(code) == 6 and code.isdigit() and exchange in VALID_A_SHARE_EXCHANGES

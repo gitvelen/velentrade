@@ -89,6 +89,25 @@ def test_a_share_hard_gate_accepts_beijing_exchange_symbol():
     assert entry.hard_gate_results["a_share_common_stock"] is True
 
 
+def test_a_share_hard_gate_rejects_non_numeric_symbol_with_exchange_suffix():
+    queue = TopicQueue(max_active_ic=3, max_global_workflows=5)
+    high = TopicScore(5, 5, 4, 4)
+
+    rejected = queue.submit(_proposal("topic-fake-a", "P1", symbol="AAPL.SH"), high, request_brief_complete=True, decision_core_available=True)
+
+    assert rejected.formal_ic_status == "rejected"
+    assert rejected.rejected_reason == "non_a_share_scope"
+    assert rejected.hard_gate_results["a_share_common_stock"] is False
+
+
+def test_topic_queue_rejects_priority_outside_contract_enum():
+    queue = TopicQueue(max_active_ic=3, max_global_workflows=5)
+    high = TopicScore(5, 5, 4, 4)
+
+    with pytest.raises(ValueError, match="requested_priority"):
+        queue.submit(_proposal("topic-invalid-priority", "P3"), high, request_brief_complete=True, decision_core_available=True)
+
+
 def test_topic_queue_detects_duplicate_active_symbol_without_caller_supplied_set():
     queue = TopicQueue(max_active_ic=3, max_global_workflows=5)
     high = TopicScore(5, 5, 4, 4)
