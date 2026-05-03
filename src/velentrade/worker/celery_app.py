@@ -30,6 +30,13 @@ def resolve_redis_url(redis_url: str | None = None, settings: Settings | None = 
     return resolved
 
 
+def resolve_database_url(database_url: str | None = None, settings: Settings | None = None) -> str | None:
+    if database_url:
+        return database_url
+    runtime_settings = settings or Settings()
+    return os.getenv(runtime_settings.database_url_env)
+
+
 def resolve_agent_runner_url(agent_runner_url: str | None = None, settings: Settings | None = None) -> str:
     if agent_runner_url:
         return agent_runner_url.rstrip("/")
@@ -48,10 +55,11 @@ def _register_start_agent_run_task(
     database_url: str | None,
     runner_url: str,
 ) -> None:
-    if "velentrade.worker.start_agent_run" in app.tasks:
-        return
+    task_name = "velentrade.worker.start_agent_run"
+    if task_name in app.tasks:
+        app.tasks.unregister(task_name)
 
-    @app.task(name="velentrade.worker.start_agent_run")
+    @app.task(name=task_name)
     def start_agent_run(run_payload: dict[str, Any], model_profile_id: str) -> dict[str, Any]:
         run = AgentRun(**run_payload)
         gateway = AuthorityGateway(
@@ -146,6 +154,7 @@ def build_celery_app(
 ) -> Celery:
     resolved_broker_url = resolve_redis_url(broker_url)
     resolved_backend = result_backend or resolved_broker_url
+    resolved_database_url = resolve_database_url(database_url)
     resolved_runner_url = resolve_agent_runner_url(runner_url)
 
     app = Celery("velentrade")
@@ -158,7 +167,7 @@ def build_celery_app(
         result_expires=3600,
         timezone="Asia/Shanghai",
     )
-    _register_start_agent_run_task(app, database_url=database_url, runner_url=resolved_runner_url)
-    _register_collect_data_request_task(app, database_url=database_url, data_fetch_text=data_fetch_text)
+    _register_start_agent_run_task(app, database_url=resolved_database_url, runner_url=resolved_runner_url)
+    _register_collect_data_request_task(app, database_url=resolved_database_url, data_fetch_text=data_fetch_text)
     _install_scheduled_data_requests(app, scheduled_data_requests, data_collection_interval_seconds)
     return app

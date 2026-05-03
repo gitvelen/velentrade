@@ -14,6 +14,7 @@ from alembic import command
 from alembic.config import Config
 from sqlalchemy import create_engine, text
 
+from velentrade.agent_runner.models import AgentRunResult
 from velentrade.domain.collaboration.models import AgentRun
 from velentrade.domain.data.quality import DataRequest, RequiredField
 
@@ -202,6 +203,72 @@ def test_celery_dispatch_persists_runner_artifact_via_postgres_and_redis():
         assert audit_count == 1
         assert outbox_count == 1
         assert artifact_payload["summary"].startswith("fake_test output")
+
+
+def test_default_celery_app_uses_database_url_env_for_runner_artifact_persistence(monkeypatch):
+    celery_runtime = _require_module("velentrade.worker.celery_app")
+    captured: dict[str, object] = {}
+
+    class FakeStore:
+        def __init__(self, engine):
+            captured["engine"] = engine
+
+        def mirror_artifact(self, artifact_row, **kwargs):
+            captured["artifact_row"] = artifact_row
+            captured["idempotency_key"] = kwargs["idempotency_key"]
+
+    class FakeRunnerHttpClient:
+        def __init__(self, runner_url: str):
+            captured["runner_url"] = runner_url
+
+        def start(self, request):
+            return AgentRunResult(
+                agent_run_id=request.agent_run_id,
+                status="completed",
+                artifact_payloads=[
+                    {
+                        "artifact_type": "ResearchPackage",
+                        "summary": "fake_test output for env database url",
+                    }
+                ],
+                command_proposals=[],
+                diagnostics={},
+                process_archive_ref=f"process-{request.agent_run_id}",
+                tool_trace_summary_ref=f"trace-{request.agent_run_id}",
+                cost_tokens=0,
+            )
+
+    def fake_build_engine(database_url):
+        captured["database_url"] = database_url
+        return "engine"
+
+    monkeypatch.setenv("VELENTRADE_DATABASE_URL", "postgresql+psycopg://runtime-db")
+    monkeypatch.setattr(celery_runtime, "build_engine", fake_build_engine)
+    monkeypatch.setattr(celery_runtime, "SqlAlchemyGatewayMirror", FakeStore)
+    monkeypatch.setattr(celery_runtime, "RunnerHttpClient", FakeRunnerHttpClient)
+
+    app = celery_runtime.build_celery_app(
+        broker_url="redis://127.0.0.1:6379/15",
+        result_backend="redis://127.0.0.1:6379/15",
+        runner_url="http://agent-runner:8100",
+    )
+    run = AgentRun.fake(
+        agent_run_id="run-env-db-url",
+        agent_id="investment_researcher",
+        workflow_id="wf-env-db-url",
+        allowed_command_types=["request_evidence"],
+    )
+
+    result = app.tasks["velentrade.worker.start_agent_run"].run(
+        run_payload=asdict(run),
+        model_profile_id="fake_test",
+    )
+
+    assert result["status"] == "completed"
+    assert captured["database_url"] == "postgresql+psycopg://runtime-db"
+    assert captured["engine"] == "engine"
+    assert captured["artifact_row"]["workflow_id"] == "wf-env-db-url"
+    assert captured["idempotency_key"] == "run-env-db-url:artifact:0"
 
 
 def _data_request(request_id: str = "quote-celery-001") -> DataRequest:
