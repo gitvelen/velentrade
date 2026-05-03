@@ -2819,6 +2819,19 @@ Design approved 前，`reviews/design-review.yaml` 必须记录 R8 cold-start dr
   residual_risk: Reflection promotion is persisted as ReflectionRecord plus CollaborationCommand/Handoff payload, not as an activated GovernanceChange or new ContextSnapshot in WI-005; full activation/new snapshot evidence is owned by the governance/config WI.
   reopen_required: false
 
+- acceptance_ref: ACC-029
+  run_id: RUN-WI006-ACC029-FULL-RUNTIME-FOUNDATION-20260503
+  test_case_ref: TC-ACC-029-01
+  verification_type: automated
+  test_type: integration
+  test_scope: full-integration
+  completion_level: integrated_runtime
+  executed_at: 2026-05-03
+  artifact_ref: python -m pytest tests/domain/devops tests/domain/observability -q passed 8 tests; python -m compileall src/velentrade passed; compose runtime stayed running with PostgreSQL/Alembic migration, Redis/Celery worker, FastAPI endpoint, Chromium browser click from deploy smoke, and cross-WI workflow runtime foundation at revision=91451ee01a3418859dddcf6ea4158d6d3eca4df8; targeted WI-006 devops runtime smoke run_id=1777774043 workflow_id=workflow-f8c2d9797fac devops_payload_ref=artifact-65efef669654 handoff_ref=handoff-c5427a516d6a commands={incident:command-39b511f49ebd,degradation:command-5f9a1b322abf,recovery:command-69d62549c544} incident_count=6 incident_types=[cost_token,data_source,execution_environment,security,service,system] severity_values=[P0,P1] risk_notice_count=5 sensitive_log_finding_count=1 health_endpoint={routine_checks:1,recovery_resume_values:[false]} incident_endpoint={count:6,severities:[P0,P1],resume_values:[false,false,false,false,false,false],risk_required_count:5} recovery_validation={incident_status:monitoring,technical_recovery_status:validated,investment_resume_allowed:false} safe_degradation_allowlist={source_fallback:true,research_cache:true,stage_blocked:true,risk_relaxation:false} blocked_risk_relaxation=[blocked:risk_relaxation_requires_risk_or_governance] cost_observability_only=true investment_resume_denied_until_guard=true risk_handoff={to:risk_officer,blockers:[investment_resume_allowed=false],decisions:[safe_degradation_only,cost_observability_only,no_business_resume_by_devops]}; db_counts={devops_artifact:1,handoff_packet:1,devops_commands:3,outbox_events:{wi001.artifact:1,wi001.command:3,wi001.handoff:1},audit_events:{artifact_submitted:1,command_accepted:3,handoff_created:1}} restart_check={api_restarted:true,artifact_read:true,devops_health_read:true,devops_incidents_read:true,handoff_visible:true,dossier_evidence_has_devops:true}; ACC-029 assertions covered routine health, severity classification, incident/degradation/recovery payload, safe degradation allowlist, blocked risk relaxation, recovery validation with investment_resume_allowed=false, Risk handoff, sensitive log finding, cost/token observability-only semantics, PostgreSQL audit/outbox, and API readability after restart.
+  result: pass
+  residual_risk: DevOps runtime persists the incident payload, DevOps commands and Risk handoff through the generic Gateway ledger; DevOps is still not allowed to make business Risk decisions, resume investment execution, or hot-edit high-impact configuration.
+  reopen_required: false
+
 <!-- CODESPEC:TESTING:RISKS -->
 ## 4. 残留风险与返工判断
 
@@ -2839,5 +2852,6 @@ Design approved 前，`reviews/design-review.yaml` 必须记录 R8 cold-start dr
   - WI-005/ACC-026 已追加 foundation 级 `integrated_runtime` 自动化证据：同一 docker compose runtime 下验证 factor_engine ServiceResult 因子准入、独立验证、registry 字段、monitoring threshold/coverage drift、pause_default_weight、factor_weight 高影响治理语义、无 backtest/Backtrader 依赖、handoff、PostgreSQL artifact/audit/outbox、API restart 后读回。专用 factor registry/GovernanceProposal 持久化仍需未来 API/DB contract scope。
   - WI-005/ACC-027 已追加 foundation 级 `integrated_runtime` 自动化证据：同一 docker compose runtime 下验证 ResearchPackage、Memory capture/version/extraction、MemoryRelation、Knowledge/Prompt/Skill proposal commands、handoff、直接热改拒绝、新任务 scope、PostgreSQL audit/outbox、API restart 后读回。Knowledge/Prompt/Skill proposal 仍不是一等 artifact/activation 记录。
   - WI-005/ACC-028 已追加 foundation 级 `integrated_runtime` 自动化证据：同一 docker compose runtime 下验证反思 draft Memory、ReflectionRecord、Researcher promotion command、knowledge conflict resolution、owner approval flag、new_task effect、no hot Prompt/Skill/context/parameter guard、handoff、PostgreSQL artifact/audit/outbox、API restart 后读回。真正 activation/new ContextSnapshot 由治理配置 scope 承接。
+  - WI-006/ACC-029 已追加 foundation 级 `integrated_runtime` 自动化证据：同一 docker compose runtime 下验证 DevOps health/incident API、severity、safe degradation、recovery validation、investment_resume_allowed=false、Risk handoff、sensitive log finding、cost/token observability-only、PostgreSQL artifact/command/handoff audit/outbox、API restart 后读回。DevOps 仍不拥有业务 Risk 放行、投资执行恢复或高影响配置热改。
   - 2026-05-02 docker compose runtime blocker 已修复到 WI-001/WI-004 `integrated_runtime` foundation 级：允许 Dockerfile/预构建镜像/`wheelhouse/`，runtime image 在 build 阶段通过 PyPI mirror 或 wheelhouse 安装依赖，api/worker/beat/agent-runner 启动命令不再 `pip install -e .`；同一 compose runtime 已通过 same-origin frontend、Chromium 浏览器点击、RequestBrief->Task、agent-runner fake_test、API restart 后 task 持久化和六个服务 running 检查。仍不能外推到全 V1，因为 S0-S7、真实外部数据、纸面执行和 Owner 人工验收未闭环。
   - 若后续任何 P0 自动化不可行，必须回到 Requirement 或 review 明确记录例外理由。
