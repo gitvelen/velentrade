@@ -2780,6 +2780,19 @@ Design approved 前，`reviews/design-review.yaml` 必须记录 R8 cold-start dr
   residual_risk: GovernanceProposal and owner approval semantics are persisted inside the CFOInterpretation payload and handoff, while first-class GovernanceProposal/ApprovalRecord creation for CFO finance_planning proposals is not available through the current WI-005 allowed API/Gateway surface.
   reopen_required: false
 
+- acceptance_ref: ACC-026
+  run_id: RUN-WI005-ACC026-FULL-RUNTIME-FOUNDATION-20260503
+  test_case_ref: TC-ACC-026-01
+  verification_type: automated
+  test_type: integration
+  test_scope: full-integration
+  completion_level: integrated_runtime
+  executed_at: 2026-05-03
+  artifact_ref: python -m pytest tests/domain/finance tests/domain/attribution tests/domain/knowledge -q passed 14 tests; python -m compileall src/velentrade passed; compose runtime stayed running with PostgreSQL/Alembic migration, Redis/Celery worker, FastAPI endpoint, Chromium browser click from deploy smoke, and cross-WI workflow runtime foundation at revision=91451ee01a3418859dddcf6ea4158d6d3eca4df8; targeted WI-005 factor runtime smoke run_id=1777773162 workflow_id=workflow-f8c2d9797fac factor_artifact_ref=artifact-b787395cacec factor_handoff_ref=handoff-390685aad640 factor_result={factor_id:low-vol-1777773162,hypothesis:low_vol_reduces_drawdown,registry_status:validated,owner:researcher,market_state_scope:[range_bound],validation_refs:[independent-validation-v1],monitoring_rule_ref:monitoring-low-vol-1777773162,rollback_ref:rollback-low-vol-1777773162} monitoring={coverage_min:0.8,data_quality_min:0.85,direction_failure_windows:5,alerts:[coverage_below_threshold],pause_default_weight:true} governance={proposal_type:factor_weight,impact_level:high,effective_scope:new_task} no_backtest_dependency=true backtest_engine_invoked=false; db_counts={factor_service_results:1,handoff_packets:1,outbox_events_for_keys:2,audit_events_for_objects:2} restart_check={api_restarted:true,dossier_evidence_has_factor_ref:true,artifact_type:ServiceResult,service_result_type:factor_research_admission,registry_status:validated,governance_type:factor_weight,governance_impact:high,backtest_engine_invoked:false}; ACC-026 assertions covered hypothesis, sample scope, independent validation, registry required fields, monitoring thresholds, coverage drift alert, invalidation diagnosis with pause_default_weight, high impact factor_weight governance, no Backtrader/backtest dependency, persisted factor ServiceResult, handoff, PostgreSQL audit/outbox, and API artifact readability after restart.
+  result: pass
+  residual_risk: Factor research runtime uses factor_engine ServiceResult plus HandoffPacket because WI-005 has no first-class FactorResearchResult/GovernanceProposal Gateway artifact type; dedicated factor registry persistence would require API/DB contract scope.
+  reopen_required: false
+
 <!-- CODESPEC:TESTING:RISKS -->
 ## 4. 残留风险与返工判断
 
@@ -2797,5 +2810,6 @@ Design approved 前，`reviews/design-review.yaml` 必须记录 R8 cold-start dr
   - WI-005/ACC-023 已追加 foundation 级 `integrated_runtime` 自动化证据：同一 docker compose runtime 下验证 Finance API 对 fund/gold/real_estate 的 planning-only 边界、real_estate manual_todo、非 A trade RequestBrief 转 manual_todo、PostgreSQL task 持久化、API restart 后任务可读、无 workflow/approval/paper execution。FinanceProfile 资产更新仍是 API 内存读模型；专用财务档案持久化需未来 API/DB scope。
   - WI-005/ACC-024 已追加 foundation 级 `integrated_runtime` 自动化证据：同一 docker compose runtime 下验证自动归因日度发布、评分公式、condition hit/miss、缺失输入 null/improvement item、Dossier attribution、PostgreSQL artifact/audit/outbox、API restart 后读回。证据仍通过 generic Gateway artifact ledger；专用 attribution drilldown/API 展示需未来 API/DB/frontend scope。
   - WI-005/ACC-025 已追加 foundation 级 `integrated_runtime` 自动化证据：同一 docker compose runtime 下验证异常/周期归因触发 CFO、trigger priority、CFOInterpretation、finance_planning 高影响治理 proposal 语义、owner_pending、ReflectionRecord、handoff、PostgreSQL artifact/audit/outbox、API restart 后读回。CFO GovernanceProposal/ApprovalRecord 仍不是一等 API/Gateway 对象。
+  - WI-005/ACC-026 已追加 foundation 级 `integrated_runtime` 自动化证据：同一 docker compose runtime 下验证 factor_engine ServiceResult 因子准入、独立验证、registry 字段、monitoring threshold/coverage drift、pause_default_weight、factor_weight 高影响治理语义、无 backtest/Backtrader 依赖、handoff、PostgreSQL artifact/audit/outbox、API restart 后读回。专用 factor registry/GovernanceProposal 持久化仍需未来 API/DB contract scope。
   - 2026-05-02 docker compose runtime blocker 已修复到 WI-001/WI-004 `integrated_runtime` foundation 级：允许 Dockerfile/预构建镜像/`wheelhouse/`，runtime image 在 build 阶段通过 PyPI mirror 或 wheelhouse 安装依赖，api/worker/beat/agent-runner 启动命令不再 `pip install -e .`；同一 compose runtime 已通过 same-origin frontend、Chromium 浏览器点击、RequestBrief->Task、agent-runner fake_test、API restart 后 task 持久化和六个服务 running 检查。仍不能外推到全 V1，因为 S0-S7、真实外部数据、纸面执行和 Owner 人工验收未闭环。
   - 若后续任何 P0 自动化不可行，必须回到 Requirement 或 review 明确记录例外理由。
