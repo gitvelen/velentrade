@@ -2637,6 +2637,45 @@ Design approved 前，`reviews/design-review.yaml` 必须记录 R8 cold-start dr
   residual_risk: Chair Brief is persisted inside the ResearchPackage runtime artifact rather than as a separate API artifact type; adding first-class ICContextPackage/ICChairBrief write APIs would require a future WI scope expansion.
   reopen_required: false
 
+- acceptance_ref: ACC-015
+  run_id: RUN-WI007-ACC015-FULL-RUNTIME-FOUNDATION-20260503
+  test_case_ref: TC-ACC-015-01
+  verification_type: automated
+  test_type: contract
+  test_scope: full-integration
+  completion_level: integrated_runtime
+  executed_at: 2026-05-03
+  artifact_ref: python -m pytest tests/domain/investment/analysis tests/domain/investment/debate -q passed 13 tests; python -m compileall src/velentrade passed; CODESPEC_PROJECT_ROOT=$PWD CODESPEC_DEPLOY_RESULT_FILE=$(mktemp) VELENTRADE_RUN_COMPOSE_SMOKE=1 ./scripts/codespec-deploy at runtime_observed_revision=089510d317f72e623e0c9e9a352d593e0e460cc6; targeted WI-007 hard runtime smoke run_id=1777770460 workflow_id=workflow-7f3ee1d9c79b brief_id=brief-728b4905e8cd task_id=task-5453e6cdc0b4 data_readiness_artifact_id=artifact-8f02395c2fef memo_artifact_ids={macro:artifact-d6a4e5add8db,fundamental:artifact-276d0bba4253,quant:artifact-39cbeebbf206,event:artifact-c1f0b86ece03} celery_agent_run_id=run-wi007-hard-celery-1777770460 celery_artifact_id=artifact-5bc41d517bb7 db_counts={analyst_memo_artifacts:5,official_roles:[event,fundamental,macro,quant],audit_events_for_objects:11,outbox_events_for_keys:9} restart_roles=[event,fundamental,macro,quant] verified PostgreSQL/Alembic migration, Redis/Celery worker, FastAPI endpoint /api/requests/briefs /api/gateway/artifacts /api/workflows/{id}/commands /api/workflows/{id}/dossier, Chromium browser click from deploy smoke, and cross-WI runtime workflow S0-S7 persistence after API restart; ACC-015 assertions covered four official AnalystMemo payloads, independent skill/profile/rubric refs, role_payload fields, score/evidence ranges, hard_dissent field, evidence refs, and Postgres audit/outbox persistence.
+  result: pass
+  residual_risk: This proves WI-007 Analyst Memo contract and role independence on the shared runtime foundation; the Analyst payloads are deterministic smoke artifacts rather than live LLM investment analysis.
+  reopen_required: false
+
+- acceptance_ref: ACC-016
+  run_id: RUN-WI007-ACC016-FULL-RUNTIME-FOUNDATION-20260503
+  test_case_ref: TC-ACC-016-01
+  verification_type: automated
+  test_type: unit_and_integration
+  test_scope: full-integration
+  completion_level: integrated_runtime
+  executed_at: 2026-05-03
+  artifact_ref: python -m pytest tests/domain/investment/analysis tests/domain/investment/debate -q passed 13 tests; python -m compileall src/velentrade passed; CODESPEC_PROJECT_ROOT=$PWD CODESPEC_DEPLOY_RESULT_FILE=$(mktemp) VELENTRADE_RUN_COMPOSE_SMOKE=1 ./scripts/codespec-deploy at runtime_observed_revision=089510d317f72e623e0c9e9a352d593e0e460cc6; targeted WI-007 runtime smokes hard_run_id=1777770460 workflow_id=workflow-7f3ee1d9c79b consensus={consensus_score:0.744,action_conviction:0.686,reason_code:hard_dissent_requires_debate,execution_authorized:false} low_action_run_id=1777770361 workflow_id=workflow-763587ae6670 consensus={consensus_score:0.744,action_conviction:0.628,reason_code:hard_dissent_requires_debate,execution_authorized:false} debate_low_action={stop_reason:low_action_conviction_blocked,execution_blocked:true} celery_agent_run_ids=[run-wi007-hard-celery-1777770460,run-wi007-celery-1777770361] db_counts_each={analyst_memo_artifacts:5,collaboration_commands:3,collaboration_events:2,handoff_packets:1,audit_events_for_objects:11,outbox_events_for_keys:9} verified PostgreSQL/Alembic migration, Redis/Celery worker, FastAPI endpoint /api/requests/briefs /api/gateway/artifacts /api/collaboration/commands /api/workflows/{id}/dossier, Chromium browser click from deploy smoke, and cross-WI runtime workflow S0-S7 persistence after API restart; ACC-016 assertions covered formula inputs, consensus/action calculation, default threshold, hard dissent not authorizing execution, and low action blocking execution.
+  result: pass
+  residual_risk: Runtime evidence covers deterministic consensus/action calculations and threshold guards; live Analyst scoring quality remains outside this foundation proof.
+  reopen_required: false
+
+- acceptance_ref: ACC-017
+  run_id: RUN-WI007-ACC017-FULL-RUNTIME-FOUNDATION-20260503
+  test_case_ref: TC-ACC-017-01
+  verification_type: automated
+  test_type: integration
+  test_scope: full-integration
+  completion_level: integrated_runtime
+  executed_at: 2026-05-03
+  artifact_ref: python -m pytest tests/domain/investment/analysis tests/domain/investment/debate -q passed 13 tests; python -m compileall src/velentrade passed; CODESPEC_PROJECT_ROOT=$PWD CODESPEC_DEPLOY_RESULT_FILE=$(mktemp) VELENTRADE_RUN_COMPOSE_SMOKE=1 ./scripts/codespec-deploy at runtime_observed_revision=089510d317f72e623e0c9e9a352d593e0e460cc6; targeted WI-007 hard runtime smoke run_id=1777770460 workflow_id=workflow-7f3ee1d9c79b command_ids={cio_view_update:command-cf08a848564f,event_evidence:command-add9fc34eda5,quant_recompute:command-7b428cf04ec9} event_ids={cio_agenda:event-a6fd940e90e6,event_view_update:event-03f18d88a051} handoff_id=handoff-a1508441ab1f debate={rounds_used:2,stop_reason:hard_dissent_risk_handoff,retained_hard_dissent:true,risk_review_required:true,next_stage_decision:enter_s4_with_s5_hard_dissent_review,execution_blocked:false} db_counts={collaboration_commands:3,collaboration_events:2,handoff_packets:1,s3_stage_status:completed} restart_check={api_restarted:true,dossier_roles_after_restart:[event,fundamental,macro,quant],handoff_visible_after_restart:true} verified PostgreSQL/Alembic migration, Redis/Celery worker, FastAPI endpoint /api/collaboration/commands /api/gateway/events /api/gateway/handoffs /api/workflows/{id}/commands /api/workflows/{id}/dossier, Chromium browser click from deploy smoke, and cross-WI runtime workflow S0-S7 persistence after API restart; ACC-017 assertions covered S3 bounded two-round debate, CIO agenda, Analyst view update/evidence command loop, recompute request, retained hard dissent, Risk handoff, stage completion, and persisted Dossier visibility after API restart.
+  result: pass
+  residual_risk: Runtime evidence stops at S3-to-S5 handoff because WI-007 does not own Risk Review verdict, Owner exception, paper execution, or frontend rendering beyond the compose browser foundation.
+  reopen_required: false
+
 <!-- CODESPEC:TESTING:RISKS -->
 ## 4. 残留风险与返工判断
 
@@ -2647,5 +2686,6 @@ Design approved 前，`reviews/design-review.yaml` 必须记录 R8 cold-start dr
   - Implementation 阶段必须按 `contracts/verification-report-schemas.md` 生成可复核 report artifact。
   - WI-002 已追加 foundation 级 `integrated_runtime` 自动化证据：同一 docker compose runtime 下验证 PostgreSQL/Alembic、Redis/Celery worker、FastAPI workflow endpoint、Chromium 浏览器交互、S0-S7 persistence、Reopen Event、公开 A 股 K 线 Source Registry/采集落库、execution_core 阻断、服务边界、市场状态和治理 ContextSnapshot 生效边界。Tencent 公开 A 股 K 线 live provider smoke 仍只作单独证据，不作为 P0 pass 条件；真实外部 provider 生产可用性、全 V1 业务语义和 Owner 人工验收仍未完成。
   - WI-003 已追加 foundation 级 `integrated_runtime` 自动化证据：同一 docker compose runtime 下验证 PostgreSQL/Alembic、Redis/Celery worker、FastAPI workflow/Gateway endpoint、Chromium 浏览器交互、Opportunity Registry、Topic Queue、P0 抢占、IC Context Package 和 CIO Chair Brief 持久化载荷。WI-003 scope 明确不允许新增 API/DB schema；first-class ICContextPackage/ICChairBrief API artifact type 需要未来扩大 scope。
+  - WI-007 已追加 foundation 级 `integrated_runtime` 自动化证据：同一 docker compose runtime 下验证 PostgreSQL/Alembic、Redis/Celery worker、FastAPI Gateway/Collaboration/Workflow/Dossier endpoint、Chromium 浏览器交互、四 Analyst Memo artifact、S3 CollaborationCommand/Event、hard dissent Risk handoff、PostgreSQL audit/outbox 和 API restart 后 Dossier 可见。WI-007 scope 明确不拥有 Risk verdict、Owner exception、paper execution 或前端页面实现。
   - 2026-05-02 docker compose runtime blocker 已修复到 WI-001/WI-004 `integrated_runtime` foundation 级：允许 Dockerfile/预构建镜像/`wheelhouse/`，runtime image 在 build 阶段通过 PyPI mirror 或 wheelhouse 安装依赖，api/worker/beat/agent-runner 启动命令不再 `pip install -e .`；同一 compose runtime 已通过 same-origin frontend、Chromium 浏览器点击、RequestBrief->Task、agent-runner fake_test、API restart 后 task 持久化和六个服务 running 检查。仍不能外推到全 V1，因为 S0-S7、真实外部数据、纸面执行和 Owner 人工验收未闭环。
   - 若后续任何 P0 自动化不可行，必须回到 Requirement 或 review 明确记录例外理由。
