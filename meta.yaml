@@ -4,7 +4,7 @@
 change_id: baseline # 变更唯一标识
 base_version: null # 基线版本
 created_at: 2026-04-26 # 创建时间
-phase: Testing # 当前阶段：Requirement | Design | Implementation | Testing | Deployment
+phase: Deployment # 当前阶段：Requirement | Design | Implementation | Testing | Deployment
 status: active # 当前状态：active | blocked | completed
 # status 语义：
 # - active: 当前阶段正常推进
