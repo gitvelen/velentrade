@@ -2598,6 +2598,45 @@ Design approved 前，`reviews/design-review.yaml` 必须记录 R8 cold-start dr
   residual_risk: This proves governance runtime state and context-snapshot scope in automation; Owner-facing governance approval UI semantics remain WI-004/API foundation unless separately owner_verified.
   reopen_required: false
 
+- acceptance_ref: ACC-012
+  run_id: RUN-WI003-ACC012-FULL-RUNTIME-FOUNDATION-20260503
+  test_case_ref: TC-ACC-012-01
+  verification_type: automated
+  test_type: integration
+  test_scope: full-integration
+  completion_level: integrated_runtime
+  executed_at: 2026-05-03
+  artifact_ref: CODESPEC_PROJECT_ROOT=$PWD CODESPEC_DEPLOY_RESULT_FILE=$(mktemp) VELENTRADE_RUN_COMPOSE_SMOKE=1 ./scripts/codespec-deploy at runtime_observed_revision=9b759ac0799115a7fac689e3b27ed97422686b8e; targeted WI-003 Python runtime smoke run_id=1777769530 workflow_id=workflow-a8fdebc689f2 brief_id=brief-284ebbe5813a topic_id=topic-p0-1777769530 api_research_artifact_id=artifact-3f001dbfc401 celery_agent_run_id=run-wi003-celery-1777769530 verified PostgreSQL/Alembic migration, Redis/Celery worker, FastAPI endpoint /api/requests/briefs /api/gateway/artifacts /api/artifacts/{id}, Chromium browser click from deploy smoke, and cross-WI runtime workflow S0-S7 persistence after API restart; ACC-012 assertions covered owner/analyst/researcher/service_signal/holding_risk/announcement registration, supporting evidence routed to research_task, zero formal IC entries before queue admission, persisted ResearchPackage artifact, audit_event row, and outbox_event row.
+  result: pass
+  residual_risk: This proves WI-003 intake semantics on the existing runtime foundation; it does not add a dedicated WI-003 API router because WI-003 forbids API/DB schema edits.
+  reopen_required: false
+
+- acceptance_ref: ACC-013
+  run_id: RUN-WI003-ACC013-FULL-RUNTIME-FOUNDATION-20260503
+  test_case_ref: TC-ACC-013-01
+  verification_type: automated
+  test_type: integration
+  test_scope: full-integration
+  completion_level: integrated_runtime
+  executed_at: 2026-05-03
+  artifact_ref: CODESPEC_PROJECT_ROOT=$PWD CODESPEC_DEPLOY_RESULT_FILE=$(mktemp) VELENTRADE_RUN_COMPOSE_SMOKE=1 ./scripts/codespec-deploy at runtime_observed_revision=9b759ac0799115a7fac689e3b27ed97422686b8e; targeted WI-003 Python runtime smoke run_id=1777769530 workflow_id=workflow-a8fdebc689f2 brief_id=brief-284ebbe5813a topic_id=topic-p0-1777769530 api_research_artifact_id=artifact-3f001dbfc401 celery_agent_run_id=run-wi003-celery-1777769530 verified PostgreSQL/Alembic migration, Redis/Celery worker, FastAPI endpoint /api/requests/briefs /api/gateway/artifacts /api/artifacts/{id}, Chromium browser click from deploy smoke, and cross-WI runtime workflow S0-S7 persistence after API restart; ACC-013 assertions covered hard gates, weighted priority scoring, active_ic_slots=3, global workflow count=4, P0 preemption with preempted_topic_id=topic-2-1777769530, waiting audit, non-A-share rejection, and duplicate active symbol rejection.
+  result: pass
+  residual_risk: Topic Queue remains domain-owned and is embedded into a persisted ResearchPackage on the shared runtime foundation; S2 Analyst Memo and later investment decisions remain owned by WI-007/WI-008.
+  reopen_required: false
+
+- acceptance_ref: ACC-014
+  run_id: RUN-WI003-ACC014-FULL-RUNTIME-FOUNDATION-20260503
+  test_case_ref: TC-ACC-014-01
+  verification_type: automated
+  test_type: integration
+  test_scope: full-integration
+  completion_level: integrated_runtime
+  executed_at: 2026-05-03
+  artifact_ref: CODESPEC_PROJECT_ROOT=$PWD CODESPEC_DEPLOY_RESULT_FILE=$(mktemp) VELENTRADE_RUN_COMPOSE_SMOKE=1 ./scripts/codespec-deploy at runtime_observed_revision=9b759ac0799115a7fac689e3b27ed97422686b8e; targeted WI-003 Python runtime smoke run_id=1777769530 workflow_id=workflow-a8fdebc689f2 brief_id=brief-284ebbe5813a topic_id=topic-p0-1777769530 api_research_artifact_id=artifact-3f001dbfc401 celery_agent_run_id=run-wi003-celery-1777769530 verified PostgreSQL/Alembic migration, Redis/Celery worker, FastAPI endpoint /api/requests/briefs /api/gateway/artifacts /api/artifacts/{id}, Chromium browser click from deploy smoke, and cross-WI runtime workflow S0-S7 persistence after API restart; ACC-014 assertions covered IC Context Package refs, role attachments, evidence_missing_sections=[], evidence missing refs=[], persisted chair_brief payload, and no_preset_decision_attestation=true with no buy/sell/hold/买入/卖出/持有 preset.
+  result: pass
+  residual_risk: Chair Brief is persisted inside the ResearchPackage runtime artifact rather than as a separate API artifact type; adding first-class ICContextPackage/ICChairBrief write APIs would require a future WI scope expansion.
+  reopen_required: false
+
 <!-- CODESPEC:TESTING:RISKS -->
 ## 4. 残留风险与返工判断
 
@@ -2607,5 +2646,6 @@ Design approved 前，`reviews/design-review.yaml` 必须记录 R8 cold-start dr
   - 本阶段已追加 WI-001/WI-004 的 `api_connected` 与 `db_persistent` 级实现证据；历史 `RUN-FULL-*` 仍仅为 `fixture_contract`。
   - Implementation 阶段必须按 `contracts/verification-report-schemas.md` 生成可复核 report artifact。
   - WI-002 已追加 foundation 级 `integrated_runtime` 自动化证据：同一 docker compose runtime 下验证 PostgreSQL/Alembic、Redis/Celery worker、FastAPI workflow endpoint、Chromium 浏览器交互、S0-S7 persistence、Reopen Event、公开 A 股 K 线 Source Registry/采集落库、execution_core 阻断、服务边界、市场状态和治理 ContextSnapshot 生效边界。Tencent 公开 A 股 K 线 live provider smoke 仍只作单独证据，不作为 P0 pass 条件；真实外部 provider 生产可用性、全 V1 业务语义和 Owner 人工验收仍未完成。
+  - WI-003 已追加 foundation 级 `integrated_runtime` 自动化证据：同一 docker compose runtime 下验证 PostgreSQL/Alembic、Redis/Celery worker、FastAPI workflow/Gateway endpoint、Chromium 浏览器交互、Opportunity Registry、Topic Queue、P0 抢占、IC Context Package 和 CIO Chair Brief 持久化载荷。WI-003 scope 明确不允许新增 API/DB schema；first-class ICContextPackage/ICChairBrief API artifact type 需要未来扩大 scope。
   - 2026-05-02 docker compose runtime blocker 已修复到 WI-001/WI-004 `integrated_runtime` foundation 级：允许 Dockerfile/预构建镜像/`wheelhouse/`，runtime image 在 build 阶段通过 PyPI mirror 或 wheelhouse 安装依赖，api/worker/beat/agent-runner 启动命令不再 `pip install -e .`；同一 compose runtime 已通过 same-origin frontend、Chromium 浏览器点击、RequestBrief->Task、agent-runner fake_test、API restart 后 task 持久化和六个服务 running 检查。仍不能外推到全 V1，因为 S0-S7、真实外部数据、纸面执行和 Owner 人工验收未闭环。
   - 若后续任何 P0 自动化不可行，必须回到 Requirement 或 review 明确记录例外理由。
