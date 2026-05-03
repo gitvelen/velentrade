@@ -2754,6 +2754,19 @@ Design approved 前，`reviews/design-review.yaml` 必须记录 R8 cold-start dr
   residual_risk: Finance asset updates themselves remain API in-memory read models in current scope; durable evidence is the persisted manual_todo TaskEnvelope and absence of workflow/approval/execution for non-A trade. First-class FinanceProfile persistence would require API/DB scope outside WI-005.
   reopen_required: false
 
+- acceptance_ref: ACC-024
+  run_id: RUN-WI005-ACC024-FULL-RUNTIME-FOUNDATION-20260503
+  test_case_ref: TC-ACC-024-01
+  verification_type: automated
+  test_type: integration
+  test_scope: full-integration
+  completion_level: integrated_runtime
+  executed_at: 2026-05-03
+  artifact_ref: python -m pytest tests/domain/finance tests/domain/attribution tests/domain/knowledge -q passed 14 tests; python -m compileall src/velentrade passed; compose runtime stayed running with PostgreSQL/Alembic migration, Redis/Celery worker, FastAPI endpoint, Chromium browser click from deploy smoke, and cross-WI workflow runtime foundation at revision=91451ee01a3418859dddcf6ea4158d6d3eca4df8; targeted WI-005 attribution runtime smoke run_id=1777772723 workflow_id=workflow-f8c2d9797fac routine_attr_ref=artifact-209e910bef8b missing_condition_attr_ref=artifact-b4a9b090493a routine_scores={decision_quality:0.818,execution_quality:0.948,risk_quality:0.87,data_quality:0.95,evidence_quality:0.897,condition_score:1.0,needs_cfo:false,triggers:[]} missing_condition_scores={decision_quality:0.425,execution_quality:0.767,risk_quality:null,improvement_items:[missing_input:risk_review],condition_score:0.0,needs_cfo:true,triggers:[single_dimension_low,condition_failure]}; db_counts={attribution_artifacts:2,outbox_events_for_keys:2,audit_events_for_objects:2} restart_check={api_restarted:true,dossier_attribution_status:completed,dossier_evidence_has_new_refs:{routine:true,missing_condition:true},routine_needs_cfo_after_restart:false,missing_risk_quality_after_restart:null,missing_improvement_items_after_restart:[missing_input:risk_review]}; ACC-024 assertions covered return/benchmark inputs, decision/execution/risk/data/evidence quality scores in 0..1, condition hit/miss scoring, normal daily auto publication without CFO, missing risk input yielding null risk_quality plus improvement item, Dossier attribution projection, PostgreSQL persistence, outbox/audit, and API artifact readability after restart.
+  result: pass
+  residual_risk: Runtime uses the existing performance_attribution_evaluation service producer and generic Gateway artifact ledger; dedicated attribution-specific tables or richer Owner-facing attribution drilldown projection would require API/DB/frontend scope outside WI-005.
+  reopen_required: false
+
 <!-- CODESPEC:TESTING:RISKS -->
 ## 4. 残留风险与返工判断
 
@@ -2769,5 +2782,6 @@ Design approved 前，`reviews/design-review.yaml` 必须记录 R8 cold-start dr
   - WI-008/ACC-019 已追加 foundation 级 `integrated_runtime` 自动化证据：同一 docker compose runtime 下验证 RiskReviewReport conditional_pass/rejected、Owner timeout no-execute domain disposition、Reopen Event、Risk rejected bypass denial、直接 S6 workflow command 被阻断、无 PaperExecutionReceipt、PostgreSQL audit/outbox 和 API restart 后 Dossier risk 状态可见。ApprovalRecord 创建仍停留在 domain evidence；持久化审批创建入口需未来 API/DB scope。
   - WI-009/ACC-020..022 已追加 foundation 级 `integrated_runtime` 自动化证据：同一 docker compose runtime 下验证 PaperAccount 初始化与填充后账户、PaperOrder/PaperExecutionReceipt 的 filled/blocked/expired/TWAP 路径、execution_core 阻断、T+1、S0-S7 completion、Dossier paper_execution、API restart 后 artifact 可读、PositionDisposalTask P0 处置 handoff、直接 S6 bypass 阻断、无真实券商/真实下单/回测。当前证据通过 generic Gateway artifact ledger 和 HandoffPacket 持久化；专用 paper_* 表镜像与一等 PositionDisposalTask API/schema 仍需未来 API/DB scope。
   - WI-005/ACC-023 已追加 foundation 级 `integrated_runtime` 自动化证据：同一 docker compose runtime 下验证 Finance API 对 fund/gold/real_estate 的 planning-only 边界、real_estate manual_todo、非 A trade RequestBrief 转 manual_todo、PostgreSQL task 持久化、API restart 后任务可读、无 workflow/approval/paper execution。FinanceProfile 资产更新仍是 API 内存读模型；专用财务档案持久化需未来 API/DB scope。
+  - WI-005/ACC-024 已追加 foundation 级 `integrated_runtime` 自动化证据：同一 docker compose runtime 下验证自动归因日度发布、评分公式、condition hit/miss、缺失输入 null/improvement item、Dossier attribution、PostgreSQL artifact/audit/outbox、API restart 后读回。证据仍通过 generic Gateway artifact ledger；专用 attribution drilldown/API 展示需未来 API/DB/frontend scope。
   - 2026-05-02 docker compose runtime blocker 已修复到 WI-001/WI-004 `integrated_runtime` foundation 级：允许 Dockerfile/预构建镜像/`wheelhouse/`，runtime image 在 build 阶段通过 PyPI mirror 或 wheelhouse 安装依赖，api/worker/beat/agent-runner 启动命令不再 `pip install -e .`；同一 compose runtime 已通过 same-origin frontend、Chromium 浏览器点击、RequestBrief->Task、agent-runner fake_test、API restart 后 task 持久化和六个服务 running 检查。仍不能外推到全 V1，因为 S0-S7、真实外部数据、纸面执行和 Owner 人工验收未闭环。
   - 若后续任何 P0 自动化不可行，必须回到 Requirement 或 review 明确记录例外理由。
