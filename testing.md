@@ -2689,6 +2689,19 @@ Design approved 前，`reviews/design-review.yaml` 必须记录 R8 cold-start dr
   residual_risk: Runtime uses the current generic Gateway service producers portfolio_optimization for DecisionPacket and risk_engine for DecisionGuardResult because no dedicated decision_service producer/API scope exists in WI-008; first-class Dossier decision_packet and optimizer_deviation projection remains limited to artifact retrieval and guard projection without API changes.
   reopen_required: false
 
+- acceptance_ref: ACC-019
+  run_id: RUN-WI008-ACC019-FULL-RUNTIME-FOUNDATION-20260503
+  test_case_ref: TC-ACC-019-01
+  verification_type: automated
+  test_type: integration
+  test_scope: full-integration
+  completion_level: integrated_runtime
+  executed_at: 2026-05-03
+  artifact_ref: python -m pytest tests/domain/decision tests/domain/investment/risk tests/domain/investment/owner_exception -q passed 13 tests; python -m compileall src/velentrade passed; compose runtime from WI-008 ACC-018 evidence stayed running with PostgreSQL/Alembic migration, Redis/Celery worker, FastAPI endpoint, Chromium browser click from deploy smoke, and cross-WI runtime workflow S0-S7 persistence after API restart already observed at revision=91451ee01a3418859dddcf6ea4158d6d3eca4df8; targeted WI-008 risk runtime smoke run_id=1777771446 conditional_workflow_id=workflow-87cbeb782a22 conditional_brief_id=brief-1b374be44571 conditional_risk_artifact_id=artifact-adfcc24de9b2 conditional_handoff_id=handoff-8a7c55a1d2b7 owner_packet_candidate_id=decision-exception-e7edd5713d21 owner_approval_id=approval-risk-conditional-1777771446 owner_timeout_disposition=s6_blocked_no_execution rejected_workflow_id=workflow-331dedca03c5 rejected_brief_id=brief-26c48d6bd797 rejected_risk_artifact_id=artifact-12155b91cc3a reopen_event_id=reopen-97f615ba7ce7 risk_bypass_attempt=denied:risk_rejected_no_override s6_bypass_status=409 s6_bypass_reason_code=upstream_stage_not_completed db_counts={risk_review_artifacts:2,reopen_events:1,handoff_packets:3,paper_execution_conditional:0,paper_execution_rejected:0,audit_events_for_objects:3,outbox_events_for_keys:3} restart_check={api_restarted:true,conditional_risk_status:conditional_pass,rejected_risk_status:rejected}; ACC-019 assertions covered Risk approved/conditional/rejected domain states, conditional_pass Owner packet, Owner timeout no-execute disposition, rejected repairable Reopen Event target S4, rejected bypass denial, no PaperExecutionReceipt on blocked paths, workflow/API denial of direct S6 transition, and Dossier risk state visibility after API restart.
+  result: pass
+  residual_risk: Runtime persists RiskReviewReport, HandoffPacket and ReopenEvent, while Owner ApprovalRecord remains domain-level evidence because WI-008 has no allowed API/Gateway write path for creating approval records; first-class persisted Owner exception approval creation would require API/DB scope expansion.
+  reopen_required: false
+
 <!-- CODESPEC:TESTING:RISKS -->
 ## 4. 残留风险与返工判断
 
@@ -2701,5 +2714,6 @@ Design approved 前，`reviews/design-review.yaml` 必须记录 R8 cold-start dr
   - WI-003 已追加 foundation 级 `integrated_runtime` 自动化证据：同一 docker compose runtime 下验证 PostgreSQL/Alembic、Redis/Celery worker、FastAPI workflow/Gateway endpoint、Chromium 浏览器交互、Opportunity Registry、Topic Queue、P0 抢占、IC Context Package 和 CIO Chair Brief 持久化载荷。WI-003 scope 明确不允许新增 API/DB schema；first-class ICContextPackage/ICChairBrief API artifact type 需要未来扩大 scope。
   - WI-007 已追加 foundation 级 `integrated_runtime` 自动化证据：同一 docker compose runtime 下验证 PostgreSQL/Alembic、Redis/Celery worker、FastAPI Gateway/Collaboration/Workflow/Dossier endpoint、Chromium 浏览器交互、四 Analyst Memo artifact、S3 CollaborationCommand/Event、hard dissent Risk handoff、PostgreSQL audit/outbox 和 API restart 后 Dossier 可见。WI-007 scope 明确不拥有 Risk verdict、Owner exception、paper execution 或前端页面实现。
   - WI-008/ACC-018 已追加 foundation 级 `integrated_runtime` 自动化证据：同一 docker compose runtime 下验证 PostgreSQL/Alembic、Redis/Celery worker、FastAPI Gateway/Workflow/Dossier/artifact endpoint、Chromium 浏览器交互、DecisionPacket、CIODecisionMemo、DecisionGuardResult、Owner exception candidate、S4 handoff、PostgreSQL audit/outbox 和 API restart 后 artifact/Dossier 可见。当前官方 deploy hook 在最终服务列表 pipe check 处存在 rc=141 工具残留，后续以 docker compose ps/API/tasks/targeted smoke 补证；修复 deploy hook 需进入对应脚本 scope。
+  - WI-008/ACC-019 已追加 foundation 级 `integrated_runtime` 自动化证据：同一 docker compose runtime 下验证 RiskReviewReport conditional_pass/rejected、Owner timeout no-execute domain disposition、Reopen Event、Risk rejected bypass denial、直接 S6 workflow command 被阻断、无 PaperExecutionReceipt、PostgreSQL audit/outbox 和 API restart 后 Dossier risk 状态可见。ApprovalRecord 创建仍停留在 domain evidence；持久化审批创建入口需未来 API/DB scope。
   - 2026-05-02 docker compose runtime blocker 已修复到 WI-001/WI-004 `integrated_runtime` foundation 级：允许 Dockerfile/预构建镜像/`wheelhouse/`，runtime image 在 build 阶段通过 PyPI mirror 或 wheelhouse 安装依赖，api/worker/beat/agent-runner 启动命令不再 `pip install -e .`；同一 compose runtime 已通过 same-origin frontend、Chromium 浏览器点击、RequestBrief->Task、agent-runner fake_test、API restart 后 task 持久化和六个服务 running 检查。仍不能外推到全 V1，因为 S0-S7、真实外部数据、纸面执行和 Owner 人工验收未闭环。
   - 若后续任何 P0 自动化不可行，必须回到 Requirement 或 review 明确记录例外理由。
