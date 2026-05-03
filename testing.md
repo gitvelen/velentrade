@@ -2533,6 +2533,71 @@ Design approved 前，`reviews/design-review.yaml` 必须记录 R8 cold-start dr
   residual_risk: TopicQueue now rejects non-numeric exchange-suffixed symbols such as AAPL.SH and requested_priority values outside P0/P1/P2/None before formal IC admission; still in-memory only and not connected to API/PostgreSQL/browser workflow runtime.
   reopen_required: false
 
+- acceptance_ref: ACC-008
+  run_id: RUN-WI002-ACC008-FULL-RUNTIME-FOUNDATION-20260503
+  test_case_ref: TC-ACC-008-01
+  verification_type: automated
+  test_type: integration
+  test_scope: full-integration
+  completion_level: integrated_runtime
+  executed_at: 2026-05-03
+  artifact_ref: CODESPEC_PROJECT_ROOT=$PWD CODESPEC_DEPLOY_RESULT_FILE=$(mktemp) VELENTRADE_RUN_COMPOSE_SMOKE=1 ./scripts/codespec-deploy at runtime_observed_revision=4600ff0bb713f9609de4e254bc672996b617d448; targeted WI-002 Python runtime smoke run_id=1777769067 workflow_guard_id=workflow-aabeb03ee428 workflow_reopen_id=reopen-ea013f8ff0d2 data_request_id=quote-wi002-1777769067 data_lineage_id=lineage-quote-wi002-1777769067 celery_agent_run_id=run-wi002-celery-1777769067 celery_artifact_id=artifact-726a603d842c verified PostgreSQL/Alembic migration, Redis/Celery worker, FastAPI endpoint /api/requests/briefs /api/workflows/{id}/commands /api/workflows/{id}/dossier, Chromium browser click from deploy smoke, and cross-WI runtime workflow S0-S7 persistence after API restart; ACC-008 assertions covered RequestBrief confirmation, S0 stage guard, completed stage output, Reopen Event target S2, attempt_no 2, persisted reopen_event row, and Dossier read model.
+  result: pass
+  residual_risk: This is an integrated runtime foundation slice for WI-002 workflow guard and reopen semantics; it does not prove every later investment semantic artifact is produced by live Agents or approved by Owner.
+  reopen_required: false
+
+- acceptance_ref: ACC-009
+  run_id: RUN-WI002-ACC009-FULL-RUNTIME-FOUNDATION-20260503
+  test_case_ref: TC-ACC-009-01
+  verification_type: automated
+  test_type: integration
+  test_scope: full-integration
+  completion_level: integrated_runtime
+  executed_at: 2026-05-03
+  artifact_ref: CODESPEC_PROJECT_ROOT=$PWD CODESPEC_DEPLOY_RESULT_FILE=$(mktemp) VELENTRADE_RUN_COMPOSE_SMOKE=1 ./scripts/codespec-deploy at runtime_observed_revision=4600ff0bb713f9609de4e254bc672996b617d448; targeted WI-002 Python runtime smoke run_id=1777769067 workflow_guard_id=workflow-aabeb03ee428 workflow_reopen_id=reopen-ea013f8ff0d2 data_request_id=quote-wi002-1777769067 data_lineage_id=lineage-quote-wi002-1777769067 celery_agent_run_id=run-wi002-celery-1777769067 celery_artifact_id=artifact-726a603d842c verified PostgreSQL/Alembic migration, Redis/Celery worker, FastAPI endpoint /api/requests/briefs /api/workflows/{id}/commands /api/workflows/{id}/dossier, Chromium browser click from deploy smoke, and cross-WI runtime workflow S0-S7 persistence after API restart; ACC-009 assertions covered seeded public HTTP Source Registry, deterministic Tencent JSON adapter fetch/parse, PostgreSQL data_request/data_lineage/quality rows, normal decision_core pass, and execution_core low-quality blocked with no execution authorization.
+  result: pass
+  residual_risk: Public source fetch is exercised with deterministic local transport for P0 automation; Tencent live smoke remains separate evidence and provider terms/rate-limit review is still required before production use.
+  reopen_required: false
+
+- acceptance_ref: ACC-010
+  run_id: RUN-WI002-ACC010-FULL-RUNTIME-FOUNDATION-20260503
+  test_case_ref: TC-ACC-010-01
+  verification_type: automated
+  test_type: integration
+  test_scope: full-integration
+  completion_level: integrated_runtime
+  executed_at: 2026-05-03
+  artifact_ref: CODESPEC_PROJECT_ROOT=$PWD CODESPEC_DEPLOY_RESULT_FILE=$(mktemp) VELENTRADE_RUN_COMPOSE_SMOKE=1 ./scripts/codespec-deploy at runtime_observed_revision=4600ff0bb713f9609de4e254bc672996b617d448; targeted WI-002 Python runtime smoke run_id=1777769067 workflow_guard_id=workflow-aabeb03ee428 workflow_reopen_id=reopen-ea013f8ff0d2 data_request_id=quote-wi002-1777769067 data_lineage_id=lineage-quote-wi002-1777769067 celery_agent_run_id=run-wi002-celery-1777769067 celery_artifact_id=artifact-726a603d842c verified PostgreSQL/Alembic migration, Redis/Celery worker, FastAPI endpoint /api/requests/briefs /api/workflows/{id}/commands /api/workflows/{id}/dossier, Chromium browser click from deploy smoke, and cross-WI runtime workflow S0-S7 persistence after API restart; ACC-010 assertions covered ServiceBoundaryChecker allowing portfolio_optimizer target_weight output and denying risk_engine fields final_investment_decision and risk_verdict.
+  result: pass
+  residual_risk: This proves deterministic service boundary enforcement in the runtime smoke path; WI-008 still owns role-specific Decision Service semantics.
+  reopen_required: false
+
+- acceptance_ref: ACC-011
+  run_id: RUN-WI002-ACC011-FULL-RUNTIME-FOUNDATION-20260503
+  test_case_ref: TC-ACC-011-01
+  verification_type: automated
+  test_type: integration
+  test_scope: full-integration
+  completion_level: integrated_runtime
+  executed_at: 2026-05-03
+  artifact_ref: CODESPEC_PROJECT_ROOT=$PWD CODESPEC_DEPLOY_RESULT_FILE=$(mktemp) VELENTRADE_RUN_COMPOSE_SMOKE=1 ./scripts/codespec-deploy at runtime_observed_revision=4600ff0bb713f9609de4e254bc672996b617d448; targeted WI-002 Python runtime smoke run_id=1777769067 workflow_guard_id=workflow-aabeb03ee428 workflow_reopen_id=reopen-ea013f8ff0d2 data_request_id=quote-wi002-1777769067 data_lineage_id=lineage-quote-wi002-1777769067 celery_agent_run_id=run-wi002-celery-1777769067 celery_artifact_id=artifact-726a603d842c verified PostgreSQL/Alembic migration, Redis/Celery worker, FastAPI endpoint /api/requests/briefs /api/workflows/{id}/commands /api/workflows/{id}/dossier, Chromium browser click from deploy smoke, and cross-WI runtime workflow S0-S7 persistence after API restart; ACC-011 assertions covered market states neutral/risk_off/risk_on/stress/transition, risk_on default IC context, factor weight effect, and Macro override audit from risk_on to risk_off with is_default_gate=false.
+  result: pass
+  residual_risk: Market state is deterministic fixture logic; production-quality macro classification and live macro inputs remain outside this WI-002 foundation proof.
+  reopen_required: false
+
+- acceptance_ref: ACC-030
+  run_id: RUN-WI002-ACC030-FULL-RUNTIME-FOUNDATION-20260503
+  test_case_ref: TC-ACC-030-01
+  verification_type: automated
+  test_type: integration
+  test_scope: full-integration
+  completion_level: integrated_runtime
+  executed_at: 2026-05-03
+  artifact_ref: CODESPEC_PROJECT_ROOT=$PWD CODESPEC_DEPLOY_RESULT_FILE=$(mktemp) VELENTRADE_RUN_COMPOSE_SMOKE=1 ./scripts/codespec-deploy at runtime_observed_revision=4600ff0bb713f9609de4e254bc672996b617d448; targeted WI-002 Python runtime smoke run_id=1777769067 workflow_guard_id=workflow-aabeb03ee428 workflow_reopen_id=reopen-ea013f8ff0d2 data_request_id=quote-wi002-1777769067 data_lineage_id=lineage-quote-wi002-1777769067 celery_agent_run_id=run-wi002-celery-1777769067 celery_artifact_id=artifact-726a603d842c verified PostgreSQL/Alembic migration, Redis/Celery worker, FastAPI endpoint /api/requests/briefs /api/workflows/{id}/commands /api/workflows/{id}/dossier, Chromium browser click from deploy smoke, and cross-WI runtime workflow S0-S7 persistence after API restart; ACC-030 assertions covered low-impact prompt change auto validation, new_attempt ContextSnapshot activation, immutable base snapshot hash, high-impact AgentCapability owner_pending state, expired no-effect terminal state, and activation_failed on expired change.
+  result: pass
+  residual_risk: This proves governance runtime state and context-snapshot scope in automation; Owner-facing governance approval UI semantics remain WI-004/API foundation unless separately owner_verified.
+  reopen_required: false
+
 <!-- CODESPEC:TESTING:RISKS -->
 ## 4. 残留风险与返工判断
 
@@ -2541,6 +2606,6 @@ Design approved 前，`reviews/design-review.yaml` 必须记录 R8 cold-start dr
 - notes:
   - 本阶段已追加 WI-001/WI-004 的 `api_connected` 与 `db_persistent` 级实现证据；历史 `RUN-FULL-*` 仍仅为 `fixture_contract`。
   - Implementation 阶段必须按 `contracts/verification-report-schemas.md` 生成可复核 report artifact。
-  - 公开 HTTP CSV/JSON 数据源 adapter 已达到 `in_memory_domain` 自动化验证；execution_core 低质量阻断和 WI-002 report fail 传播已有负例覆盖；公开 A 股 K 线 Source Registry、采集结果、Celery collect_data_request 和 latest-success cache restore 已达到 `db_persistent` smoke。Tencent 公开 A 股 K 线 live provider smoke 已通过但不作为 P0 pass 条件。完整 S0-S7/browser -> FastAPI -> PostgreSQL/Redis/Celery 投资链闭环和 Owner 人工验收仍未完成。
+  - WI-002 已追加 foundation 级 `integrated_runtime` 自动化证据：同一 docker compose runtime 下验证 PostgreSQL/Alembic、Redis/Celery worker、FastAPI workflow endpoint、Chromium 浏览器交互、S0-S7 persistence、Reopen Event、公开 A 股 K 线 Source Registry/采集落库、execution_core 阻断、服务边界、市场状态和治理 ContextSnapshot 生效边界。Tencent 公开 A 股 K 线 live provider smoke 仍只作单独证据，不作为 P0 pass 条件；真实外部 provider 生产可用性、全 V1 业务语义和 Owner 人工验收仍未完成。
   - 2026-05-02 docker compose runtime blocker 已修复到 WI-001/WI-004 `integrated_runtime` foundation 级：允许 Dockerfile/预构建镜像/`wheelhouse/`，runtime image 在 build 阶段通过 PyPI mirror 或 wheelhouse 安装依赖，api/worker/beat/agent-runner 启动命令不再 `pip install -e .`；同一 compose runtime 已通过 same-origin frontend、Chromium 浏览器点击、RequestBrief->Task、agent-runner fake_test、API restart 后 task 持久化和六个服务 running 检查。仍不能外推到全 V1，因为 S0-S7、真实外部数据、纸面执行和 Owner 人工验收未闭环。
   - 若后续任何 P0 自动化不可行，必须回到 Requirement 或 review 明确记录例外理由。
