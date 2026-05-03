@@ -2702,6 +2702,45 @@ Design approved 前，`reviews/design-review.yaml` 必须记录 R8 cold-start dr
   residual_risk: Runtime persists RiskReviewReport, HandoffPacket and ReopenEvent, while Owner ApprovalRecord remains domain-level evidence because WI-008 has no allowed API/Gateway write path for creating approval records; first-class persisted Owner exception approval creation would require API/DB scope expansion.
   reopen_required: false
 
+- acceptance_ref: ACC-020
+  run_id: RUN-WI009-ACC020-FULL-RUNTIME-FOUNDATION-20260503
+  test_case_ref: TC-ACC-020-01
+  verification_type: automated
+  test_type: integration
+  test_scope: full-integration
+  completion_level: integrated_runtime
+  executed_at: 2026-05-03
+  artifact_ref: python -m pytest tests/domain/investment/paper_account tests/domain/investment/execution tests/domain/investment/position -q passed 21 tests; python -m compileall src/velentrade passed; compose runtime from WI-008 ACC-018 evidence stayed running with PostgreSQL/Alembic migration, Redis/Celery worker, FastAPI endpoint, Chromium browser click from deploy smoke, and cross-WI workflow persistence foundation at revision=91451ee01a3418859dddcf6ea4158d6d3eca4df8; targeted WI-009 runtime smoke run_id=1777771944 execution_workflow_id=workflow-f8c2d9797fac execution_brief_id=brief-10169f128303 execution_task_id=task-87b33ce8f713 initial_account_ref=artifact-314c7d8facf5 updated_account_ref=artifact-50a9bde22130 account_initial={cash:1000000 CNY,positions:{},cash_ratio:1.0,benchmark_ref:baseline-cash} account_after_filled_buy={cash:987788.718 CNY,position_600000_SH_quantity:1200.0,available_quantity:0.0,t_plus_one_state:locked_until_next_trading_day,total_value:999994.878,return_value:-5.122}; db_counts={PaperAccount:2,PaperExecutionReceipt:4,PaperOrder:4,AnalystMemo:4,CIODecisionMemo:1,RiskReview:1,Attribution:1,DataReadiness:1,DecisionGuardResult:1,workflow_stage_statuses:{S0:completed,S1:completed,S2:completed,S3:completed,S4:completed,S5:completed,S6:completed,S7:completed},audit_events_for_refs:7,outbox_events_for_wi009_keys:{wi001.artifact:29,wi001.handoff:3}} restart_check={api_restarted:true,dossier_paper_execution_status:filled,initial_account_artifact_read_after_restart:true,updated_account_cash_after_restart:987788.718 CNY,filled_receipt_t_plus_one_after_restart:locked_until_next_trading_day}; ACC-020 assertions covered 1,000,000 CNY default PaperAccount initialization, empty positions, cash baseline, risk budget, PaperAccount persistence through FastAPI Gateway/PostgreSQL, account update from filled buy, T+1 locked availability, S6 completion, and artifact readability after API restart.
+  result: pass
+  residual_risk: Runtime persists PaperAccount through the generic Gateway artifact ledger using trade_execution; the dedicated paper_account table is present from DB foundation but not updated by this Gateway write path within WI-009 scope.
+  reopen_required: false
+
+- acceptance_ref: ACC-021
+  run_id: RUN-WI009-ACC021-FULL-RUNTIME-FOUNDATION-20260503
+  test_case_ref: TC-ACC-021-01
+  verification_type: automated
+  test_type: integration
+  test_scope: full-integration
+  completion_level: integrated_runtime
+  executed_at: 2026-05-03
+  artifact_ref: python -m pytest tests/domain/investment/paper_account tests/domain/investment/execution tests/domain/investment/position -q passed 21 tests; python -m compileall src/velentrade passed; same docker compose runtime with PostgreSQL/Alembic migration, Redis/Celery worker, FastAPI endpoint, Chromium browser click, and cross-WI workflow runtime as RUN-WI009-ACC020-FULL-RUNTIME-FOUNDATION-20260503; targeted WI-009 paper execution smoke run_id=1777771944 workflow_id=workflow-f8c2d9797fac filled_receipt_ref=artifact-44353eb29f69 blocked_receipt_ref=artifact-2a64ae4f3c97 expired_receipt_ref=artifact-5c5b3a56b9b2 twap_receipt_ref=artifact-53bbbe990d1c filled_receipt={paper_order_id:paper-order-filled-1777771944,execution_window:2h,pricing_method:minute_vwap,fill_status:filled,fill_price:10.1718,fill_quantity:1200,fees:{commission:5.0,transfer:0.122},taxes:{stamp_tax:0},slippage:{policy_bps:5},t_plus_one_state:locked_until_next_trading_day} blocked_receipt={paper_order_id:paper-order-blocked-1777771944,execution_window:30m,fill_status:blocked,reason_code:execution_core_blocked,market_data_refs:[execution-core-blocked-1777771944]} expired_receipt={paper_order_id:paper-order-expired-1777771944,execution_window:30m,fill_status:expired,reason_code:price_range_not_hit} twap_receipt={paper_order_id:paper-order-twap-1777771944,execution_window:full_day,pricing_method:minute_twap,fill_status:filled,fill_price:10.3698,fill_quantity:100}; db_counts={receipt_statuses:{filled:2,blocked:1,expired:1},PaperOrder:4,PaperExecutionReceipt:4,S6:completed,S7:completed} restart_check={api_restarted:true,dossier_paper_execution_status:filled,dossier_pricing_method:minute_vwap,dossier_evidence_has_receipts:{filled:true,blocked:true,expired:true,twap:true},blocked_reason_after_restart:execution_core_blocked,expired_status_after_restart:expired,twap_pricing_after_restart:minute_twap}; ACC-021 assertions covered urgency windows, minute VWAP/TWAP, price range miss, fees/taxes/slippage, execution_core blocked no-fill, T+1 state, no real broker/order/backtest call, S6/S7 workflow completion, Dossier projection, and persisted receipt reads after API restart.
+  result: pass
+  residual_risk: Runtime persists PaperOrder and PaperExecutionReceipt through the generic Gateway artifact ledger and Dossier first-receipt projection; the dedicated paper_order/paper_execution_receipt tables are DB foundation tables but are not the current Gateway mirror target in WI-009 scope.
+  reopen_required: false
+
+- acceptance_ref: ACC-022
+  run_id: RUN-WI009-ACC022-FULL-RUNTIME-FOUNDATION-20260503
+  test_case_ref: TC-ACC-022-01
+  verification_type: automated
+  test_type: integration
+  test_scope: full-integration
+  completion_level: integrated_runtime
+  executed_at: 2026-05-03
+  artifact_ref: python -m pytest tests/domain/investment/paper_account tests/domain/investment/execution tests/domain/investment/position -q passed 21 tests; python -m compileall src/velentrade passed; same docker compose runtime with PostgreSQL/Alembic migration, Redis/Celery worker, FastAPI endpoint, Chromium browser click, and cross-WI workflow runtime as RUN-WI009-ACC020-FULL-RUNTIME-FOUNDATION-20260503; targeted WI-009 position disposal smoke run_id=1777771944 disposal_workflow_id=workflow-59c312df57f6 disposal_brief_id=brief-77203704ec9e disposal_handoff_ref=handoff-047ddc203d99 disposal_task={task_id:position-disposal-0cefb6bff97e,symbol:600000.SH,triggers:[abnormal_volatility,major_announcement,risk_threshold_breach],priority:P0,risk_gate_present:true,execution_core_guard_present:true,direct_execution_allowed:false,workflow_route:S5_risk_review,reason_code:position_disposal_requires_risk_review} blocked_direct_s6_workflow_id=workflow-c7a3a0294dfd blocked_direct_s6_status=409 blocked_direct_s6_reason_code=upstream_stage_not_completed; db_counts={disposal_handoff_count:1,disposal_receipt_count:0,blocked_workflow_s6:{node_status:blocked,reason_code:upstream_stage_not_completed},audit_events_for_refs:7,outbox_events_for_wi009_keys:{wi001.artifact:29,wi001.handoff:3}} restart_check={api_restarted:true,disposal_risk_status_after_restart:approved,disposal_handoff_persisted:true}; ACC-022 assertions covered abnormal volatility/major announcement/risk threshold triggers, P0 escalation, PositionDisposalTask risk gate and execution_core guard fields, direct_execution_allowed=false, route back to S5 Risk Review via persisted handoff, no PaperExecutionReceipt on disposal workflow, and direct S6 bypass blocked by workflow guard.
+  result: pass
+  residual_risk: PositionDisposalTask remains represented as domain payload plus HandoffPacket because WI-009 has no allowed first-class PositionDisposalTask artifact/API/schema path; adding that projection would require expanding API/DB contract scope.
+  reopen_required: false
+
 <!-- CODESPEC:TESTING:RISKS -->
 ## 4. 残留风险与返工判断
 
@@ -2715,5 +2754,6 @@ Design approved 前，`reviews/design-review.yaml` 必须记录 R8 cold-start dr
   - WI-007 已追加 foundation 级 `integrated_runtime` 自动化证据：同一 docker compose runtime 下验证 PostgreSQL/Alembic、Redis/Celery worker、FastAPI Gateway/Collaboration/Workflow/Dossier endpoint、Chromium 浏览器交互、四 Analyst Memo artifact、S3 CollaborationCommand/Event、hard dissent Risk handoff、PostgreSQL audit/outbox 和 API restart 后 Dossier 可见。WI-007 scope 明确不拥有 Risk verdict、Owner exception、paper execution 或前端页面实现。
   - WI-008/ACC-018 已追加 foundation 级 `integrated_runtime` 自动化证据：同一 docker compose runtime 下验证 PostgreSQL/Alembic、Redis/Celery worker、FastAPI Gateway/Workflow/Dossier/artifact endpoint、Chromium 浏览器交互、DecisionPacket、CIODecisionMemo、DecisionGuardResult、Owner exception candidate、S4 handoff、PostgreSQL audit/outbox 和 API restart 后 artifact/Dossier 可见。当前官方 deploy hook 在最终服务列表 pipe check 处存在 rc=141 工具残留，后续以 docker compose ps/API/tasks/targeted smoke 补证；修复 deploy hook 需进入对应脚本 scope。
   - WI-008/ACC-019 已追加 foundation 级 `integrated_runtime` 自动化证据：同一 docker compose runtime 下验证 RiskReviewReport conditional_pass/rejected、Owner timeout no-execute domain disposition、Reopen Event、Risk rejected bypass denial、直接 S6 workflow command 被阻断、无 PaperExecutionReceipt、PostgreSQL audit/outbox 和 API restart 后 Dossier risk 状态可见。ApprovalRecord 创建仍停留在 domain evidence；持久化审批创建入口需未来 API/DB scope。
+  - WI-009/ACC-020..022 已追加 foundation 级 `integrated_runtime` 自动化证据：同一 docker compose runtime 下验证 PaperAccount 初始化与填充后账户、PaperOrder/PaperExecutionReceipt 的 filled/blocked/expired/TWAP 路径、execution_core 阻断、T+1、S0-S7 completion、Dossier paper_execution、API restart 后 artifact 可读、PositionDisposalTask P0 处置 handoff、直接 S6 bypass 阻断、无真实券商/真实下单/回测。当前证据通过 generic Gateway artifact ledger 和 HandoffPacket 持久化；专用 paper_* 表镜像与一等 PositionDisposalTask API/schema 仍需未来 API/DB scope。
   - 2026-05-02 docker compose runtime blocker 已修复到 WI-001/WI-004 `integrated_runtime` foundation 级：允许 Dockerfile/预构建镜像/`wheelhouse/`，runtime image 在 build 阶段通过 PyPI mirror 或 wheelhouse 安装依赖，api/worker/beat/agent-runner 启动命令不再 `pip install -e .`；同一 compose runtime 已通过 same-origin frontend、Chromium 浏览器点击、RequestBrief->Task、agent-runner fake_test、API restart 后 task 持久化和六个服务 running 检查。仍不能外推到全 V1，因为 S0-S7、真实外部数据、纸面执行和 Owner 人工验收未闭环。
   - 若后续任何 P0 自动化不可行，必须回到 Requirement 或 review 明确记录例外理由。
