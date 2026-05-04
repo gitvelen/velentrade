@@ -118,10 +118,10 @@ requirement_refs:
 | REQ-003/004/005 | Agent profile、团队页画像、组织透明读、Memory/Knowledge 分层、Authority Gateway、workflow-native collaboration | `agent-capability-profiles.md`、`agent-collaboration-protocol.md`、`frontend-workbench-design.md`、`runtime-storage-architecture.md`、`domain-artifact-schemas.md` | WI-001 / TC-ACC-003-01..005-01 |
 | REQ-006/007 | Web 主导航、高审美浅色主题、治理下 Agent 团队工作区、能力配置草案治理、全局命令、三层视图、任务/审批/manual_todo 分离 | `frontend-workbench-design.md`、`api-read-models.md` | WI-004 / TC-ACC-006-01, TC-ACC-007-01 |
 | REQ-008/009/010/011/030 | S0-S7、Data Request、质量门、服务边界、Market State、Decision Service 编排、治理快照 | `workflow-data-service-design.md`、`decision-service-design.md`、`domain-artifact-schemas.md`、`verification-report-schemas.md` | WI-002 / TC-ACC-008-01..011-01, TC-ACC-030-01 |
-| REQ-012/013/014 | Opportunity、Topic Queue、IC Context、IC Chair Brief | `investment-chain-design.md`、`domain-artifact-schemas.md` | WI-003 / TC-ACC-012-01..014-01 |
+| REQ-012/013/014 | Opportunity、Topic Queue、IC Context、IC Chair Brief | `investment-chain-design.md`、`domain-artifact-schemas.md` | WI-003 + WI-010 repair / TC-ACC-012-01..014-01 |
 | REQ-015/016/017 | Analyst Memo、共识/行动强度、辩论与 hard dissent | `investment-chain-design.md`、`agent-capability-profiles.md`、`agent-collaboration-protocol.md` | WI-007 / TC-ACC-015-01..017-01 |
 | REQ-018/019 | Decision Service、CIO Decision Packet、优化器偏离、Risk、Owner 例外 | `decision-service-design.md`、`investment-chain-design.md`、`domain-artifact-schemas.md`、`api-read-models.md` | WI-008 / TC-ACC-018-01..019-01 |
-| REQ-020/021/022 | 纸面账户、纸面执行、持仓监控与处置 | `investment-chain-design.md`、`domain-artifact-schemas.md`、`api-read-models.md` | WI-009 / TC-ACC-020-01..022-01 |
+| REQ-020/021/022 | 纸面账户、纸面执行、持仓监控与处置 | `investment-chain-design.md`、`domain-artifact-schemas.md`、`api-read-models.md` | WI-009 + WI-010 repair / TC-ACC-020-01..022-01 |
 | REQ-023/024/025/026/027/028 | 财务、归因、CFO 治理、因子研究、Researcher、知识/Prompt/Skill、反思 | `finance-knowledge-reflection-design.md`、`agent-capability-profiles.md`、`domain-artifact-schemas.md` | WI-005 / TC-ACC-023-01..028-01 |
 | REQ-029 | DevOps incident、health、degradation、recovery、Risk notification、成本/Token 观测 | `devops-observability-design.md`、`agent-capability-profiles.md`、`domain-artifact-schemas.md` | WI-006 / TC-ACC-029-01 |
 | REQ-031 | 财务加密、日志脱敏、runner 无写凭证、只读 DB、敏感字段解密边界 | `runtime-storage-architecture.md`、`agent-capability-profiles.md`、`devops-observability-design.md` | WI-001 / TC-ACC-031-01 |
@@ -469,6 +469,13 @@ runtime_packaging:
   test_case_refs: [TC-ACC-020-01, TC-ACC-021-01, TC-ACC-022-01]
   design_refs: [investment-chain-design, domain-artifact-schemas, api-read-models, verification-report-schemas]
   summary: 纸面执行链，覆盖纸面账户、Paper Order/Execution、分钟线 VWAP/TWAP、execution_core 阻断和持仓监控处置。
+- wi_id: WI-010
+  requirement_refs: [REQ-014, REQ-022]
+  covered_acceptance_refs: [ACC-014, ACC-022]
+  verification_refs: [VO-014, VO-022]
+  test_case_refs: [TC-ACC-014-01, TC-ACC-022-01]
+  design_refs: [domain-artifact-schemas, api-read-models, verification-report-schemas]
+  summary: Design/contract authority repair，最小补齐 ICContextPackage、ICChairBrief、PositionDisposalTask 的一等 artifact/read model/API/Gateway/PostgreSQL 持久化闭环，不新增交易、风控绕过、前端重设计或人工验收口径。
 - wi_id: WI-004
   requirement_refs: [REQ-006, REQ-007]
   covered_acceptance_refs: [ACC-006, ACC-007]

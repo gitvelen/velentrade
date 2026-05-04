@@ -12,6 +12,7 @@ consumers:
   - WI-007
   - WI-008
   - WI-009
+  - WI-010
 requirement_refs:
   - REQ-001
   - REQ-002
@@ -130,7 +131,7 @@ reports:
   ic_context_package_report.json:
     wi: WI-003
     tc: TC-ACC-014-01
-    assertions: ["Context Package", "Chair Brief 不预设结论", "证据可解析"]
+    assertions: ["ICContextPackage 一等 artifact", "ICChairBrief 一等 artifact", "Dossier 投影", "Chair Brief 不预设结论", "证据可解析"]
   analyst_memo_report.json:
     wi: WI-007
     tc: TC-ACC-015-01
@@ -162,7 +163,7 @@ reports:
   position_disposal_report.json:
     wi: WI-009
     tc: TC-ACC-022-01
-    assertions: ["持仓异常触发处置", "不跳过风控"]
+    assertions: ["PositionDisposalTask 一等 artifact", "Dossier 投影", "持仓异常触发处置", "不跳过风控", "不直接执行"]
   web_command_routing_report.json:
     wi: WI-004
     tc: TC-ACC-006-01
@@ -234,7 +235,7 @@ report_payload_contracts:
   topic_queue_report.json:
     required_payload_fields: ["hard_gate_results", "priority_score_components", "priority_weighted_totals", "active_ic_slots", "global_workflows", "preemption_events", "gate_checks"]
   ic_context_package_report.json:
-    required_payload_fields: ["shared_context", "market_state_ref", "service_result_refs", "role_attachments", "chair_brief", "chair_brief_no_preset_decision", "evidence_resolution"]
+    required_payload_fields: ["ic_context_artifact", "chair_brief_artifact", "shared_context", "market_state_ref", "service_result_refs", "role_attachments", "chair_brief", "chair_brief_no_preset_decision", "dossier_projection", "evidence_resolution"]
   analyst_memo_report.json:
     required_payload_fields: ["profile_versions", "memo_envelopes", "role_payloads", "schema_validation", "independence_checks"]
   consensus_action_report.json:
@@ -252,7 +253,7 @@ report_payload_contracts:
   paper_execution_report.json:
     required_payload_fields: ["order_windows", "minute_bar_fixture", "pricing_method", "vwap_or_twap_calculation", "price_range_check", "fill_status", "fees", "taxes", "slippage", "t_plus_one_state"]
   position_disposal_report.json:
-    required_payload_fields: ["trigger_events", "position_disposal_tasks", "priority_escalation", "risk_review_guard", "execution_core_guard"]
+    required_payload_fields: ["trigger_events", "position_disposal_task_artifact", "position_disposal_tasks", "dossier_projection", "priority_escalation", "risk_review_guard", "execution_core_guard", "direct_execution_denied"]
   web_command_routing_report.json:
     required_payload_fields: ["nav_scan", "chinese_ui_scan", "premium_light_theme_assertions", "request_brief_preview_flow", "view_layers", "governance_agent_team_assertions", "design_preview_refs", "forbidden_action_ui_denials", "read_model_guard_denials", "api_guard_denials", "screenshot_refs"]
   governance_task_report.json:

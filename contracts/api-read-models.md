@@ -12,6 +12,7 @@ consumers:
   - WI-007
   - WI-008
   - WI-009
+  - WI-010
 requirement_refs:
   - REQ-003
   - REQ-004
@@ -424,10 +425,14 @@ read_models:
       - risk_review
       - approval
       - paper_execution
+      - position_disposal
       - attribution
       - handoffs
       - evidence_map
       - forbidden_actions
+  ArtifactReadModel:
+    fields: ["artifact_id", "artifact_type", "workflow_id", "attempt_no", "trace_id", "producer", "producer_type", "status", "summary", "source_refs", "evidence_refs", "decision_refs", "schema_version", "payload", "created_at"]
+    invariant: "ArtifactReadModel 是 artifact ledger 的只读投影；payload 必须遵守 artifact_type 对应 domain artifact schema。"
   GovernanceReadModel:
     fields: ["task_center", "approval_center", "governance_changes", "agent_capability_changes", "data_service_health", "audit_trail"]
   TeamReadModel:
@@ -481,6 +486,13 @@ r8_read_model_shapes:
         fields: ["packet_id", "decision_question", "analyst_stance_summary", "consensus_score", "action_conviction", "data_quality", "market_state", "optimizer_baseline", "risk_constraints", "evidence_refs"]
       decision_guard:
         fields: ["single_name_deviation_pp", "portfolio_active_deviation", "major_deviation", "low_action_conviction", "retained_hard_dissent", "data_quality_blockers", "owner_exception_or_reopen"]
+      ic_context:
+        fields: ["topic_id", "request_brief_ref", "data_readiness_ref", "market_state_ref", "service_result_refs", "portfolio_context_ref", "risk_constraint_refs", "research_package_refs", "role_attachment_refs", "context_snapshot_id", "artifact_ref"]
+      chair_brief:
+        fields: ["decision_question", "scope_boundary", "key_tensions", "must_answer_questions", "time_budget", "action_standard", "risk_constraints_to_respect", "forbidden_assumptions", "no_preset_decision_attestation", "artifact_ref"]
+      position_disposal:
+        fields: ["task_id", "symbol", "triggers", "priority", "risk_gate_present", "execution_core_guard_present", "direct_execution_allowed", "workflow_route", "reason_code", "artifact_ref"]
+        invariant: "Dossier 只能展示处置任务和风控回路，不提供直接执行入口。"
       forbidden_actions:
         fields: ["risk_rejected_no_override", "execution_core_blocked_no_trade", "non_a_asset_no_trade", "low_action_no_execution"]
       evidence_map:
@@ -625,10 +637,12 @@ verification_mapping:
   TC-ACC-004-01: ["MemoryItemReadModel", "TraceDebugReadModel.context_injection_records", "ui_guard_responses"]
   TC-ACC-006-01: ["ShellReadModel", "OwnerDecisionReadModel", "InvestmentDossierReadModel", "TeamReadModel"]
   TC-ACC-007-01: ["TaskCenterReadModel", "ApprovalCenterReadModel", "AgentCapabilityDraftReadModel", "GovernanceReadModel.agent_capability_changes", "ui_guard_responses"]
+  TC-ACC-014-01: ["InvestmentDossierReadModel.ic_context", "InvestmentDossierReadModel.chair_brief", "ArtifactReadModel"]
   TC-ACC-017-01: ["InvestmentDossierReadModel.debate"]
   TC-ACC-018-01: ["InvestmentDossierReadModel.decision_service", "InvestmentDossierReadModel.decision_packet", "InvestmentDossierReadModel.decision_guard", "InvestmentDossierReadModel.optimizer_deviation"]
   TC-ACC-019-01: ["InvestmentDossierReadModel.risk_review", "ui_guard_responses"]
   TC-ACC-021-01: ["InvestmentDossierReadModel.paper_execution"]
+  TC-ACC-022-01: ["InvestmentDossierReadModel.position_disposal", "ArtifactReadModel"]
   TC-ACC-027-01: ["KnowledgeSearchReadModel.memory_results", "KnowledgeSearchReadModel.organize_suggestions", "MemoryItemReadModel"]
   TC-ACC-028-01: ["KnowledgeSearchReadModel.relation_graph", "KnowledgeSearchReadModel.proposals", "ui_guard_responses"]
   TC-ACC-030-01: ["AgentCapabilityDraftReadModel", "KnowledgeSearchReadModel.context_injection_preview", "TraceDebugReadModel.context_injection_records"]

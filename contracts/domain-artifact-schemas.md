@@ -12,6 +12,7 @@ consumers:
   - WI-007
   - WI-008
   - WI-009
+  - WI-010
 requirement_refs:
   - REQ-003
   - REQ-004
@@ -229,8 +230,12 @@ investment_artifacts:
     priority_score_range: "0..5 for each dimension; weighted_total 0..5"
     formal_ic_status_values: ["candidate", "queued", "active", "rejected", "deferred"]
   ICContextPackage:
-    fields: ["request_brief_ref", "data_readiness_ref", "market_state_ref", "service_result_refs", "portfolio_context_ref", "risk_constraint_refs", "research_package_refs", "reflection_hit_refs", "role_attachment_refs", "context_snapshot_id"]
-    required: ["request_brief_ref", "data_readiness_ref", "market_state_ref", "service_result_refs", "portfolio_context_ref", "risk_constraint_refs", "research_package_refs", "role_attachment_refs", "context_snapshot_id"]
+    fields: ["topic_id", "request_brief_ref", "data_readiness_ref", "market_state_ref", "service_result_refs", "portfolio_context_ref", "risk_constraint_refs", "research_package_refs", "reflection_hit_refs", "role_attachment_refs", "context_snapshot_id"]
+    required: ["topic_id", "request_brief_ref", "data_readiness_ref", "market_state_ref", "service_result_refs", "portfolio_context_ref", "risk_constraint_refs", "research_package_refs", "role_attachment_refs", "context_snapshot_id"]
+  ICChairBrief:
+    fields: ["decision_question", "scope_boundary", "key_tensions", "must_answer_questions", "time_budget", "action_standard", "risk_constraints_to_respect", "forbidden_assumptions", "no_preset_decision_attestation"]
+    required: ["decision_question", "scope_boundary", "key_tensions", "must_answer_questions", "time_budget", "action_standard", "risk_constraints_to_respect", "forbidden_assumptions", "no_preset_decision_attestation"]
+    invariant: "CIO IC Chair Brief 只定义会议问题、边界、张力和必须回答的问题；不得预设 buy/sell/hold/no_action 结论。"
   AnalystMemo:
     source_contract: "spec.md memo_contract + analyst_role_payload_contract"
     required_envelope_fields: ["memo_id", "workflow_id", "attempt_no", "analyst_id", "role", "context_snapshot_id", "decision_question", "direction_score", "confidence", "evidence_quality", "hard_dissent", "thesis", "supporting_evidence_refs", "counter_evidence_refs", "key_risks", "applicable_conditions", "invalidation_conditions", "suggested_action_implication", "role_payload"]
@@ -269,6 +274,11 @@ investment_artifacts:
     side_values: ["buy", "sell"]
     urgency_values: ["urgent", "normal", "low"]
     status_values: ["pending", "released", "filled", "partial", "unfilled", "expired", "blocked"]
+  PositionDisposalTask:
+    fields: ["task_id", "symbol", "triggers", "priority", "risk_gate_present", "execution_core_guard_present", "direct_execution_allowed", "workflow_route", "reason_code"]
+    required: ["task_id", "symbol", "triggers", "priority", "risk_gate_present", "execution_core_guard_present", "direct_execution_allowed", "workflow_route", "reason_code"]
+    priority_values: ["P0", "P1", "P2"]
+    invariant: "持仓处置任务只能作为风险复核/处置流程输入；direct_execution_allowed 必须为 false，workflow_route 必须回到 Risk Review 或等价 S5 风控路径。"
 
 finance_knowledge_artifacts:
   FinanceProfile:
