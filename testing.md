@@ -947,6 +947,136 @@ Design approved 前，`reviews/design-review.yaml` 必须记录 R8 cold-start dr
   residual_risk: none
   reopen_required: false
 
+- acceptance_ref: ACC-006
+  run_id: RUN-WI004-ACC006-DOSSIER-PANELS-20260503
+  test_case_ref: TC-ACC-006-01
+  verification_type: automated
+  test_type: frontend_e2e
+  test_scope: branch-local
+  completion_level: api_connected
+  executed_at: 2026-05-03
+  artifact_ref: npm --prefix frontend test passed 38 tests; npm --prefix frontend run build passed; python -m pytest tests/e2e -q passed 8 tests. Added RED/GREEN coverage for Investment Dossier required panels: DataReadiness, role_payload drilldown, consensus/action_conviction, DissentBoard, DebateTimeline, OptimizerDeviation, RiskGate, PaperExecution and Attribution linkback, with no visible "批准继续" or "立即成交" shortcuts.
+  result: pass
+  residual_risk: Dossier panels are now rendered in the frontend and API adapter can consume optional rich read-model fields, while the live FastAPI browser smoke still exercises Request Brief -> Dossier route rather than every rich panel being populated by production API data; no owner_verified evidence yet.
+  reopen_required: false
+
+- acceptance_ref: ACC-007
+  run_id: RUN-WI004-ACC007-DOSSIER-GUARD-PANELS-20260503
+  test_case_ref: TC-ACC-007-01
+  verification_type: automated
+  test_type: frontend_e2e
+  test_scope: branch-local
+  completion_level: api_connected
+  executed_at: 2026-05-03
+  artifact_ref: npm --prefix frontend test passed 38 tests; npm --prefix frontend run build passed; python -m pytest tests/e2e -q passed 8 tests. Dossier PaperExecution and guard panels show execution_core blocked, non-A/no-trade and risk-rejected/no-override states as read-only disabled UI, including "不显示继续成交入口".
+  result: pass
+  residual_risk: This improves browser-visible guard separation in the Dossier, but does not replace backend Risk/Execution guards or owner_verified acceptance.
+  reopen_required: false
+
+- acceptance_ref: ACC-006
+  run_id: RUN-WI004-ACC006-AGENT-TEAM-DETAILS-20260503
+  test_case_ref: TC-ACC-006-01
+  verification_type: automated
+  test_type: frontend_e2e
+  test_scope: branch-local
+  completion_level: api_connected
+  executed_at: 2026-05-03
+  artifact_ref: npm --prefix frontend test passed 38 tests; npm --prefix frontend run build passed; python -m pytest tests/e2e -q passed 8 tests. Added RED/GREEN coverage that Governance Agent team shows team health, pending capability drafts, failure/denial counts, weaknesses, Prompt/Context versions, CFO attribution references and agent profile version/permission boundaries.
+  result: pass
+  residual_risk: Agent Team workspace now renders required browser-visible management details and keeps capability changes draft-only, but this is still automated branch-local evidence rather than owner_verified acceptance.
+  reopen_required: false
+
+- acceptance_ref: ACC-007
+  run_id: RUN-WI004-ACC007-AGENT-TEAM-DRAFT-BOUNDARY-20260503
+  test_case_ref: TC-ACC-007-01
+  verification_type: automated
+  test_type: frontend_e2e
+  test_scope: branch-local
+  completion_level: api_connected
+  executed_at: 2026-05-03
+  artifact_ref: npm --prefix frontend test passed 38 tests; npm --prefix frontend run build passed; python -m pytest tests/e2e -q passed 8 tests. Agent profile/config UI displays governance-only version boundaries, CFO attribution and denied-action evidence while capability draft save remains a Governance Change path with no in-flight AgentRun hot patch.
+  result: pass
+  residual_risk: UI boundary evidence does not replace backend GovernanceChange activation/new ContextSnapshot verification or owner_verified acceptance.
+  reopen_required: false
+
+- acceptance_ref: ACC-006
+  run_id: RUN-WI004-ACC006-KNOWLEDGE-MEMORY-WORKSPACE-20260504
+  test_case_ref: TC-ACC-006-01
+  verification_type: automated
+  test_type: frontend_e2e
+  test_scope: branch-local
+  completion_level: api_connected
+  executed_at: 2026-05-04
+  artifact_ref: npm --prefix frontend test passed 40 tests; npm --prefix frontend run build passed; python -m pytest tests/e2e -q passed 8 tests. Added RED/GREEN coverage that Knowledge page renders daily brief, research package, Memory capture/review/digest/organize workspace, extraction/promotion/sensitivity, relation graph, organize suggestions, Context injection inspector with why_included/denied refs, and Knowledge/Prompt/Skill proposal diff/manifest/validation/effective scope/rollback without direct activation.
+  result: pass
+  residual_risk: Knowledge/Memory browser workspace is now branch-local API-connected and consumes /api/knowledge/memory-items for memory summaries, but proposal activation/new ContextSnapshot remains backend governance scope and no owner_verified evidence exists.
+  reopen_required: false
+
+- acceptance_ref: ACC-007
+  run_id: RUN-WI004-ACC007-APPROVAL-PACKET-COMPLETENESS-20260504
+  test_case_ref: TC-ACC-007-01
+  verification_type: automated
+  test_type: frontend_e2e
+  test_scope: branch-local
+  completion_level: api_connected
+  executed_at: 2026-05-04
+  artifact_ref: npm --prefix frontend test passed 40 tests; npm --prefix frontend run build passed; python -m pytest tests/e2e -q passed 8 tests. Added RED/GREEN coverage that Approval Packet detail renders comparison analysis, impact scope, alternatives, risk/impact, rollback, timeout no-effect boundary, evidence refs and backend-status-driven approval action feedback without a "批准继续执行" bypass.
+  result: pass
+  residual_risk: Approval packet UI material completeness is automated browser evidence; it does not replace backend ApprovalRecord/Risk guard persistence or owner_verified acceptance.
+  reopen_required: false
+
+- acceptance_ref: ACC-006
+  run_id: RUN-WI004-ACC006-READMODEL-ERROR-REPORT-METADATA-20260504
+  test_case_ref: TC-ACC-006-01
+  verification_type: automated
+  test_type: frontend_e2e
+  test_scope: branch-local
+  completion_level: api_connected
+  executed_at: 2026-05-04
+  artifact_ref: npm --prefix frontend test passed 49 tests; npm --prefix frontend run build passed; python -m pytest tests/e2e -q passed 8 tests. Added RED/GREEN coverage that API read-model failures render visible retry/fallback labeling instead of silent fixture substitution, and WI-004 verification envelopes carry concrete artifact refs plus parseable generated_at metadata instead of empty artifact_refs.
+  result: pass
+  residual_risk: Read-model failure labeling is now browser-visible, but this remains branch-local automated evidence and not owner_verified acceptance.
+  reopen_required: false
+
+- acceptance_ref: ACC-007
+  run_id: RUN-WI004-ACC007-APPROVAL-ROUTE-DRAFT-FAILURE-20260504
+  test_case_ref: TC-ACC-007-01
+  verification_type: automated
+  test_type: frontend_e2e
+  test_scope: branch-local
+  completion_level: api_connected
+  executed_at: 2026-05-04
+  artifact_ref: npm --prefix frontend test passed 49 tests; npm --prefix frontend run build passed; python -m pytest tests/e2e -q passed 8 tests. Added RED/GREEN coverage that Approval Packet detail loads by route approval_id from /api/approvals and submits decisions to the same id, capability draft API failure shows explicit no-create feedback instead of falling back to a false success governance change ref, and 409/SNAPSHOT_MISMATCH approval decision responses display refresh guidance with server trace_id.
+  result: pass
+  residual_risk: Approval and draft error handling is browser/API-connected evidence; it does not replace owner_verified acceptance or backend governance activation/new ContextSnapshot verification.
+  reopen_required: false
+
+- acceptance_ref: ACC-006
+  run_id: RUN-WI004-ACC006-KNOWLEDGE-MEMORY-CONTROLLED-WRITES-20260504
+  test_case_ref: TC-ACC-006-01
+  verification_type: automated
+  test_type: frontend_e2e
+  test_scope: branch-local
+  completion_level: api_connected
+  executed_at: 2026-05-04
+  artifact_ref: npm --prefix frontend test passed 49 tests; npm --prefix frontend run build passed; python -m pytest tests/e2e -q passed 8 tests. Added RED/GREEN coverage that Knowledge workspace captures Owner memory through POST /api/knowledge/memory-items using a visible memory body input, applies organize suggestions through POST /api/knowledge/memory-items/{id}/relations with client_seen_version_id, and shows Gateway/append-only feedback without directly activating DefaultContext or overwriting old MemoryVersion.
+  result: pass
+  residual_risk: Knowledge capture and relation append are browser/API-connected evidence; Knowledge/Prompt/Skill activation and new ContextSnapshot remain backend governance scope and no owner_verified evidence exists.
+  reopen_required: false
+
+- acceptance_ref: ACC-007
+  run_id: RUN-WI004-ACC007-FINANCE-ASSET-BROWSER-UPDATE-20260504
+  test_case_ref: TC-ACC-007-01
+  verification_type: automated
+  test_type: frontend_e2e
+  test_scope: branch-local
+  completion_level: api_connected
+  executed_at: 2026-05-04
+  artifact_ref: npm --prefix frontend test passed 49 tests; npm --prefix frontend run build passed; python -m pytest tests/e2e -q passed 8 tests. Added RED/GREEN coverage that Finance page updates the cash asset profile through POST /api/finance/assets and shows browser feedback that the update does not trigger approval, execution, or trading chains.
+  result: pass
+  residual_risk: Finance asset profile browser action is API-connected UI evidence; it does not prove external fund/gold production quote availability or owner_verified acceptance.
+  reopen_required: false
+
 - acceptance_ref: ACC-023
   run_id: RUN-WI005-ACC023-20260430
   test_case_ref: TC-ACC-023-01
@@ -2634,7 +2764,20 @@ Design approved 前，`reviews/design-review.yaml` 必须记录 R8 cold-start dr
   executed_at: 2026-05-03
   artifact_ref: CODESPEC_PROJECT_ROOT=$PWD CODESPEC_DEPLOY_RESULT_FILE=$(mktemp) VELENTRADE_RUN_COMPOSE_SMOKE=1 ./scripts/codespec-deploy at runtime_observed_revision=9b759ac0799115a7fac689e3b27ed97422686b8e; targeted WI-003 Python runtime smoke run_id=1777769530 workflow_id=workflow-a8fdebc689f2 brief_id=brief-284ebbe5813a topic_id=topic-p0-1777769530 api_research_artifact_id=artifact-3f001dbfc401 celery_agent_run_id=run-wi003-celery-1777769530 verified PostgreSQL/Alembic migration, Redis/Celery worker, FastAPI endpoint /api/requests/briefs /api/gateway/artifacts /api/artifacts/{id}, Chromium browser click from deploy smoke, and cross-WI runtime workflow S0-S7 persistence after API restart; ACC-014 assertions covered IC Context Package refs, role attachments, evidence_missing_sections=[], evidence missing refs=[], persisted chair_brief payload, and no_preset_decision_attestation=true with no buy/sell/hold/买入/卖出/持有 preset.
   result: pass
-  residual_risk: Chair Brief is persisted inside the ResearchPackage runtime artifact rather than as a separate API artifact type; adding first-class ICContextPackage/ICChairBrief write APIs would require a future WI scope expansion.
+  residual_risk: This foundation RUN persisted Chair Brief inside the ResearchPackage runtime artifact; WI-010 below closes the first-class ICContextPackage/ICChairBrief API/PostgreSQL artifact gap at branch-local db_persistent level. Browser-level owner_verified evidence remains pending.
+  reopen_required: false
+
+- acceptance_ref: ACC-014
+  run_id: RUN-WI010-ACC014-FIRST-CLASS-IC-ARTIFACTS-20260503
+  test_case_ref: TC-ACC-014-01
+  verification_type: automated
+  test_type: integration
+  test_scope: branch-local
+  completion_level: db_persistent
+  executed_at: 2026-05-03
+  artifact_ref: python -m pytest tests/api/test_wi001_api_db_persistence.py::test_ic_context_chair_and_position_disposal_are_first_class_persistent_artifacts -q failed RED with 403 on ICContextPackage before Agent write policy repair and later failed RED when missing-topic ICContextPackage was accepted, then passed after adding ICContextPackage/ICChairBrief first-class contract repair, Agent write allowlists, required-field/no-preset Gateway guards, Dossier projections, and PostgreSQL artifact restart reads; python -m pytest tests/domain/investment/context tests/domain/investment/position -q passed 7 tests; python -m pytest tests/api/test_wi001_api_foundation.py tests/api/test_wi001_api_db_persistence.py -q passed 17 tests; python -m compileall src/velentrade passed; ../.codespec/codespec check-gate scope passed; ../.codespec/codespec check-gate contract-boundary passed; bash ../.codespec/scripts/smoke.sh passed R14 contract repair positive/negative smoke. Assertions covered ICContextPackage topic_id, missing topic schema_validation_failed, ICChairBrief no_preset_decision_attestation=true, preset Chair Brief schema_validation_failed, /api/gateway/artifacts writes, /api/artifacts/{id} reads after ApiRuntime restart, and /api/workflows/{id}/dossier ic_context/chair_brief artifact_ref projection.
+  result: pass
+  residual_risk: This closes the prior first-class ICContextPackage/ICChairBrief API/PostgreSQL artifact gap at branch-local db_persistent level. It does not add browser-level IC material editing, live LLM investment quality, or owner_verified acceptance.
   reopen_required: false
 
 - acceptance_ref: ACC-015
@@ -2702,6 +2845,19 @@ Design approved 前，`reviews/design-review.yaml` 必须记录 R8 cold-start dr
   residual_risk: Runtime persists RiskReviewReport, HandoffPacket and ReopenEvent, while Owner ApprovalRecord remains domain-level evidence because WI-008 has no allowed API/Gateway write path for creating approval records; first-class persisted Owner exception approval creation would require API/DB scope expansion.
   reopen_required: false
 
+- acceptance_ref: ACC-019
+  run_id: RUN-WI008-ACC019-APPROVAL-PERSISTENCE-20260503
+  test_case_ref: TC-ACC-019-01
+  verification_type: automated
+  test_type: integration
+  test_scope: branch-local
+  completion_level: db_persistent
+  executed_at: 2026-05-03
+  artifact_ref: python -m pytest tests/api/test_wi001_api_db_persistence.py::test_owner_approval_decisions_are_persisted_after_runtime_restart -q failed RED with KeyError for the original approval_id after ApiRuntime restart, then passed after adding approval_record payload columns, SQLAlchemy ApprovalRecord mirror/load methods, persisted seed creation, and persisted /api/approvals/{id}/decision updates; python -m pytest tests/domain/decision tests/domain/investment/risk tests/domain/investment/owner_exception -q passed 13 tests; python -m pytest tests/api/test_wi001_api_foundation.py tests/api/test_wi001_api_db_persistence.py -q passed 15 tests; python -m compileall src/velentrade passed. Assertions covered /api/approvals exposing the seeded Owner exception ApprovalRecord, POST /api/approvals/{id}/decision storing decision=approved, rebuilding ApiRuntime from the same database_url, and /api/approvals returning the same approval_id with decision=approved and effective_scope=current_attempt_only.
+  result: pass
+  residual_risk: This closes the prior domain-only ApprovalRecord evidence gap for API/PostgreSQL persistence. This RUN does not add a new public POST /api/approvals creation contract beyond existing workflow/domain-created approvals, nor browser-level owner_verified evidence.
+  reopen_required: false
+
 - acceptance_ref: ACC-020
   run_id: RUN-WI009-ACC020-FULL-RUNTIME-FOUNDATION-20260503
   test_case_ref: TC-ACC-020-01
@@ -2713,6 +2869,19 @@ Design approved 前，`reviews/design-review.yaml` 必须记录 R8 cold-start dr
   artifact_ref: python -m pytest tests/domain/investment/paper_account tests/domain/investment/execution tests/domain/investment/position -q passed 21 tests; python -m compileall src/velentrade passed; compose runtime from WI-008 ACC-018 evidence stayed running with PostgreSQL/Alembic migration, Redis/Celery worker, FastAPI endpoint, Chromium browser click from deploy smoke, and cross-WI workflow persistence foundation at revision=91451ee01a3418859dddcf6ea4158d6d3eca4df8; targeted WI-009 runtime smoke run_id=1777771944 execution_workflow_id=workflow-f8c2d9797fac execution_brief_id=brief-10169f128303 execution_task_id=task-87b33ce8f713 initial_account_ref=artifact-314c7d8facf5 updated_account_ref=artifact-50a9bde22130 account_initial={cash:1000000 CNY,positions:{},cash_ratio:1.0,benchmark_ref:baseline-cash} account_after_filled_buy={cash:987788.718 CNY,position_600000_SH_quantity:1200.0,available_quantity:0.0,t_plus_one_state:locked_until_next_trading_day,total_value:999994.878,return_value:-5.122}; db_counts={PaperAccount:2,PaperExecutionReceipt:4,PaperOrder:4,AnalystMemo:4,CIODecisionMemo:1,RiskReview:1,Attribution:1,DataReadiness:1,DecisionGuardResult:1,workflow_stage_statuses:{S0:completed,S1:completed,S2:completed,S3:completed,S4:completed,S5:completed,S6:completed,S7:completed},audit_events_for_refs:7,outbox_events_for_wi009_keys:{wi001.artifact:29,wi001.handoff:3}} restart_check={api_restarted:true,dossier_paper_execution_status:filled,initial_account_artifact_read_after_restart:true,updated_account_cash_after_restart:987788.718 CNY,filled_receipt_t_plus_one_after_restart:locked_until_next_trading_day}; ACC-020 assertions covered 1,000,000 CNY default PaperAccount initialization, empty positions, cash baseline, risk budget, PaperAccount persistence through FastAPI Gateway/PostgreSQL, account update from filled buy, T+1 locked availability, S6 completion, and artifact readability after API restart.
   result: pass
   residual_risk: Runtime persists PaperAccount through the generic Gateway artifact ledger using trade_execution; the dedicated paper_account table is present from DB foundation but not updated by this Gateway write path within WI-009 scope.
+  reopen_required: false
+
+- acceptance_ref: ACC-020
+  run_id: RUN-WI009-ACC020-PAPER-TABLE-MIRROR-20260503
+  test_case_ref: TC-ACC-020-01
+  verification_type: automated
+  test_type: integration
+  test_scope: branch-local
+  completion_level: db_persistent
+  executed_at: 2026-05-03
+  artifact_ref: python -m pytest tests/api/test_wi001_api_db_persistence.py::test_gateway_paper_execution_artifacts_are_mirrored_to_dedicated_tables -q failed RED because paper_account row paper-account-table-1 was absent after Gateway artifact writes, then passed after SqlAlchemyGatewayMirror started mirroring PaperAccount artifacts into dedicated paper_account rows; python -m pytest tests/domain/investment/paper_account tests/domain/investment/execution tests/domain/investment/position -q passed 21 tests; python -m pytest tests/api/test_wi001_api_foundation.py tests/api/test_wi001_api_db_persistence.py -q passed 16 tests; python -m compileall src/velentrade passed. Assertions covered PaperAccount artifact payload writing account_id=paper-account-table-1, cash=1000000, total_value=1000000 into paper_account while preserving generic artifact refs.
+  result: pass
+  residual_risk: This closes the prior generic-ledger-only PaperAccount table mirror gap for API/PostgreSQL persistence. This RUN does not add browser-level paper account editing or owner_verified evidence.
   reopen_required: false
 
 - acceptance_ref: ACC-021
@@ -2728,6 +2897,19 @@ Design approved 前，`reviews/design-review.yaml` 必须记录 R8 cold-start dr
   residual_risk: Runtime persists PaperOrder and PaperExecutionReceipt through the generic Gateway artifact ledger and Dossier first-receipt projection; the dedicated paper_order/paper_execution_receipt tables are DB foundation tables but are not the current Gateway mirror target in WI-009 scope.
   reopen_required: false
 
+- acceptance_ref: ACC-021
+  run_id: RUN-WI009-ACC021-PAPER-TABLE-MIRROR-20260503
+  test_case_ref: TC-ACC-021-01
+  verification_type: automated
+  test_type: integration
+  test_scope: branch-local
+  completion_level: db_persistent
+  executed_at: 2026-05-03
+  artifact_ref: python -m pytest tests/api/test_wi001_api_db_persistence.py::test_gateway_paper_execution_artifacts_are_mirrored_to_dedicated_tables -q failed RED because paper_order/paper_execution_receipt dedicated rows were absent after Gateway artifact writes, then passed after SqlAlchemyGatewayMirror started mirroring PaperOrder and PaperExecutionReceipt artifacts into dedicated paper_order and paper_execution_receipt rows; python -m pytest tests/domain/investment/paper_account tests/domain/investment/execution tests/domain/investment/position -q passed 21 tests; python -m pytest tests/api/test_wi001_api_foundation.py tests/api/test_wi001_api_db_persistence.py -q passed 16 tests; python -m compileall src/velentrade passed. Assertions covered PaperOrder artifact writing paper_order_id=paper-order-table-1/workflow_id/status into paper_order and PaperExecutionReceipt artifact writing receipt_id=artifact_ref, paper_order_id=paper-order-table-1, fill_status=filled into paper_execution_receipt.
+  result: pass
+  residual_risk: This closes the prior generic-ledger-only PaperOrder/PaperExecutionReceipt table mirror gap for API/PostgreSQL persistence. This RUN does not add browser-level execution controls or owner_verified evidence.
+  reopen_required: false
+
 - acceptance_ref: ACC-022
   run_id: RUN-WI009-ACC022-FULL-RUNTIME-FOUNDATION-20260503
   test_case_ref: TC-ACC-022-01
@@ -2738,7 +2920,20 @@ Design approved 前，`reviews/design-review.yaml` 必须记录 R8 cold-start dr
   executed_at: 2026-05-03
   artifact_ref: python -m pytest tests/domain/investment/paper_account tests/domain/investment/execution tests/domain/investment/position -q passed 21 tests; python -m compileall src/velentrade passed; same docker compose runtime with PostgreSQL/Alembic migration, Redis/Celery worker, FastAPI endpoint, Chromium browser click, and cross-WI workflow runtime as RUN-WI009-ACC020-FULL-RUNTIME-FOUNDATION-20260503; targeted WI-009 position disposal smoke run_id=1777771944 disposal_workflow_id=workflow-59c312df57f6 disposal_brief_id=brief-77203704ec9e disposal_handoff_ref=handoff-047ddc203d99 disposal_task={task_id:position-disposal-0cefb6bff97e,symbol:600000.SH,triggers:[abnormal_volatility,major_announcement,risk_threshold_breach],priority:P0,risk_gate_present:true,execution_core_guard_present:true,direct_execution_allowed:false,workflow_route:S5_risk_review,reason_code:position_disposal_requires_risk_review} blocked_direct_s6_workflow_id=workflow-c7a3a0294dfd blocked_direct_s6_status=409 blocked_direct_s6_reason_code=upstream_stage_not_completed; db_counts={disposal_handoff_count:1,disposal_receipt_count:0,blocked_workflow_s6:{node_status:blocked,reason_code:upstream_stage_not_completed},audit_events_for_refs:7,outbox_events_for_wi009_keys:{wi001.artifact:29,wi001.handoff:3}} restart_check={api_restarted:true,disposal_risk_status_after_restart:approved,disposal_handoff_persisted:true}; ACC-022 assertions covered abnormal volatility/major announcement/risk threshold triggers, P0 escalation, PositionDisposalTask risk gate and execution_core guard fields, direct_execution_allowed=false, route back to S5 Risk Review via persisted handoff, no PaperExecutionReceipt on disposal workflow, and direct S6 bypass blocked by workflow guard.
   result: pass
-  residual_risk: PositionDisposalTask remains represented as domain payload plus HandoffPacket because WI-009 has no allowed first-class PositionDisposalTask artifact/API/schema path; adding that projection would require expanding API/DB contract scope.
+  residual_risk: This foundation RUN represented PositionDisposalTask as domain payload plus HandoffPacket; WI-010 below closes the first-class PositionDisposalTask artifact/API/schema/table mirror gap at branch-local db_persistent level. Browser-level owner_verified evidence remains pending.
+  reopen_required: false
+
+- acceptance_ref: ACC-022
+  run_id: RUN-WI010-ACC022-FIRST-CLASS-POSITION-DISPOSAL-20260503
+  test_case_ref: TC-ACC-022-01
+  verification_type: automated
+  test_type: integration
+  test_scope: branch-local
+  completion_level: db_persistent
+  executed_at: 2026-05-03
+  artifact_ref: python -m pytest tests/api/test_wi001_api_db_persistence.py::test_ic_context_chair_and_position_disposal_are_first_class_persistent_artifacts -q failed RED because PositionDisposalTask direct_execution_allowed=true was accepted before Gateway guard repair, then passed after adding PositionDisposalTask to the trade_execution Gateway allowlist, rejecting direct-execution/non-risk-review payloads, projecting Dossier position_disposal, and mirroring accepted PositionDisposalTask artifacts into the position_disposal_task PostgreSQL table; python -m pytest tests/domain/investment/context tests/domain/investment/position -q passed 7 tests; python -m pytest tests/api/test_wi001_api_foundation.py tests/api/test_wi001_api_db_persistence.py -q passed 17 tests; python -m compileall src/velentrade passed; ../.codespec/codespec check-gate scope passed; ../.codespec/codespec check-gate contract-boundary passed; bash ../.codespec/scripts/smoke.sh passed R14 contract repair positive/negative smoke. Assertions covered PositionDisposalTask /api/gateway/artifacts write, /api/artifacts/{id} read after restart, Dossier position_disposal artifact_ref/task_id/direct_execution_allowed=false/workflow_route=S5_risk_review, 403 denial with reason_code=position_disposal_requires_risk_review for direct execution payloads, and dedicated position_disposal_task table fields.
+  result: pass
+  residual_risk: This closes the prior first-class PositionDisposalTask API/schema/table mirror gap at branch-local db_persistent level. It does not add browser-level disposal controls, owner_verified acceptance, or real broker/order capability.
   reopen_required: false
 
 - acceptance_ref: ACC-023
@@ -2752,6 +2947,19 @@ Design approved 前，`reviews/design-review.yaml` 必须记录 R8 cold-start dr
   artifact_ref: python -m pytest tests/domain/finance tests/domain/attribution tests/domain/knowledge -q passed 14 tests; python -m compileall src/velentrade passed; compose runtime stayed running with PostgreSQL/Alembic migration, Redis/Celery worker, FastAPI endpoint, Chromium browser click from deploy smoke, and cross-WI workflow runtime foundation at revision=91451ee01a3418859dddcf6ea4158d6d3eca4df8; targeted WI-005 finance runtime smoke run_id=1777772442 finance_assets={fund:{asset_id:fund-wi005-1777772442,boundary_label:finance_planning_only,source:auto_quote},gold:{asset_id:gold-wi005-1777772442,boundary_label:finance_planning_only,source:auto_quote},real_estate:{asset_id:real_estate-wi005-1777772442,boundary_label:finance_planning_only,source:manual}} runtime_overview_manual_todo=[real_estate] non_a_brief_id=brief-478200059820 manual_task_id=task-617e689185a3 manual_task={task_type:manual_todo,current_state:ready,reason_code:request_brief_confirmed,workflow_id:null} approvals_before_after={before:1,after:1} guard_decisions={fund:non_a_asset_no_trade,gold:non_a_asset_no_trade,fake_a_share_AAPL_SH:non_a_asset_no_trade,valid_a_share_600000_SH:a_share_trade_chain_allowed} projected_to=[planning,risk_hint,manual_todo] domain_manual_todo_types=[real_estate,tax,major_expense]; db_counts={manual_task:{task_type:manual_todo,current_state:ready,reason_code:request_brief_confirmed},workflow_for_manual_task:0,paper_execution_for_manual_task:0,approval_rows_total:0} restart_check={api_restarted:true,manual_task_visible_after_restart:true,approvals_after_restart_count:1,finance_overview_fixture_asset_types:[cash,fund,gold,real_estate,liability],finance_overview_manual_todo_types:[real_estate,tax,major_expense]}; ACC-023 assertions covered fund/gold planning-only assets, real_estate manual valuation todo, non-A trade RequestBrief conversion to manual_todo, no workflow creation, no approval count increase, no paper execution artifact, invalid exchange-suffixed AAPL.SH denied, valid A-share control allowed, PostgreSQL persisted manual task, and API readability after restart.
   result: pass
   residual_risk: Finance asset updates themselves remain API in-memory read models in current scope; durable evidence is the persisted manual_todo TaskEnvelope and absence of workflow/approval/execution for non-A trade. First-class FinanceProfile persistence would require API/DB scope outside WI-005.
+  reopen_required: false
+
+- acceptance_ref: ACC-023
+  run_id: RUN-WI005-ACC023-FINANCE-PROFILE-PERSISTENCE-20260503
+  test_case_ref: TC-ACC-023-01
+  verification_type: automated
+  test_type: integration
+  test_scope: branch-local
+  completion_level: db_persistent
+  executed_at: 2026-05-03
+  artifact_ref: python -m pytest tests/api/test_wi001_api_db_persistence.py::test_finance_asset_updates_are_persisted_after_runtime_restart -q failed RED with KeyError cash-persisted-1 before implementation, then passed after adding finance_profile Alembic table, SQLAlchemy mirror/load path, API runtime restore, and FinanceProfileService upsert semantics; python -m pytest tests/domain/finance tests/domain/attribution tests/domain/knowledge -q passed 14 tests; python -m pytest tests/api/test_wi001_api_foundation.py tests/api/test_wi001_api_db_persistence.py -q passed 14 tests; python -m compileall src/velentrade passed. Assertions covered /api/finance/assets writing cash and fund assets into PostgreSQL, rebuilding ApiRuntime from the same database_url, /api/finance/overview returning cash-persisted-1 and fund-persisted-1 after restart, fund remaining finance_planning_only, and liquidity recomputed from persisted cash.
+  result: pass
+  residual_risk: This closes the prior FinanceProfile in-memory read model gap for API/PostgreSQL persistence. This RUN does not add browser UI evidence or external fund/gold production quote availability.
   reopen_required: false
 
 - acceptance_ref: ACC-024
@@ -2840,13 +3048,14 @@ Design approved 前，`reviews/design-review.yaml` 必须记录 R8 cold-start dr
 - notes:
   - 本阶段已追加 WI-001/WI-004 的 `api_connected` 与 `db_persistent` 级实现证据；历史 `RUN-FULL-*` 仍仅为 `fixture_contract`。
   - Implementation 阶段必须按 `contracts/verification-report-schemas.md` 生成可复核 report artifact。
+  - WI-004 已补 Investment Dossier 浏览器可见业务区块：DataReadiness、role_payload、共识/行动强度、分歧、辩论、优化偏离、Risk、纸面执行和归因回链，并保持 Risk rejected、execution_core blocked、非 A 股和低行动强度无执行捷径；Agent 团队工作区已补团队健康、待处理草案、失败/越权、能力短板、CFO 归因、Prompt/Context 版本和画像权限边界；Knowledge/Memory 页已补每日简报、研究资料包、Memory 工作区、关系图、组织建议、Context 注入检查、Knowledge/Prompt/Skill 提案、Owner Memory capture 和 relation append 组织建议应用；Finance 页已补浏览器级现金资产档案更新入口并明确不触发审批/执行/交易链路；审批包详情已补对比分析、影响范围、替代方案、风险影响、回滚和超时不生效边界，并补 route approval_id 加载/提交一致性与 409/SNAPSHOT_MISMATCH 刷新提示；能力草案 API 失败不再伪造成功；read model 加载失败会显示重试和 fallback 标记；WI-004 report envelope 已补 artifact_refs 与 parseable generated_at metadata；当前为 branch-local `api_connected` 证据，仍未达到 owner_verified。
   - WI-002 已追加 foundation 级 `integrated_runtime` 自动化证据：同一 docker compose runtime 下验证 PostgreSQL/Alembic、Redis/Celery worker、FastAPI workflow endpoint、Chromium 浏览器交互、S0-S7 persistence、Reopen Event、公开 A 股 K 线 Source Registry/采集落库、execution_core 阻断、服务边界、市场状态和治理 ContextSnapshot 生效边界。Tencent 公开 A 股 K 线 live provider smoke 仍只作单独证据，不作为 P0 pass 条件；真实外部 provider 生产可用性、全 V1 业务语义和 Owner 人工验收仍未完成。
-  - WI-003 已追加 foundation 级 `integrated_runtime` 自动化证据：同一 docker compose runtime 下验证 PostgreSQL/Alembic、Redis/Celery worker、FastAPI workflow/Gateway endpoint、Chromium 浏览器交互、Opportunity Registry、Topic Queue、P0 抢占、IC Context Package 和 CIO Chair Brief 持久化载荷。WI-003 scope 明确不允许新增 API/DB schema；first-class ICContextPackage/ICChairBrief API artifact type 需要未来扩大 scope。
+  - WI-003 已追加 foundation 级 `integrated_runtime` 自动化证据：同一 docker compose runtime 下验证 PostgreSQL/Alembic、Redis/Celery worker、FastAPI workflow/Gateway endpoint、Chromium 浏览器交互、Opportunity Registry、Topic Queue、P0 抢占、IC Context Package 和 CIO Chair Brief 持久化载荷。2026-05-03 WI-010 repair 已补 first-class ICContextPackage/ICChairBrief Gateway artifact、Artifact API、Dossier projection 和 API restart 后 PostgreSQL 可读证据；仍未补浏览器级 IC 材料编辑或 owner_verified 证据。
   - WI-007 已追加 foundation 级 `integrated_runtime` 自动化证据：同一 docker compose runtime 下验证 PostgreSQL/Alembic、Redis/Celery worker、FastAPI Gateway/Collaboration/Workflow/Dossier endpoint、Chromium 浏览器交互、四 Analyst Memo artifact、S3 CollaborationCommand/Event、hard dissent Risk handoff、PostgreSQL audit/outbox 和 API restart 后 Dossier 可见。WI-007 scope 明确不拥有 Risk verdict、Owner exception、paper execution 或前端页面实现。
   - WI-008/ACC-018 已追加 foundation 级 `integrated_runtime` 自动化证据：同一 docker compose runtime 下验证 PostgreSQL/Alembic、Redis/Celery worker、FastAPI Gateway/Workflow/Dossier/artifact endpoint、Chromium 浏览器交互、DecisionPacket、CIODecisionMemo、DecisionGuardResult、Owner exception candidate、S4 handoff、PostgreSQL audit/outbox 和 API restart 后 artifact/Dossier 可见。当前官方 deploy hook 在最终服务列表 pipe check 处存在 rc=141 工具残留，后续以 docker compose ps/API/tasks/targeted smoke 补证；修复 deploy hook 需进入对应脚本 scope。
-  - WI-008/ACC-019 已追加 foundation 级 `integrated_runtime` 自动化证据：同一 docker compose runtime 下验证 RiskReviewReport conditional_pass/rejected、Owner timeout no-execute domain disposition、Reopen Event、Risk rejected bypass denial、直接 S6 workflow command 被阻断、无 PaperExecutionReceipt、PostgreSQL audit/outbox 和 API restart 后 Dossier risk 状态可见。ApprovalRecord 创建仍停留在 domain evidence；持久化审批创建入口需未来 API/DB scope。
-  - WI-009/ACC-020..022 已追加 foundation 级 `integrated_runtime` 自动化证据：同一 docker compose runtime 下验证 PaperAccount 初始化与填充后账户、PaperOrder/PaperExecutionReceipt 的 filled/blocked/expired/TWAP 路径、execution_core 阻断、T+1、S0-S7 completion、Dossier paper_execution、API restart 后 artifact 可读、PositionDisposalTask P0 处置 handoff、直接 S6 bypass 阻断、无真实券商/真实下单/回测。当前证据通过 generic Gateway artifact ledger 和 HandoffPacket 持久化；专用 paper_* 表镜像与一等 PositionDisposalTask API/schema 仍需未来 API/DB scope。
-  - WI-005/ACC-023 已追加 foundation 级 `integrated_runtime` 自动化证据：同一 docker compose runtime 下验证 Finance API 对 fund/gold/real_estate 的 planning-only 边界、real_estate manual_todo、非 A trade RequestBrief 转 manual_todo、PostgreSQL task 持久化、API restart 后任务可读、无 workflow/approval/paper execution。FinanceProfile 资产更新仍是 API 内存读模型；专用财务档案持久化需未来 API/DB scope。
+  - WI-008/ACC-019 已追加 foundation 级 `integrated_runtime` 自动化证据：同一 docker compose runtime 下验证 RiskReviewReport conditional_pass/rejected、Owner timeout no-execute domain disposition、Reopen Event、Risk rejected bypass denial、直接 S6 workflow command 被阻断、无 PaperExecutionReceipt、PostgreSQL audit/outbox 和 API restart 后 Dossier risk 状态可见。2026-05-03 reopen 已补 `ApprovalRecord` API/PostgreSQL 持久化：Owner exception 审批创建进入 `approval_record`，`/api/approvals/{id}/decision` 决策后重建 ApiRuntime 仍可读回同一 approval_id 和 decision；仍未补浏览器级 owner_verified 证据。
+  - WI-009/ACC-020..022 已追加 foundation 级 `integrated_runtime` 自动化证据：同一 docker compose runtime 下验证 PaperAccount 初始化与填充后账户、PaperOrder/PaperExecutionReceipt 的 filled/blocked/expired/TWAP 路径、execution_core 阻断、T+1、S0-S7 completion、Dossier paper_execution、API restart 后 artifact 可读、PositionDisposalTask P0 处置 handoff、直接 S6 bypass 阻断、无真实券商/真实下单/回测。2026-05-03 reopen 已补专用 `paper_account`、`paper_order`、`paper_execution_receipt` 表镜像；WI-010 repair 已补 first-class PositionDisposalTask Gateway artifact、Artifact API、Dossier projection、direct execution 403 guard 和 `position_disposal_task` 专表镜像；仍未补浏览器级处置控制或 owner_verified 证据。
+  - WI-005/ACC-023 已追加 foundation 级 `integrated_runtime` 自动化证据：同一 docker compose runtime 下验证 Finance API 对 fund/gold/real_estate 的 planning-only 边界、real_estate manual_todo、非 A trade RequestBrief 转 manual_todo、PostgreSQL task 持久化、API restart 后任务可读、无 workflow/approval/paper execution。2026-05-03 reopen 已补 `FinanceProfile` API/PostgreSQL 持久化：`/api/finance/assets` 写入 cash/fund 后，重建 ApiRuntime 可通过 `/api/finance/overview` 读回资产并重算 liquidity；仍未补浏览器级财务档案编辑证据和外部 fund/gold 生产行情可用性。
   - WI-005/ACC-024 已追加 foundation 级 `integrated_runtime` 自动化证据：同一 docker compose runtime 下验证自动归因日度发布、评分公式、condition hit/miss、缺失输入 null/improvement item、Dossier attribution、PostgreSQL artifact/audit/outbox、API restart 后读回。证据仍通过 generic Gateway artifact ledger；专用 attribution drilldown/API 展示需未来 API/DB/frontend scope。
   - WI-005/ACC-025 已追加 foundation 级 `integrated_runtime` 自动化证据：同一 docker compose runtime 下验证异常/周期归因触发 CFO、trigger priority、CFOInterpretation、finance_planning 高影响治理 proposal 语义、owner_pending、ReflectionRecord、handoff、PostgreSQL artifact/audit/outbox、API restart 后读回。CFO GovernanceProposal/ApprovalRecord 仍不是一等 API/Gateway 对象。
   - WI-005/ACC-026 已追加 foundation 级 `integrated_runtime` 自动化证据：同一 docker compose runtime 下验证 factor_engine ServiceResult 因子准入、独立验证、registry 字段、monitoring threshold/coverage drift、pause_default_weight、factor_weight 高影响治理语义、无 backtest/Backtrader 依赖、handoff、PostgreSQL artifact/audit/outbox、API restart 后读回。专用 factor registry/GovernanceProposal 持久化仍需未来 API/DB contract scope。
