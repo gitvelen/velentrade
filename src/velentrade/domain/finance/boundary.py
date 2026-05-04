@@ -46,6 +46,45 @@ class FinanceProfileService:
     manual_todos: list[ManualTodo] = field(default_factory=list)
     sensitive_access_audit: list[dict[str, Any]] = field(default_factory=list)
 
+    def upsert_asset(self, update: FinanceAssetUpdate) -> FinanceProfile:
+        profile_id = self.profile.profile_id if self.profile is not None else "finance-profile-owner"
+        assets = list(self.profile.assets) if self.profile is not None else []
+        liabilities = list(self.profile.liabilities) if self.profile is not None else []
+        asset_id = update.asset_id or new_id(update.asset_type)
+        row = {
+            "asset_id": asset_id,
+            "asset_type": update.asset_type,
+            "valuation": update.valuation,
+            "valuation_date": update.valuation_date,
+            "source": update.source,
+            "boundary_label": "trade_chain_allowed" if update.asset_type == "a_share" else "finance_planning_only",
+        }
+
+        assets = [asset for asset in assets if asset["asset_id"] != asset_id]
+        liabilities = [liability for liability in liabilities if liability["asset_id"] != asset_id]
+        if update.asset_type == "liability":
+            liabilities.append(row)
+        else:
+            assets.append(row)
+
+        manual_todos = [todo for todo in self.manual_todos if not (todo.asset_type == update.asset_type == "real_estate")]
+        if update.asset_type == "real_estate":
+            manual_todos.append(ManualTodo(new_id("todo"), "real_estate", update.valuation_date, "manual_valuation_due"))
+
+        self.manual_todos = manual_todos
+        profile = self._build_profile_from_rows(
+            profile_id=profile_id,
+            assets=assets,
+            liabilities=liabilities,
+            income=self.profile.cash_flow_summary.get("income", {}) if self.profile is not None else {},
+            tax_reminders=self.profile.tax_reminder_summary if self.profile is not None else [],
+            major_expenses=self.profile.liquidity_constraints.get("future_cash_need", []) if self.profile is not None else [],
+            derived_summary_refs=self.profile.derived_summary_refs if self.profile is not None else None,
+        )
+        self.profile = profile
+        self.sensitive_access_audit.append({"roles_allowed": ["cfo", "finance_service"], "roles_denied": ["cio", "researcher"]})
+        return profile
+
     def update_profile(
         self,
         updates: list[FinanceAssetUpdate],
@@ -77,26 +116,46 @@ class FinanceProfileService:
         for expense in major_expenses or []:
             self.manual_todos.append(ManualTodo(new_id("todo"), "major_expense", "before_commitment", expense))
 
+        profile = self._build_profile_from_rows(
+            profile_id=new_id("finance-profile"),
+            assets=assets,
+            liabilities=liabilities,
+            income=income or {},
+            tax_reminders=tax_reminders or [],
+            major_expenses=major_expenses or [],
+        )
+        self.profile = profile
+        self.sensitive_access_audit.append({"roles_allowed": ["cfo", "finance_service"], "roles_denied": ["cio", "researcher"]})
+        return profile
+
+    def _build_profile_from_rows(
+        self,
+        *,
+        profile_id: str,
+        assets: list[dict[str, Any]],
+        liabilities: list[dict[str, Any]],
+        income: dict[str, Any],
+        tax_reminders: list[str],
+        major_expenses: list[str],
+        derived_summary_refs: list[str] | None = None,
+    ) -> FinanceProfile:
         cash_total = sum(
             asset["valuation"].get("amount", 0)
             for asset in assets
             if asset["asset_type"] == "cash"
         )
         liability_total = sum(item["valuation"].get("amount", 0) for item in liabilities)
-        profile = FinanceProfile(
-            profile_id=new_id("finance-profile"),
+        return FinanceProfile(
+            profile_id=profile_id,
             assets=assets,
             liabilities=liabilities,
-            cash_flow_summary={"income": income or {}, "cash_total": cash_total, "liability_total": liability_total},
-            tax_reminder_summary=tax_reminders or [],
+            cash_flow_summary={"income": income, "cash_total": cash_total, "liability_total": liability_total},
+            tax_reminder_summary=tax_reminders,
             risk_budget={"cash_floor": max(50000, cash_total * 0.2), "budget_ref": "risk-budget-finance-v1"},
-            liquidity_constraints={"future_cash_need": major_expenses or [], "leverage": liability_total / max(cash_total, 1)},
+            liquidity_constraints={"future_cash_need": major_expenses, "leverage": liability_total / max(cash_total, 1)},
             sensitive_fields_encrypted=True,
-            derived_summary_refs=[new_id("finance-summary")],
+            derived_summary_refs=derived_summary_refs or [new_id("finance-summary")],
         )
-        self.profile = profile
-        self.sensitive_access_audit.append({"roles_allowed": ["cfo", "finance_service"], "roles_denied": ["cio", "researcher"]})
-        return profile
 
     def request_trade(self, asset_type: str, asset_ref: str) -> GuardDecision:
         if asset_type != "a_share" or not _is_a_share_symbol(asset_ref):

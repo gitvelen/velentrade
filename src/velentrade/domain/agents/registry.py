@@ -125,14 +125,14 @@ def _profile(
 
 def build_agent_capability_profiles() -> "OrderedDict[str, CapabilityProfile]":
     rows = [
-        ("cio", "CIO", "cio", "IC 语义主席和投资收口者。", ["investment_ic"], ["CIODecisionMemo"], ["ask_question", "request_view_update", "request_reopen"], ["cio-decision-synthesis"], "cio_payload", False),
+        ("cio", "CIO", "cio", "IC 语义主席和投资收口者。", ["investment_ic"], ["CIODecisionMemo", "ICChairBrief"], ["ask_question", "request_view_update", "request_reopen"], ["cio-decision-synthesis"], "cio_payload", False),
         ("cfo", "CFO", "cfo", "财务规划、归因解释、治理签发和反思分派者。", ["finance", "reflection"], ["CFOInterpretation"], ["request_reflection", "propose_config_change"], ["cfo-governance"], "cfo_payload", True),
         ("macro_analyst", "Macro Analyst", "macro_analyst", "宏观、政策、流动性和市场状态解释。", ["macro_analysis"], ["AnalystMemo"], ["request_data", "request_evidence"], ["macro-regime-analysis"], "macro_payload", False),
         ("fundamental_analyst", "Fundamental Analyst", "fundamental_analyst", "公司质量、财务质量、盈利和估值分析。", ["fundamental_analysis"], ["AnalystMemo"], ["request_data", "request_evidence"], ["fundamental-quality-review"], "fundamental_payload", False),
         ("quant_analyst", "Quant Analyst", "quant_analyst", "量价、趋势、择时和因子解释。", ["quant_analysis"], ["AnalystMemo"], ["request_data", "request_service_recompute"], ["quant-signal-review"], "quant_payload", False),
         ("event_analyst", "Event Analyst", "event_analyst", "公告、新闻、资金流和催化窗口分析。", ["event_analysis"], ["AnalystMemo"], ["request_evidence", "request_source_health_check"], ["event-catalyst-assessment"], "event_payload", False),
         ("risk_officer", "Risk Officer", "risk_officer", "独立风险关口和业务风险裁决者。", ["risk_review"], ["RiskReviewReport"], ["request_reopen", "request_risk_impact_review"], ["risk-gate-review"], "risk_payload", False),
-        ("investment_researcher", "Investment Researcher", "investment_researcher", "研究资料、知识资产和 Prompt/Skill 提案准备者。", ["research", "knowledge"], ["ResearchPackage"], ["request_evidence", "propose_knowledge_promotion", "propose_prompt_update", "propose_skill_update"], ["research-package-builder"], "research_payload", False),
+        ("investment_researcher", "Investment Researcher", "investment_researcher", "研究资料、知识资产和 Prompt/Skill 提案准备者。", ["research", "knowledge"], ["ResearchPackage", "ICContextPackage"], ["request_evidence", "propose_knowledge_promotion", "propose_prompt_update", "propose_skill_update"], ["research-package-builder"], "research_payload", False),
         ("devops_engineer", "DevOps Engineer", "devops_engineer", "系统、数据源、执行环境和成本观测诊断者。", ["incident", "service_health"], ["IncidentReport"], ["report_incident", "request_degradation", "request_recovery_validation"], ["devops-incident-diagnostics"], "devops_payload", False),
     ]
     return OrderedDict(

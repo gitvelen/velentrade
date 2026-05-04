@@ -41,9 +41,69 @@ SERVICE_ARTIFACT_TYPES = {
     "valuation_engine": {"ValuationResult", "ServiceResult"},
     "portfolio_optimization": {"DecisionPacket", "DecisionGuardResult", "PortfolioOptimizationResult"},
     "risk_engine": {"DecisionGuardResult", "RiskReviewReport"},
-    "trade_execution": {"PaperExecutionReceipt", "PaperOrder", "PaperAccount"},
+    "trade_execution": {"PaperExecutionReceipt", "PaperOrder", "PaperAccount", "PositionDisposalTask"},
     "performance_attribution_evaluation": {"AttributionReport", "ReflectionRecord"},
 }
+
+
+def _artifact_payload_rejection_reason(artifact_type: str, payload: dict[str, Any]) -> str | None:
+    if artifact_type == "ICContextPackage":
+        required = {
+            "topic_id",
+            "request_brief_ref",
+            "data_readiness_ref",
+            "market_state_ref",
+            "service_result_refs",
+            "portfolio_context_ref",
+            "risk_constraint_refs",
+            "research_package_refs",
+            "role_attachment_refs",
+            "context_snapshot_id",
+        }
+        if any(payload.get(field) in (None, "", []) for field in required):
+            return "schema_validation_failed"
+        return None
+    if artifact_type == "ICChairBrief":
+        required = {
+            "decision_question",
+            "scope_boundary",
+            "key_tensions",
+            "must_answer_questions",
+            "time_budget",
+            "action_standard",
+            "risk_constraints_to_respect",
+            "forbidden_assumptions",
+            "no_preset_decision_attestation",
+        }
+        if any(field not in payload or payload.get(field) in (None, "") for field in required):
+            return "schema_validation_failed"
+        if payload.get("no_preset_decision_attestation") is not True:
+            return "schema_validation_failed"
+        return None
+    if artifact_type != "PositionDisposalTask":
+        return None
+    required = {
+        "task_id",
+        "symbol",
+        "triggers",
+        "priority",
+        "risk_gate_present",
+        "execution_core_guard_present",
+        "direct_execution_allowed",
+        "workflow_route",
+        "reason_code",
+    }
+    if any(field not in payload or payload.get(field) in (None, "", []) for field in required):
+        return "schema_validation_failed"
+    if payload.get("direct_execution_allowed") is not False:
+        return "position_disposal_requires_risk_review"
+    if payload.get("risk_gate_present") is not True:
+        return "position_disposal_requires_risk_review"
+    if payload.get("execution_core_guard_present") is not True:
+        return "position_disposal_requires_risk_review"
+    if "risk_review" not in str(payload.get("workflow_route", "")):
+        return "position_disposal_requires_risk_review"
+    return None
 
 
 @dataclass
@@ -81,6 +141,9 @@ class AuthorityGateway:
             profile = self.profiles[run.agent_id]
             if artifact_type not in profile.write_policy.artifact_types:
                 return GatewayWriteResult(False, "artifact", "", "", "", "permission_denied")
+            rejection_reason = _artifact_payload_rejection_reason(artifact_type, payload)
+            if rejection_reason is not None:
+                return GatewayWriteResult(False, "artifact", "", "", "", rejection_reason)
             artifact_id = new_id("artifact")
             artifact_row = {
                 "artifact_id": artifact_id,
@@ -129,6 +192,9 @@ class AuthorityGateway:
                 return GatewayWriteResult(False, "artifact", "", "", "", "unknown_service")
             if artifact_type not in SERVICE_ARTIFACT_TYPES.get(producer_service, set()):
                 return GatewayWriteResult(False, "artifact", "", "", "", "permission_denied")
+            rejection_reason = _artifact_payload_rejection_reason(artifact_type, payload)
+            if rejection_reason is not None:
+                return GatewayWriteResult(False, "artifact", "", "", "", rejection_reason)
             artifact_id = new_id("artifact")
             artifact_row = {
                 "artifact_id": artifact_id,

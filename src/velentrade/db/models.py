@@ -109,9 +109,12 @@ Table(
     Column("approval_type", String, nullable=False),
     Column("approval_object_ref", String, nullable=False),
     Column("trigger_reason", String, nullable=False),
+    Column("comparison_options", JSONB, nullable=False),
     Column("recommended_decision", String, nullable=False),
+    Column("risk_and_impact", JSONB, nullable=False),
     Column("decision", String, nullable=False),
     Column("effective_scope", String, nullable=False),
+    Column("timeout_policy", String, nullable=False),
     Column("evidence_refs", JSONB, nullable=False),
     Column("created_at", DateTime(timezone=True), nullable=False),
     Column("decided_at", DateTime(timezone=True), nullable=True),
@@ -128,6 +131,22 @@ Table(
     Column("status", String, nullable=False),
     Column("created_at", DateTime(timezone=True), nullable=False),
     Column("closed_at", DateTime(timezone=True), nullable=True),
+)
+
+Table(
+    "finance_profile",
+    Base.metadata,
+    Column("profile_id", String, primary_key=True),
+    Column("assets", JSONB, nullable=False),
+    Column("liabilities", JSONB, nullable=False),
+    Column("cash_flow_summary", JSONB, nullable=False),
+    Column("tax_reminder_summary", JSONB, nullable=False),
+    Column("risk_budget", JSONB, nullable=False),
+    Column("liquidity_constraints", JSONB, nullable=False),
+    Column("sensitive_fields_encrypted", Boolean, nullable=False),
+    Column("derived_summary_refs", JSONB, nullable=False),
+    Column("manual_todos", JSONB, nullable=False),
+    Column("updated_at", DateTime(timezone=True), nullable=False),
 )
 
 Table(
@@ -287,6 +306,23 @@ Table(
     Column("taxes", JSONB, nullable=False),
     Column("slippage", JSONB, nullable=False),
     Column("t_plus_one_state", String, nullable=False),
+    Column("created_at", DateTime(timezone=True), nullable=False),
+)
+
+Table(
+    "position_disposal_task",
+    Base.metadata,
+    Column("task_id", String, primary_key=True),
+    Column("artifact_id", String, nullable=False),
+    Column("workflow_id", String, nullable=False),
+    Column("symbol", String, nullable=False),
+    Column("triggers", JSONB, nullable=False),
+    Column("priority", String, nullable=False),
+    Column("risk_gate_present", Boolean, nullable=False),
+    Column("execution_core_guard_present", Boolean, nullable=False),
+    Column("direct_execution_allowed", Boolean, nullable=False),
+    Column("workflow_route", String, nullable=False),
+    Column("reason_code", String, nullable=False),
     Column("created_at", DateTime(timezone=True), nullable=False),
 )
 

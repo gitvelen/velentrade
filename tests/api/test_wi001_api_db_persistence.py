@@ -289,6 +289,244 @@ def test_api_writes_are_mirrored_into_postgres():
         }
 
 
+def test_ic_context_chair_and_position_disposal_are_first_class_persistent_artifacts():
+    with _postgres_container() as database_url:
+        config = Config("alembic.ini")
+        config.set_main_option("sqlalchemy.url", database_url)
+        command.upgrade(config, "head")
+
+        engine = create_engine(database_url, future=True)
+        apply_wi001_seed(engine)
+
+        client = TestClient(build_app(ApiRuntime(database_url=database_url)))
+
+        brief_response = client.post(
+            "/api/requests/briefs",
+            json={
+                "raw_text": "请正式研究浦发银行并准备 IC 材料",
+                "source": "owner_command",
+                "requested_scope": {
+                    "intent": "formal_investment_decision",
+                    "asset_scope": "a_share_common_stock",
+                    "target_action": "approve_trade",
+                },
+            },
+        )
+        assert brief_response.status_code == 200
+        brief = brief_response.json()["data"]
+        task_response = client.post(
+            f"/api/requests/briefs/{brief['brief_id']}/confirmation",
+            json={"decision": "confirm", "client_seen_version": 1},
+        )
+        assert task_response.status_code == 200
+        workflow_id = task_response.json()["data"]["workflow_id"]
+
+        ic_context_response = client.post(
+            "/api/gateway/artifacts",
+            json={
+                "workflow_id": workflow_id,
+                "attempt_no": 1,
+                "stage": "S2",
+                "source_agent_run_id": "run-investment_researcher",
+                "context_snapshot_id": "ctx-v1",
+                "artifact_type": "ICContextPackage",
+                "schema_version": "1.0.0",
+                "payload": {
+                    "topic_id": "topic-wi010-ic",
+                    "request_brief_ref": brief["brief_id"],
+                    "data_readiness_ref": "data-readiness-wi010",
+                    "market_state_ref": "market-state-wi010",
+                    "service_result_refs": ["service-result-wi010"],
+                    "portfolio_context_ref": "portfolio-context-wi010",
+                    "risk_constraint_refs": ["risk-constraint-wi010"],
+                    "research_package_refs": ["research-package-wi010"],
+                    "reflection_hit_refs": [],
+                    "role_attachment_refs": ["role-attachment-wi010"],
+                    "context_snapshot_id": "ctx-v1",
+                },
+                "source_refs": [brief["brief_id"]],
+                "idempotency_key": "wi010-ic-context",
+            },
+        )
+        assert ic_context_response.status_code == 200
+        ic_context_artifact_id = ic_context_response.json()["data"]["object_id"]
+
+        chair_brief_response = client.post(
+            "/api/gateway/artifacts",
+            json={
+                "workflow_id": workflow_id,
+                "attempt_no": 1,
+                "stage": "S2",
+                "source_agent_run_id": "run-cio",
+                "context_snapshot_id": "ctx-v1",
+                "artifact_type": "ICChairBrief",
+                "schema_version": "1.0.0",
+                "payload": {
+                    "decision_question": "是否将浦发银行纳入纸面组合观察买入候选？",
+                    "scope_boundary": "仅 A 股纸面投研，不触发真实交易。",
+                    "key_tensions": ["估值修复", "资产质量不确定"],
+                    "must_answer_questions": ["数据是否足够", "风险是否可控"],
+                    "time_budget": "T+0",
+                    "action_standard": "证据充分且无 hard blocker 才能进入下一阶段",
+                    "risk_constraints_to_respect": ["risk-constraint-wi010"],
+                    "forbidden_assumptions": ["不得预设买入结论"],
+                    "no_preset_decision_attestation": True,
+                },
+                "source_refs": [ic_context_artifact_id],
+                "idempotency_key": "wi010-chair-brief",
+            },
+        )
+        assert chair_brief_response.status_code == 200
+        chair_brief_artifact_id = chair_brief_response.json()["data"]["object_id"]
+
+        invalid_ic_context_response = client.post(
+            "/api/gateway/artifacts",
+            json={
+                "workflow_id": workflow_id,
+                "attempt_no": 1,
+                "stage": "S2",
+                "source_agent_run_id": "run-investment_researcher",
+                "context_snapshot_id": "ctx-v1",
+                "artifact_type": "ICContextPackage",
+                "schema_version": "1.0.0",
+                "payload": {
+                    "request_brief_ref": brief["brief_id"],
+                    "data_readiness_ref": "data-readiness-wi010",
+                    "market_state_ref": "market-state-wi010",
+                    "service_result_refs": ["service-result-wi010"],
+                    "portfolio_context_ref": "portfolio-context-wi010",
+                    "risk_constraint_refs": ["risk-constraint-wi010"],
+                    "research_package_refs": ["research-package-wi010"],
+                    "role_attachment_refs": ["role-attachment-wi010"],
+                    "context_snapshot_id": "ctx-v1",
+                },
+                "source_refs": [brief["brief_id"]],
+                "idempotency_key": "wi010-ic-context-missing-topic",
+            },
+        )
+        assert invalid_ic_context_response.status_code == 403
+        assert invalid_ic_context_response.json()["error"]["reason_code"] == "schema_validation_failed"
+
+        preset_chair_brief_response = client.post(
+            "/api/gateway/artifacts",
+            json={
+                "workflow_id": workflow_id,
+                "attempt_no": 1,
+                "stage": "S2",
+                "source_agent_run_id": "run-cio",
+                "context_snapshot_id": "ctx-v1",
+                "artifact_type": "ICChairBrief",
+                "schema_version": "1.0.0",
+                "payload": {
+                    "decision_question": "是否直接买入？",
+                    "scope_boundary": "仅 A 股纸面投研。",
+                    "key_tensions": [],
+                    "must_answer_questions": [],
+                    "time_budget": "T+0",
+                    "action_standard": "直接执行",
+                    "risk_constraints_to_respect": [],
+                    "forbidden_assumptions": [],
+                    "no_preset_decision_attestation": False,
+                },
+                "source_refs": [ic_context_artifact_id],
+                "idempotency_key": "wi010-chair-brief-preset-denied",
+            },
+        )
+        assert preset_chair_brief_response.status_code == 403
+        assert preset_chair_brief_response.json()["error"]["reason_code"] == "schema_validation_failed"
+
+        position_task_response = client.post(
+            "/api/gateway/artifacts",
+            json={
+                "workflow_id": workflow_id,
+                "attempt_no": 1,
+                "stage": "S7",
+                "producer_service": "trade_execution",
+                "context_snapshot_id": "ctx-v1",
+                "artifact_type": "PositionDisposalTask",
+                "schema_version": "1.0.0",
+                "payload": {
+                    "task_id": "position-disposal-wi010",
+                    "symbol": "600000.SH",
+                    "triggers": ["drawdown_limit_hit", "risk_budget_breach"],
+                    "priority": "P0",
+                    "risk_gate_present": True,
+                    "execution_core_guard_present": True,
+                    "direct_execution_allowed": False,
+                    "workflow_route": "S5_risk_review",
+                    "reason_code": "position_disposal_requires_risk_review",
+                },
+                "source_refs": [chair_brief_artifact_id],
+                "idempotency_key": "wi010-position-disposal",
+            },
+        )
+        assert position_task_response.status_code == 200
+        position_task_artifact_id = position_task_response.json()["data"]["object_id"]
+
+        direct_execution_task_response = client.post(
+            "/api/gateway/artifacts",
+            json={
+                "workflow_id": workflow_id,
+                "attempt_no": 1,
+                "stage": "S7",
+                "producer_service": "trade_execution",
+                "context_snapshot_id": "ctx-v1",
+                "artifact_type": "PositionDisposalTask",
+                "schema_version": "1.0.0",
+                "payload": {
+                    "task_id": "position-disposal-direct-denied",
+                    "symbol": "600000.SH",
+                    "triggers": ["drawdown_limit_hit"],
+                    "priority": "P0",
+                    "risk_gate_present": False,
+                    "execution_core_guard_present": False,
+                    "direct_execution_allowed": True,
+                    "workflow_route": "S7_direct_execution",
+                    "reason_code": "direct_execution_requested",
+                },
+                "source_refs": [chair_brief_artifact_id],
+                "idempotency_key": "wi010-position-disposal-direct-denied",
+            },
+        )
+        assert direct_execution_task_response.status_code == 403
+        assert direct_execution_task_response.json()["error"]["reason_code"] == "position_disposal_requires_risk_review"
+
+        fresh_client = TestClient(build_app(ApiRuntime(database_url=database_url)))
+
+        for artifact_id, expected_type in (
+            (ic_context_artifact_id, "ICContextPackage"),
+            (chair_brief_artifact_id, "ICChairBrief"),
+            (position_task_artifact_id, "PositionDisposalTask"),
+        ):
+            artifact_response = fresh_client.get(f"/api/artifacts/{artifact_id}")
+            assert artifact_response.status_code == 200
+            assert artifact_response.json()["data"]["artifact_type"] == expected_type
+
+        dossier_response = fresh_client.get(f"/api/workflows/{workflow_id}/dossier")
+        assert dossier_response.status_code == 200
+        dossier = dossier_response.json()["data"]
+        assert dossier["ic_context"]["artifact_ref"] == ic_context_artifact_id
+        assert dossier["ic_context"]["topic_id"] == "topic-wi010-ic"
+        assert dossier["ic_context"]["status"] == "ready"
+        assert dossier["chair_brief"]["artifact_ref"] == chair_brief_artifact_id
+        assert dossier["chair_brief"]["no_preset_decision_attestation"] is True
+        assert dossier["position_disposal"]["artifact_ref"] == position_task_artifact_id
+        assert dossier["position_disposal"]["task_id"] == "position-disposal-wi010"
+        assert dossier["position_disposal"]["direct_execution_allowed"] is False
+        assert dossier["position_disposal"]["workflow_route"] == "S5_risk_review"
+        assert dossier["forbidden_actions"]["execution_core_blocked_no_trade"]["action_visible"] is False
+
+        with engine.connect() as connection:
+            row = connection.execute(
+                text("select task_id, symbol, priority, direct_execution_allowed, workflow_route, reason_code from position_disposal_task")
+            ).mappings().one()
+        assert row["task_id"] == "position-disposal-wi010"
+        assert row["symbol"] == "600000.SH"
+        assert row["priority"] == "P0"
+        assert row["direct_execution_allowed"] is False
+        assert row["workflow_route"] == "S5_risk_review"
+        assert row["reason_code"] == "position_disposal_requires_risk_review"
+
 def test_task_center_merges_persisted_tasks_after_runtime_restart():
     with _postgres_container() as database_url:
         config = Config("alembic.ini")
@@ -342,6 +580,174 @@ def test_task_center_merges_persisted_tasks_after_runtime_restart():
         task_ids = [item["task_id"] for item in restarted_client.get("/api/tasks").json()["data"]["task_center"]]
 
         assert task_ids == [first_task_id, second_task_id]
+
+
+def test_finance_asset_updates_are_persisted_after_runtime_restart():
+    with _postgres_container() as database_url:
+        config = Config("alembic.ini")
+        config.set_main_option("sqlalchemy.url", database_url)
+        command.upgrade(config, "head")
+
+        client = TestClient(build_app(ApiRuntime(database_url=database_url)))
+        for payload in [
+            {
+                "asset_id": "cash-persisted-1",
+                "asset_type": "cash",
+                "valuation": {"amount": 250000, "currency": "CNY"},
+                "valuation_date": "2026-05-03",
+                "source": "owner",
+                "client_seen_version": 1,
+            },
+            {
+                "asset_id": "fund-persisted-1",
+                "asset_type": "fund",
+                "valuation": {"amount": 90000, "currency": "CNY"},
+                "valuation_date": "2026-05-03",
+                "source": "auto_quote",
+                "client_seen_version": 1,
+            },
+        ]:
+            response = client.post("/api/finance/assets", json=payload)
+            assert response.status_code == 200
+
+        restarted_client = TestClient(build_app(ApiRuntime(database_url=database_url)))
+        overview_response = restarted_client.get("/api/finance/overview")
+        assert overview_response.status_code == 200
+        overview = overview_response.json()["data"]
+        assets_by_id = {item["asset_id"]: item for item in overview["asset_profile"]}
+
+        assert assets_by_id["cash-persisted-1"]["valuation"]["amount"] == 250000
+        assert assets_by_id["fund-persisted-1"]["boundary_label"] == "finance_planning_only"
+        assert overview["finance_health"]["liquidity"] == 250000
+
+
+def test_owner_approval_decisions_are_persisted_after_runtime_restart():
+    with _postgres_container() as database_url:
+        config = Config("alembic.ini")
+        config.set_main_option("sqlalchemy.url", database_url)
+        command.upgrade(config, "head")
+
+        client = TestClient(build_app(ApiRuntime(database_url=database_url)))
+        approvals_response = client.get("/api/approvals")
+        assert approvals_response.status_code == 200
+        approval_id = approvals_response.json()["data"]["approval_center"][0]["approval_id"]
+
+        decision_response = client.post(
+            f"/api/approvals/{approval_id}/decision",
+            json={
+                "decision": "approved",
+                "comment": "认可例外审批材料",
+                "accepted_risks": ["single_name_deviation"],
+                "requested_changes": [],
+                "client_seen_version": 1,
+            },
+        )
+        assert decision_response.status_code == 200
+
+        restarted_client = TestClient(build_app(ApiRuntime(database_url=database_url)))
+        persisted_response = restarted_client.get("/api/approvals")
+        assert persisted_response.status_code == 200
+        approvals_by_id = {
+            item["approval_id"]: item for item in persisted_response.json()["data"]["approval_center"]
+        }
+
+        assert approvals_by_id[approval_id]["decision"] == "approved"
+        assert approvals_by_id[approval_id]["effective_scope"] == "current_attempt_only"
+
+
+def test_gateway_paper_execution_artifacts_are_mirrored_to_dedicated_tables():
+    with _postgres_container() as database_url:
+        config = Config("alembic.ini")
+        config.set_main_option("sqlalchemy.url", database_url)
+        command.upgrade(config, "head")
+
+        client = TestClient(build_app(ApiRuntime(database_url=database_url)))
+        workflow_id = "workflow-paper-table-1"
+        account_ref = _write_service_artifact(
+            client,
+            workflow_id,
+            "S6",
+            "trade_execution",
+            "PaperAccount",
+            {
+                "paper_account_id": "paper-account-table-1",
+                "cash": {"amount": 1_000_000, "currency": "CNY"},
+                "positions": {},
+                "total_value": {"amount": 1_000_000, "currency": "CNY"},
+                "cost_basis": {},
+                "return": {"amount": 0, "currency": "CNY"},
+                "drawdown": 0,
+                "risk_budget": {"cash_floor": {"amount": 50_000, "currency": "CNY"}},
+                "benchmark_ref": "baseline-cash",
+            },
+        )
+        order_ref = _write_service_artifact(
+            client,
+            workflow_id,
+            "S6",
+            "trade_execution",
+            "PaperOrder",
+            {
+                "paper_order_id": "paper-order-table-1",
+                "workflow_id": workflow_id,
+                "decision_memo_ref": "cio-memo-1",
+                "symbol": "600000.SH",
+                "side": "buy",
+                "target_quantity_or_weight": 1000,
+                "price_range": {"max_price": 10.5},
+                "urgency": "normal",
+                "execution_core_snapshot_ref": "exec-core-1",
+                "status": "released",
+            },
+        )
+        receipt_ref = _write_service_artifact(
+            client,
+            workflow_id,
+            "S6",
+            "trade_execution",
+            "PaperExecutionReceipt",
+            {
+                "paper_order_id": "paper-order-table-1",
+                "decision_memo_ref": "cio-memo-1",
+                "execution_window": "30m",
+                "pricing_method": "minute_vwap",
+                "market_data_refs": ["minute-bars-1"],
+                "fill_status": "filled",
+                "fill_price": 10.2,
+                "fill_quantity": 1000,
+                "fees": {"commission": 5},
+                "taxes": {"stamp_tax": 0},
+                "slippage": {"policy_bps": 5},
+                "t_plus_one_state": "locked_until_next_trading_day",
+            },
+        )
+
+        engine = create_engine(database_url, future=True)
+        with engine.connect() as connection:
+            paper_account = connection.execute(
+                text("select account_id, cash, total_value from paper_account where account_id = 'paper-account-table-1'")
+            ).mappings().first()
+            paper_order = connection.execute(
+                text("select paper_order_id, workflow_id, status from paper_order where paper_order_id = 'paper-order-table-1'")
+            ).mappings().first()
+            receipt = connection.execute(
+                text("select receipt_id, paper_order_id, fill_status from paper_execution_receipt where paper_order_id = 'paper-order-table-1'")
+            ).mappings().first()
+
+        assert account_ref
+        assert order_ref
+        assert receipt_ref
+        assert dict(paper_account) == {"account_id": "paper-account-table-1", "cash": 1_000_000, "total_value": 1_000_000}
+        assert dict(paper_order) == {
+            "paper_order_id": "paper-order-table-1",
+            "workflow_id": workflow_id,
+            "status": "released",
+        }
+        assert dict(receipt) == {
+            "receipt_id": receipt_ref,
+            "paper_order_id": "paper-order-table-1",
+            "fill_status": "filled",
+        }
 
 
 def test_api_persists_full_investment_runtime_artifacts_in_dossier_after_restart():

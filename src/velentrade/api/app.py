@@ -86,13 +86,22 @@ class ApiRuntime:
     def __init__(self, database_url: str | None = None) -> None:
         self.profiles = build_agent_capability_profiles()
         store = SqlAlchemyGatewayMirror(build_engine(database_url)) if database_url else None
+        self.store = store
         self.gateway = AuthorityGateway(self.profiles, store=store)
-        self.finance = FinanceProfileService()
+        persisted_finance = store.load_finance_profile() if hasattr(store, "load_finance_profile") else None
+        self.finance = (
+            FinanceProfileService(profile=persisted_finance[0], manual_todos=persisted_finance[1])
+            if persisted_finance is not None
+            else FinanceProfileService()
+        )
         self.observability = ObservabilityCollector()
         self.devops = DevOpsIncidentRuntime()
         self.governance = GovernanceRuntime()
         self.owner_exception = OwnerExceptionService()
-        self.approvals: dict[str, ApprovalRecord] = {}
+        persisted_approvals = store.list_approval_records() if hasattr(store, "list_approval_records") else []
+        self.approvals: dict[str, ApprovalRecord] = {
+            approval.approval_id: approval for approval in persisted_approvals
+        }
         self.workflow = WorkflowRuntime()
         self.request_briefs: dict[str, RequestBrief] = {}
         self.confirmed_brief_ids: set[str] = set()
@@ -149,8 +158,11 @@ class ApiRuntime:
                 rollback_plan_ref="rollback-quant-001",
             )
         packet = self.owner_exception.create_packet("candidate-001", "high_impact_agent_capability_change")
-        approval = self.owner_exception.submit_for_approval(packet)
-        self.approvals[approval.approval_id] = approval
+        if not self.approvals:
+            approval = self.owner_exception.submit_for_approval(packet)
+            self.approvals[approval.approval_id] = approval
+            if hasattr(self.store, "mirror_approval_record"):
+                self.store.mirror_approval_record(approval)
 
 
 def _request_brief_read_model(brief: RequestBrief) -> dict[str, Any]:
@@ -272,11 +284,23 @@ def _first_payload(artifacts: list[dict[str, Any]], artifact_type: str) -> dict[
     return None
 
 
+def _first_artifact_payload_with_ref(artifacts: list[dict[str, Any]], artifact_type: str) -> dict[str, Any] | None:
+    for artifact in artifacts:
+        if artifact.get("artifact_type") == artifact_type and isinstance(artifact.get("payload"), dict):
+            payload = dict(artifact["payload"])
+            payload["artifact_ref"] = artifact["artifact_id"]
+            return payload
+    return None
+
+
 def _artifact_projection(artifacts: list[dict[str, Any]]) -> dict[str, Any]:
+    ic_context = _first_artifact_payload_with_ref(artifacts, "ICContextPackage")
+    chair_brief = _first_artifact_payload_with_ref(artifacts, "ICChairBrief")
     data_readiness = _first_payload(artifacts, "DataReadinessReport")
     decision_guard = _first_payload(artifacts, "DecisionGuardResult")
     risk_review = _first_payload(artifacts, "RiskReviewReport")
     paper_execution = _first_payload(artifacts, "PaperExecutionReceipt")
+    position_disposal = _first_artifact_payload_with_ref(artifacts, "PositionDisposalTask")
     attribution = _first_payload(artifacts, "AttributionReport")
     analyst_memos = [
         artifact["payload"]
@@ -285,6 +309,8 @@ def _artifact_projection(artifacts: list[dict[str, Any]]) -> dict[str, Any]:
     ]
     return {
         "artifact_refs": [artifact["artifact_id"] for artifact in artifacts],
+        "ic_context": ic_context,
+        "chair_brief": chair_brief,
         "data_readiness": data_readiness,
         "analyst_stance_matrix": [
             {
@@ -299,6 +325,7 @@ def _artifact_projection(artifacts: list[dict[str, Any]]) -> dict[str, Any]:
         "decision_guard": decision_guard,
         "risk_review": risk_review,
         "paper_execution": paper_execution,
+        "position_disposal": position_disposal,
         "attribution": attribution,
     }
 
@@ -309,6 +336,16 @@ def _apply_artifact_projection(dossier: dict[str, Any], artifacts: list[dict[str
         dossier["data_readiness"] = {
             **dossier["data_readiness"],
             **projection["data_readiness"],
+        }
+    if projection["ic_context"] is not None:
+        dossier["ic_context"] = {
+            "status": "ready",
+            **projection["ic_context"],
+        }
+    if projection["chair_brief"] is not None:
+        dossier["chair_brief"] = {
+            **dossier["chair_brief"],
+            **projection["chair_brief"],
         }
     if projection["analyst_stance_matrix"]:
         dossier["analyst_stance_matrix"] = projection["analyst_stance_matrix"]
@@ -343,6 +380,11 @@ def _apply_artifact_projection(dossier: dict[str, Any], artifacts: list[dict[str
             "status": projection["paper_execution"].get("fill_status", "pending"),
             "reason_code": projection["paper_execution"].get("reason_code"),
             **projection["paper_execution"],
+        }
+    if projection["position_disposal"] is not None:
+        dossier["position_disposal"] = {
+            "status": "requires_risk_review",
+            **projection["position_disposal"],
         }
     if projection["attribution"] is not None:
         dossier["attribution"] = {
@@ -413,6 +455,7 @@ def _investment_dossier_read_model(api_runtime: ApiRuntime, workflow) -> dict[st
         "risk_review": {"status": "pending", "verdict": None},
         "approval": {"status": "not_required", "approval_id": None},
         "paper_execution": {"status": "blocked", "reason_code": "execution_core_blocked_no_trade"},
+        "position_disposal": {"status": "not_required"},
         "attribution": {"status": "pending"},
         "handoffs": handoffs,
         "evidence_map": {
@@ -488,6 +531,7 @@ def _investment_dossier_from_workflow_payload(
         "risk_review": {"status": "pending", "verdict": None},
         "approval": {"status": "not_required", "approval_id": None},
         "paper_execution": {"status": "blocked", "reason_code": "execution_core_blocked_no_trade"},
+        "position_disposal": {"status": "not_required"},
         "attribution": {"status": "pending"},
         "handoffs": handoffs,
         "evidence_map": {
@@ -612,7 +656,7 @@ def build_app(runtime: ApiRuntime | None = None) -> FastAPI:
 
     @app.post("/api/finance/assets")
     def update_finance_asset(request: FinanceAssetUpdateRequest):
-        profile = api_runtime.finance.update_profile([
+        profile = api_runtime.finance.upsert_asset(
             FinanceAssetUpdate(
                 asset_type=request.asset_type,
                 valuation=request.valuation,
@@ -620,8 +664,11 @@ def build_app(runtime: ApiRuntime | None = None) -> FastAPI:
                 source=request.source,
                 asset_id=request.asset_id,
             )
-        ])
-        asset = (profile.assets + profile.liabilities)[0]
+        )
+        if hasattr(api_runtime.store, "mirror_finance_profile"):
+            api_runtime.store.mirror_finance_profile(profile, api_runtime.finance.manual_todos)
+        asset_id = request.asset_id or (profile.assets + profile.liabilities)[-1]["asset_id"]
+        asset = next(item for item in profile.assets + profile.liabilities if item["asset_id"] == asset_id)
         return _success(asset)
 
     @app.get("/api/knowledge/search")
@@ -699,6 +746,8 @@ def build_app(runtime: ApiRuntime | None = None) -> FastAPI:
             return _error(422, "VALIDATION_ERROR", "Unsupported approval decision.", reason_code="invalid_decision")
         decided = replace(approval, decision=request.decision, decided_at=utc_now())
         api_runtime.approvals[approval_id] = decided
+        if hasattr(api_runtime.store, "mirror_approval_record"):
+            api_runtime.store.mirror_approval_record(decided)
         return _success(_approval_read_model(decided))
 
     @app.post("/api/requests/briefs")

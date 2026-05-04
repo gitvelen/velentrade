@@ -8,6 +8,8 @@ from sqlalchemy.engine import Engine
 
 from velentrade.db.base import Base
 from velentrade.domain.collaboration.models import CollaborationCommand, CollaborationEvent, HandoffPacket
+from velentrade.domain.finance.boundary import FinanceProfile, ManualTodo
+from velentrade.domain.investment.owner_exception.approval import ApprovalRecord
 from velentrade.domain.memory.models import MemoryExtractionResult, MemoryItem, MemoryRelation, MemoryVersion
 
 
@@ -21,6 +23,18 @@ def _as_iso(value: datetime | None) -> str | None:
     if value is None:
         return None
     return value.isoformat()
+
+
+def _money_amount(value: Any) -> float:
+    if isinstance(value, dict):
+        return float(value["amount"])
+    return float(value)
+
+
+def _money_currency(value: Any, default: str) -> str:
+    if isinstance(value, dict):
+        return str(value.get("currency", default))
+    return default
 
 
 class SqlAlchemyGatewayMirror:
@@ -124,6 +138,88 @@ class SqlAlchemyGatewayMirror:
             connection.execute(table.delete().where(table.c.reopen_event_id == event.reopen_event_id))
             connection.execute(table.insert(), [payload])
 
+    def mirror_finance_profile(self, profile: FinanceProfile, manual_todos: list[ManualTodo]) -> None:
+        payload = {
+            "profile_id": profile.profile_id,
+            "assets": profile.assets,
+            "liabilities": profile.liabilities,
+            "cash_flow_summary": profile.cash_flow_summary,
+            "tax_reminder_summary": profile.tax_reminder_summary,
+            "risk_budget": profile.risk_budget,
+            "liquidity_constraints": profile.liquidity_constraints,
+            "sensitive_fields_encrypted": profile.sensitive_fields_encrypted,
+            "derived_summary_refs": profile.derived_summary_refs,
+            "manual_todos": [todo.__dict__ for todo in manual_todos],
+            "updated_at": datetime.now().astimezone(),
+        }
+        table = self.tables["finance_profile"]
+        with self.engine.begin() as connection:
+            connection.execute(table.delete().where(table.c.profile_id == profile.profile_id))
+            connection.execute(table.insert(), [payload])
+
+    def load_finance_profile(self) -> tuple[FinanceProfile, list[ManualTodo]] | None:
+        table = self.tables["finance_profile"]
+        with self.engine.connect() as connection:
+            row = connection.execute(select(table).order_by(table.c.updated_at.desc()).limit(1)).mappings().first()
+        if row is None:
+            return None
+        profile = FinanceProfile(
+            profile_id=row["profile_id"],
+            assets=list(row["assets"]),
+            liabilities=list(row["liabilities"]),
+            cash_flow_summary=dict(row["cash_flow_summary"]),
+            tax_reminder_summary=list(row["tax_reminder_summary"]),
+            risk_budget=dict(row["risk_budget"]),
+            liquidity_constraints=dict(row["liquidity_constraints"]),
+            sensitive_fields_encrypted=bool(row["sensitive_fields_encrypted"]),
+            derived_summary_refs=list(row["derived_summary_refs"]),
+        )
+        manual_todos = [ManualTodo(**todo) for todo in row["manual_todos"]]
+        return profile, manual_todos
+
+    def mirror_approval_record(self, approval: ApprovalRecord) -> None:
+        payload = {
+            "approval_id": approval.approval_id,
+            "approval_type": approval.approval_type,
+            "approval_object_ref": approval.approval_object_ref,
+            "trigger_reason": approval.trigger_reason,
+            "comparison_options": approval.comparison_options,
+            "recommended_decision": approval.recommended_decision,
+            "risk_and_impact": approval.risk_and_impact,
+            "decision": approval.decision,
+            "effective_scope": approval.effective_scope,
+            "timeout_policy": approval.timeout_policy,
+            "evidence_refs": list(approval.evidence_refs),
+            "created_at": datetime.now().astimezone(),
+            "decided_at": _as_datetime(approval.decided_at),
+        }
+        table = self.tables["approval_record"]
+        with self.engine.begin() as connection:
+            connection.execute(table.delete().where(table.c.approval_id == approval.approval_id))
+            connection.execute(table.insert(), [payload])
+
+    def list_approval_records(self) -> list[ApprovalRecord]:
+        table = self.tables["approval_record"]
+        with self.engine.connect() as connection:
+            rows = connection.execute(select(table).order_by(table.c.created_at)).mappings().all()
+        return [
+            ApprovalRecord(
+                approval_id=row["approval_id"],
+                approval_type=row["approval_type"],
+                approval_object_ref=row["approval_object_ref"],
+                trigger_reason=row["trigger_reason"],
+                comparison_options=list(row["comparison_options"]),
+                recommended_decision=row["recommended_decision"],
+                risk_and_impact=dict(row["risk_and_impact"]),
+                evidence_refs=list(row["evidence_refs"]),
+                effective_scope=row["effective_scope"],
+                timeout_policy=row["timeout_policy"],
+                decision=row["decision"],
+                decided_at=_as_iso(row["decided_at"]),
+            )
+            for row in rows
+        ]
+
     def mirror_artifact(
         self,
         artifact_row: dict[str, Any],
@@ -136,6 +232,7 @@ class SqlAlchemyGatewayMirror:
         payload["created_at"] = _as_datetime(payload["created_at"])
         with self.engine.begin() as connection:
             connection.execute(self.tables["artifact"].insert(), [payload])
+            self._mirror_paper_artifact(connection, payload)
             self._write_audit_and_outbox(
                 connection,
                 audit_event_id=audit_event_id,
@@ -146,6 +243,96 @@ class SqlAlchemyGatewayMirror:
                 event_type="artifact_submitted",
                 payload={"artifact_type": payload["artifact_type"]},
                 idempotency_key=idempotency_key,
+            )
+
+    def _mirror_paper_artifact(self, connection, artifact_row: dict[str, Any]) -> None:
+        artifact_type = artifact_row["artifact_type"]
+        payload = artifact_row["payload"]
+        created_at = artifact_row["created_at"]
+        if artifact_type == "PaperAccount":
+            table = self.tables["paper_account"]
+            account_id = payload["paper_account_id"]
+            connection.execute(table.delete().where(table.c.account_id == account_id))
+            connection.execute(
+                table.insert(),
+                [
+                    {
+                        "account_id": account_id,
+                        "base_currency": _money_currency(payload.get("cash"), "CNY"),
+                        "cash": _money_amount(payload["cash"]),
+                        "total_value": _money_amount(payload["total_value"]),
+                        "payload": payload,
+                        "created_at": created_at,
+                    }
+                ],
+            )
+        elif artifact_type == "PaperOrder":
+            table = self.tables["paper_order"]
+            paper_order_id = payload["paper_order_id"]
+            connection.execute(table.delete().where(table.c.paper_order_id == paper_order_id))
+            connection.execute(
+                table.insert(),
+                [
+                    {
+                        "paper_order_id": paper_order_id,
+                        "workflow_id": payload.get("workflow_id") or artifact_row["workflow_id"],
+                        "decision_memo_ref": payload["decision_memo_ref"],
+                        "symbol": payload["symbol"],
+                        "side": payload["side"],
+                        "target_quantity_or_weight": float(payload["target_quantity_or_weight"]),
+                        "price_range": payload["price_range"],
+                        "urgency": payload["urgency"],
+                        "execution_core_snapshot_ref": payload["execution_core_snapshot_ref"],
+                        "status": payload["status"],
+                        "created_at": created_at,
+                    }
+                ],
+            )
+        elif artifact_type == "PaperExecutionReceipt":
+            table = self.tables["paper_execution_receipt"]
+            receipt_id = artifact_row["artifact_id"]
+            connection.execute(table.delete().where(table.c.receipt_id == receipt_id))
+            connection.execute(
+                table.insert(),
+                [
+                    {
+                        "receipt_id": receipt_id,
+                        "paper_order_id": payload["paper_order_id"],
+                        "pricing_method": payload["pricing_method"],
+                        "execution_window": payload.get("execution_window", "unspecified"),
+                        "fill_status": payload["fill_status"],
+                        "fill_price": payload.get("fill_price"),
+                        "fill_quantity": payload.get("fill_quantity"),
+                        "fees": payload["fees"],
+                        "taxes": payload["taxes"],
+                        "slippage": payload["slippage"],
+                        "t_plus_one_state": payload["t_plus_one_state"],
+                        "created_at": created_at,
+                    }
+                ],
+            )
+        elif artifact_type == "PositionDisposalTask":
+            table = self.tables["position_disposal_task"]
+            task_id = payload["task_id"]
+            connection.execute(table.delete().where(table.c.task_id == task_id))
+            connection.execute(
+                table.insert(),
+                [
+                    {
+                        "task_id": task_id,
+                        "artifact_id": artifact_row["artifact_id"],
+                        "workflow_id": artifact_row["workflow_id"],
+                        "symbol": payload["symbol"],
+                        "triggers": payload["triggers"],
+                        "priority": payload["priority"],
+                        "risk_gate_present": bool(payload["risk_gate_present"]),
+                        "execution_core_guard_present": bool(payload["execution_core_guard_present"]),
+                        "direct_execution_allowed": bool(payload["direct_execution_allowed"]),
+                        "workflow_route": payload["workflow_route"],
+                        "reason_code": payload["reason_code"],
+                        "created_at": created_at,
+                    }
+                ],
             )
 
     def mirror_command(
