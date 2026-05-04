@@ -397,6 +397,28 @@ describe("WI-004 workbench interactions", () => {
     expect(buttonByName("S1").getAttribute("aria-pressed")).toBe("true");
   });
 
+  it("renders every required Investment Dossier business panel without exposing execution shortcuts", async () => {
+    await bootWorkbench("/investment/wf-001");
+
+    for (const label of [
+      "数据就绪",
+      "角色 payload",
+      "共识与行动强度",
+      "分歧看板",
+      "辩论时间线",
+      "优化偏离",
+      "风控结论",
+      "纸面执行",
+      "归因回链",
+    ]) {
+      expect(document.body.textContent).toContain(label);
+    }
+
+    expect(document.body.textContent).toContain("不显示继续成交入口");
+    expect(document.body.textContent).not.toContain("批准继续");
+    expect(document.body.textContent).not.toContain("立即成交");
+  });
+
   it("switches governance panels and keeps query-driven task filters visible", async () => {
     await bootWorkbench("/governance");
 
@@ -489,6 +511,58 @@ describe("WI-004 workbench interactions", () => {
     expect(buttonByName("通过").disabled).toBe(true);
   });
 
+  it("loads approval detail by route id and submits the same approval id", async () => {
+    let submittedApprovalId: string | null = null;
+    vi.stubGlobal("fetch", vi.fn(async (input: string | URL | Request, init?: RequestInit) => {
+      const href = typeof input === "string" ? input : input instanceof URL ? input.pathname : input.url;
+      if (href.endsWith("/api/approvals")) {
+        return mockJsonResponse({
+          approval_center: [
+            {
+              approval_id: "ap-route",
+              subject: "API 高影响能力草案",
+              trigger_reason: "api_high_impact_governance",
+              recommended_decision: "rejected",
+              effective_scope: "new_attempt",
+              comparison_options: ["方案 A：拒绝", "方案 B：要求修改"],
+              risk_and_impact: ["API 风险影响"],
+              timeout_disposition: "不生效",
+              rollback_ref: "rollback-api",
+              evidence_refs: ["artifact-api-approval"],
+              trace_route: "/investment/wf-api/trace",
+              allowed_actions: ["rejected"],
+            },
+          ],
+        });
+      }
+      if (href.endsWith("/api/approvals/ap-route/decision")) {
+        submittedApprovalId = "ap-route";
+        expect(init?.method).toBe("POST");
+        return mockJsonResponse({
+          approval_id: "ap-route",
+          decision: "rejected",
+          effective_scope: "new_attempt",
+        });
+      }
+      throw new Error(`unexpected fetch: ${href}`);
+    }));
+
+    await bootWorkbench("/governance/approvals/ap-route");
+    await flushAsyncWork();
+
+    expect(document.body.textContent).toContain("API 高影响能力草案");
+    expect(document.body.textContent).toContain("API 风险影响");
+    expect(document.body.textContent).toContain("rollback-api");
+
+    await act(async () => {
+      buttonByName("拒绝").click();
+    });
+    await flushAsyncWork();
+
+    expect(submittedApprovalId).toBe("ap-route");
+    expect(document.body.textContent).toContain("后端状态：拒绝");
+  });
+
   it("preserves governance return path when entering trace from an approval detail page", async () => {
     await bootWorkbench("/governance/approvals/ap-001");
 
@@ -507,12 +581,165 @@ describe("WI-004 workbench interactions", () => {
     expect(window.location.pathname).toBe("/governance/approvals/ap-001");
   });
 
+  it("renders complete approval packet materials and timeout/no-effect boundaries", async () => {
+    await bootWorkbench("/governance/approvals/ap-001");
+
+    expect(document.body.textContent).toContain("对比分析");
+    expect(document.body.textContent).toContain("影响范围");
+    expect(document.body.textContent).toContain("替代方案");
+    expect(document.body.textContent).toContain("风险与影响");
+    expect(document.body.textContent).toContain("回滚方式");
+    expect(document.body.textContent).toContain("超时不生效");
+    expect(document.body.textContent).toContain("只对后续任务生效");
+    expect(document.body.textContent).not.toContain("批准继续执行");
+  });
+
+  it("renders the Knowledge memory workspace without direct context activation", async () => {
+    await bootWorkbench("/knowledge");
+
+    for (const label of [
+      "每日简报",
+      "研究资料包",
+      "记忆工作区",
+      "capture / review / digest / organize",
+      "抽取状态",
+      "晋升状态",
+      "sensitivity",
+      "关系图",
+      "待应用组织建议",
+      "经 Gateway 应用",
+      "Context 注入检查",
+      "why_included",
+      "denied refs",
+      "Knowledge / Prompt / Skill 提案",
+      "diff / manifest",
+      "验证结果",
+      "适用范围",
+      "回滚",
+    ]) {
+      expect(document.body.textContent).toContain(label);
+    }
+
+    expect(document.body.textContent).toContain("不直接生效");
+    expect(document.body.textContent).not.toContain("立即生效");
+    expect(document.body.textContent).not.toContain("覆盖旧 MemoryVersion");
+  });
+
+  it("captures owner memory through the Knowledge memory API", async () => {
+    let capturedBody: Record<string, unknown> | null = null;
+    vi.stubGlobal("fetch", vi.fn(async (input: string | URL | Request, init?: RequestInit) => {
+      const href = typeof input === "string" ? input : input instanceof URL ? input.pathname : input.url;
+      if (href.endsWith("/api/knowledge/memory-items") && init?.method === "POST") {
+        capturedBody = JSON.parse(String(init.body));
+        return mockJsonResponse({
+          memory_id: "memory-new",
+          title: "Owner 捕获笔记",
+          current_version_id: "memory-version-new",
+          sensitivity: "public_internal",
+          tags: ["owner_capture"],
+        });
+      }
+      if (href.endsWith("/api/knowledge/memory-items")) {
+        return mockJsonResponse([]);
+      }
+      throw new Error(`unexpected fetch: ${href}`);
+    }));
+
+    await bootWorkbench("/knowledge");
+    await flushAsyncWork();
+
+    setInputValue(inputByLabel("记忆正文"), "复盘今天的硬异议处理");
+    await act(async () => {
+      buttonByName("捕获记忆").click();
+    });
+    await flushAsyncWork();
+
+    expect(capturedBody).toMatchObject({
+      source_type: "owner_note",
+      content_markdown: "复盘今天的硬异议处理",
+      suggested_memory_type: "research_note",
+      sensitivity: "public_internal",
+      client_seen_context_snapshot_id: "ctx-v1",
+    });
+    expect(document.body.textContent).toContain("已捕获记忆 memory-new");
+    expect(document.body.textContent).toContain("经 Gateway 写入");
+  });
+
+  it("applies Knowledge organize suggestions through relation append", async () => {
+    let relationBody: Record<string, unknown> | null = null;
+    vi.stubGlobal("fetch", vi.fn(async (input: string | URL | Request, init?: RequestInit) => {
+      const href = typeof input === "string" ? input : input instanceof URL ? input.pathname : input.url;
+      if (href.endsWith("/api/knowledge/memory-items/memory-api-1/relations")) {
+        relationBody = JSON.parse(String(init?.body));
+        expect(init?.method).toBe("POST");
+        return mockJsonResponse({
+          relation_id: "relation-api-1",
+          source_memory_id: "memory-api-1",
+          target_ref: "knowledge-method-1",
+          relation_type: "supports",
+        });
+      }
+      if (href.endsWith("/api/knowledge/memory-items")) {
+        return mockJsonResponse([
+          {
+            memory_id: "memory-api-1",
+            title: "API 研究笔记",
+            current_version_id: "version-api-1",
+            relations: [],
+          },
+        ]);
+      }
+      throw new Error(`unexpected fetch: ${href}`);
+    }));
+
+    await bootWorkbench("/knowledge");
+    await flushAsyncWork();
+
+    await act(async () => {
+      buttonByName("应用建议").click();
+    });
+    await flushAsyncWork();
+
+    expect(relationBody).toMatchObject({
+      target_ref: "knowledge-method-1",
+      relation_type: "supports",
+      client_seen_version_id: "version-api-1",
+    });
+    expect(document.body.textContent).toContain("组织建议已提交 relation-api-1");
+  });
+
   it("saves capability drafts as governance changes and keeps in-flight runs untouched", async () => {
+    vi.stubGlobal("fetch", vi.fn(async (input: string | URL | Request, init?: RequestInit) => {
+      const href = typeof input === "string" ? input : input instanceof URL ? input.pathname : input.url;
+      if (href.endsWith("/api/team")) {
+        return mockJsonResponse({ team_health: { healthy_agent_count: 9 }, agent_cards: [] });
+      }
+      if (href.endsWith("/api/team/quant_analyst/capability-config")) {
+        return mockJsonResponse({
+          agent_id: "quant_analyst",
+          editable_fields: [{ field: "default_model_profile" }],
+          forbidden_direct_update_reason: "governance_draft_only",
+          effective_scope_options: ["new_task"],
+        });
+      }
+      if (href.endsWith("/api/team/quant_analyst/capability-drafts")) {
+        expect(init?.method).toBe("POST");
+        return mockJsonResponse({
+          draft_id: "draft-api",
+          governance_change_ref: "gov-change-api",
+          impact_level: "high",
+          effective_scope: "new_task",
+        });
+      }
+      throw new Error(`unexpected fetch: ${href}`);
+    }));
+
     await bootWorkbench("/governance/team/quant_analyst/config");
 
     await act(async () => {
       buttonByName("保存草案").click();
     });
+    await flushAsyncWork();
 
     expect(document.body.textContent).toContain("已生成治理变更草案");
     expect(document.body.textContent).toContain("高影响，需进入 Owner 审批");
@@ -611,6 +838,50 @@ describe("WI-004 workbench interactions", () => {
     expect(document.body.textContent).not.toContain("已提交：要求修改 · 后端已接收");
   });
 
+  it("shows snapshot mismatch guidance when approval decision API returns 409", async () => {
+    vi.stubGlobal("fetch", vi.fn(async (input: string | URL | Request) => {
+      const href = typeof input === "string" ? input : input instanceof URL ? input.pathname : input.url;
+      if (href.endsWith("/api/approvals")) {
+        return mockJsonResponse({
+          approval_center: [
+            {
+              approval_id: "ap-001",
+              subject: "API 审批包",
+              trigger_reason: "high_impact_agent_capability_change",
+              allowed_actions: ["request_changes"],
+            },
+          ],
+        });
+      }
+      if (href.endsWith("/api/approvals/ap-001/decision")) {
+        return {
+          ok: false,
+          status: 409,
+          json: async () => ({
+            error: {
+              code: "SNAPSHOT_MISMATCH",
+              reason_code: "client_seen_version_mismatch",
+              trace_id: "trace-conflict",
+            },
+          }),
+        } as Response;
+      }
+      throw new Error(`unexpected fetch: ${href}`);
+    }));
+
+    await bootWorkbench("/governance/approvals/ap-001");
+    await flushAsyncWork();
+
+    await act(async () => {
+      buttonByName("要求修改").click();
+    });
+    await flushAsyncWork();
+
+    expect(document.body.textContent).toContain("审批状态已变化，请刷新");
+    expect(document.body.textContent).toContain("SNAPSHOT_MISMATCH");
+    expect(document.body.textContent).toContain("trace-conflict");
+  });
+
   it("merges partial API team cards with the nine-agent roster instead of dropping missing agents", async () => {
     vi.stubGlobal("fetch", vi.fn(async (input: string | URL | Request) => {
       const href = typeof input === "string" ? input : input instanceof URL ? input.pathname : input.url;
@@ -655,6 +926,30 @@ describe("WI-004 workbench interactions", () => {
     expect(document.body.textContent).toContain("CIO");
     expect(document.body.textContent).toContain("Quant Analyst");
     expect(document.body.textContent).not.toContain("Macro Analyst");
+  });
+
+  it("shows team health, attribution refs, weaknesses and version boundaries in the Agent workspace", async () => {
+    await bootWorkbench("/governance/team");
+
+    expect(document.body.textContent).toContain("团队健康");
+    expect(document.body.textContent).toContain("待处理能力草案");
+    expect(document.body.textContent).toContain("失败/越权");
+    expect(document.body.textContent).toContain("证据不足");
+    expect(document.body.textContent).toContain("敏感字段拒绝");
+    expect(document.body.textContent).toContain("Context ctx-v1");
+
+    await bootWorkbench("/governance/team/quant_analyst");
+
+    expect(document.body.textContent).toContain("CFO 归因");
+    expect(document.body.textContent).toContain("cfo-attribution-001");
+    expect(document.body.textContent).toContain("版本与权限");
+    expect(document.body.textContent).toContain("Prompt 1.0.0");
+    expect(document.body.textContent).toContain("越权/失败");
+
+    await bootWorkbench("/governance/team/macro_analyst");
+
+    expect(document.body.textContent).toContain("越权/失败");
+    expect(document.body.textContent).toContain("memory_sensitive_denied");
   });
 
   it("shows submitting feedback and disables duplicate capability draft saves", async () => {
@@ -713,6 +1008,53 @@ describe("WI-004 workbench interactions", () => {
     }));
     await flushAsyncWork();
     expect(document.body.textContent).toContain("gov-change-api-1");
+  });
+
+  it("shows capability draft API failure instead of fallback success", async () => {
+    vi.stubGlobal("fetch", vi.fn(async (input: string | URL | Request, init?: RequestInit) => {
+      const href = typeof input === "string" ? input : input instanceof URL ? input.pathname : input.url;
+      if (href.endsWith("/api/team/quant_analyst/capability-config")) {
+        return mockJsonResponse({
+          agent_id: "quant_analyst",
+          editable_fields: [{ field: "default_model_profile" }],
+          forbidden_direct_update_reason: "governance_draft_only",
+          effective_scope_options: ["new_task"],
+        });
+      }
+      if (href.endsWith("/api/team/quant_analyst/capability-drafts")) {
+        expect(init?.method).toBe("POST");
+        return { ok: false, json: async () => ({ data: null }) } as Response;
+      }
+      if (href.endsWith("/api/team")) {
+        return mockJsonResponse({ team_health: { healthy_agent_count: 9 }, agent_cards: [] });
+      }
+      throw new Error(`unexpected fetch: ${href}`);
+    }));
+
+    await bootWorkbench("/governance/team/quant_analyst/config");
+    await flushAsyncWork();
+
+    await act(async () => {
+      buttonByName("保存草案").click();
+    });
+    await flushAsyncWork();
+
+    expect(document.body.textContent).toContain("草案提交失败");
+    expect(document.body.textContent).not.toContain("已生成治理变更草案 gov-change-001");
+  });
+
+  it("labels fallback data when read model loading fails and exposes retry", async () => {
+    vi.stubGlobal("fetch", vi.fn(async () => {
+      throw new Error("api unavailable");
+    }));
+
+    await bootWorkbench("/governance/team");
+    await flushAsyncWork();
+
+    expect(document.body.textContent).toContain("读取最新数据失败");
+    expect(document.body.textContent).toContain("显示上次可用数据");
+    expect(buttonByName("重试")).not.toBeNull();
+    expect(document.body.textContent).toContain("Quant Analyst");
   });
 
   it("loads agent profile and capability config from /api/team endpoints when available", async () => {
@@ -798,6 +1140,60 @@ describe("WI-004 workbench interactions", () => {
     expect(document.body.textContent).toContain("memory-api-1 支撑 artifact-api-1");
   });
 
+  it("captures memory and applies organize suggestions through controlled APIs", async () => {
+    let captured = false;
+    let relationApplied = false;
+    vi.stubGlobal("fetch", vi.fn(async (input: string | URL | Request, init?: RequestInit) => {
+      const href = typeof input === "string" ? input : input instanceof URL ? input.pathname : input.url;
+      if (href.endsWith("/api/knowledge/memory-items") && init?.method !== "POST") {
+        return mockJsonResponse([
+          {
+            memory_id: "memory-api-1",
+            title: "API 研究笔记",
+            current_version_id: "version-api-1",
+            relations: [],
+          },
+        ]);
+      }
+      if (href.endsWith("/api/knowledge/memory-items") && init?.method === "POST") {
+        captured = true;
+        return mockJsonResponse({
+          memory_id: "memory-created-1",
+          title: "Owner 捕获记忆",
+          current_version_id: "version-created-1",
+        });
+      }
+      if (href.endsWith("/api/knowledge/memory-items/memory-api-1/relations")) {
+        relationApplied = true;
+        expect(init?.method).toBe("POST");
+        return mockJsonResponse({
+          source_memory_id: "memory-api-1",
+          target_ref: "collection:政策/质量",
+          relation_type: "applies_to",
+        });
+      }
+      throw new Error(`unexpected fetch: ${href}`);
+    }));
+
+    await bootWorkbench("/knowledge");
+    await flushAsyncWork();
+
+    await act(async () => {
+      buttonByName("捕获记忆").click();
+    });
+    await flushAsyncWork();
+
+    await act(async () => {
+      buttonByName("应用组织建议").click();
+    });
+    await flushAsyncWork();
+
+    expect(captured).toBe(true);
+    expect(relationApplied).toBe(true);
+    expect(document.body.textContent).toContain("已捕获记忆 memory-created-1");
+    expect(document.body.textContent).toContain("组织建议已经通过 Gateway 应用");
+  });
+
   it("loads trace runs, events and handoffs from workflow read endpoints when available", async () => {
     vi.stubGlobal("fetch", vi.fn(async (input: string | URL | Request) => {
       const href = typeof input === "string" ? input : input instanceof URL ? input.pathname : input.url;
@@ -866,6 +1262,42 @@ describe("WI-004 workbench interactions", () => {
     expect(document.body.textContent).toContain("cash · 888000 CNY");
     expect(document.body.textContent).toContain("fund · 66000 CNY");
     expect(document.body.textContent).toContain("risk-budget-api");
+  });
+
+  it("updates finance asset profile through /api/finance/assets with browser feedback", async () => {
+    let updateCalled = false;
+    vi.stubGlobal("fetch", vi.fn(async (input: string | URL | Request, init?: RequestInit) => {
+      const href = typeof input === "string" ? input : input instanceof URL ? input.pathname : input.url;
+      if (href.endsWith("/api/finance/overview")) {
+        return mockJsonResponse({
+          asset_profile: [],
+          finance_health: { liquidity: 1000000, risk_budget: { budget_ref: "risk-budget-ui" } },
+          manual_todo: [],
+        });
+      }
+      if (href.endsWith("/api/finance/assets")) {
+        updateCalled = true;
+        expect(init?.method).toBe("POST");
+        return mockJsonResponse({
+          asset_id: "asset-cash-ui",
+          asset_type: "cash",
+          valuation: { amount: 1000000, currency: "CNY" },
+        });
+      }
+      throw new Error(`unexpected fetch: ${href}`);
+    }));
+
+    await bootWorkbench("/finance");
+    await flushAsyncWork();
+
+    await act(async () => {
+      buttonByName("更新现金档案").click();
+    });
+    await flushAsyncWork();
+
+    expect(updateCalled).toBe(true);
+    expect(document.body.textContent).toContain("财务档案已更新 asset-cash-ui");
+    expect(document.body.textContent).toContain("不触发审批、执行或交易链路");
   });
 
   it("loads governance health from /api/devops/health when available", async () => {

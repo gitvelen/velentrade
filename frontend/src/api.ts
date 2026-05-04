@@ -1,5 +1,6 @@
 import {
   AgentProfileReadModel,
+  ApprovalRecordReadModel,
   CapabilityConfigReadModel,
   DevOpsHealthReadModel,
   FinanceOverviewReadModel,
@@ -13,12 +14,22 @@ import {
   buildGovernanceReadModel,
   buildInvestmentDossierReadModel,
   buildKnowledgeReadModel,
+  buildApprovalRecordReadModel,
   buildTeamReadModel,
   buildTraceDebugReadModel,
 } from "./workbench";
 
 type ApiEnvelope<T> = {
   data: T;
+};
+
+type ApiErrorEnvelope = {
+  error?: {
+    code?: string;
+    reason_code?: string;
+    trace_id?: string;
+    message?: string;
+  };
 };
 
 type ApiTeamReadModel = {
@@ -50,11 +61,19 @@ type ApiAgentProfileReadModel = {
   capability_summary?: string;
   can_do?: string[];
   cannot_do?: string[];
+  profile_version?: string;
+  skill_package_version?: string;
+  prompt_version?: string;
+  context_snapshot_version?: string;
+  tool_permissions?: string[];
+  weakness_tags?: string[];
+  cfo_attribution_refs?: string[];
   quality_metrics?: {
     schema_pass_rate?: number;
     evidence_quality?: number;
   };
   denied_actions?: Array<{ reason_code?: string }>;
+  failure_records?: Array<string | { reason_code?: string }>;
 };
 
 type ApiCapabilityConfigReadModel = {
@@ -66,13 +85,19 @@ type ApiCapabilityConfigReadModel = {
 
 type ApiMemoryReadModel = {
   memory_id?: string;
+  memory_type?: string;
+  status?: string;
   title?: string;
+  tags?: string[];
   why_included?: string;
   current_version_id?: string;
   sensitivity?: string;
+  promotion_state?: string;
+  extraction_status?: string;
   relations?: Array<{
     target_ref?: string;
     relation_type?: string;
+    reason?: string;
   }>;
 };
 
@@ -129,10 +154,19 @@ type ApiApprovalCenterReadModel = {
   approval_center?: Array<{
     approval_id?: string;
     approval_type?: string;
+    subject?: string;
     trigger_reason?: string;
     effective_scope?: string;
     recommended_decision?: string;
     decision?: string;
+    alternatives?: string[];
+    comparison_options?: string[];
+    risk_and_impact?: string[];
+    timeout_disposition?: string;
+    rollback_ref?: string;
+    evidence_refs?: string[];
+    trace_route?: string;
+    allowed_actions?: string[];
   }>;
 };
 
@@ -175,6 +209,50 @@ type ApiInvestmentDossierReadModel = {
     reason_code?: string;
     reasonCode?: string;
   }>;
+  data_readiness?: {
+    quality_band?: string;
+    decision_core_status?: string;
+    execution_core_status?: string;
+    issues?: string[];
+  };
+  role_payload_drilldowns?: Array<{
+    role?: string;
+    highlights?: string[];
+  }>;
+  consensus?: {
+    score?: number;
+    consensus_score?: number;
+    action_conviction?: number;
+    threshold_label?: string;
+  };
+  debate?: {
+    rounds_used?: number;
+    retained_hard_dissent?: boolean;
+    risk_review_required?: boolean;
+    issues?: string[];
+  };
+  optimizer_deviation?: {
+    single_name_deviation?: string;
+    portfolio_deviation?: string;
+    recommendation?: string;
+  };
+  risk_review?: {
+    review_result?: string;
+    repairability?: string;
+    owner_exception_required?: boolean;
+    reason_codes?: string[];
+  };
+  paper_execution?: {
+    status?: string;
+    pricing_method?: string;
+    window?: string;
+    fees?: string;
+    t_plus_one?: string;
+  };
+  attribution?: {
+    summary?: string;
+    links?: string[];
+  };
 };
 
 export type RequestBriefApiReadModel = {
@@ -204,10 +282,54 @@ export type ApprovalDecisionApiReadModel = {
   effectiveScope: string;
 };
 
+export type MemoryWriteApiReadModel = {
+  memoryId: string;
+  currentVersionId: string;
+};
+
+export type MemoryRelationApiReadModel = {
+  relationId: string;
+  sourceMemoryId: string;
+  targetRef: string;
+  relationType: string;
+};
+
+export type FinanceAssetUpdateApiReadModel = {
+  assetId: string;
+  assetType: string;
+};
+
+export class ApiRequestError extends Error {
+  statusCode: number;
+  code: string;
+  reasonCode: string;
+  traceId: string;
+
+  constructor(path: string, statusCode: number, code: string, reasonCode: string, traceId: string) {
+    super(`request failed: ${path}`);
+    this.statusCode = statusCode;
+    this.code = code;
+    this.reasonCode = reasonCode;
+    this.traceId = traceId;
+  }
+}
+
 async function fetchEnvelope<T>(path: string, init?: RequestInit): Promise<T> {
   const response = await fetch(path, init);
   if (!response.ok) {
-    throw new Error(`request failed: ${path}`);
+    let errorEnvelope: ApiErrorEnvelope = {};
+    try {
+      errorEnvelope = await response.json() as ApiErrorEnvelope;
+    } catch {
+      errorEnvelope = {};
+    }
+    throw new ApiRequestError(
+      path,
+      response.status,
+      errorEnvelope.error?.code ?? "REQUEST_FAILED",
+      errorEnvelope.error?.reason_code ?? "unknown",
+      errorEnvelope.error?.trace_id ?? "trace-unavailable",
+    );
   }
   const payload = await response.json() as ApiEnvelope<T>;
   return payload.data;
@@ -280,12 +402,23 @@ export async function loadAgentProfileReadModel(agentId: string): Promise<AgentP
     capabilitySummary: payload.capability_summary ?? fallback?.capabilitySummary ?? "",
     canDo: payload.can_do ?? fallback?.canDo ?? [],
     cannotDo: payload.cannot_do ?? fallback?.cannotDo ?? [],
+    versions: {
+      profileVersion: payload.profile_version ?? fallback?.versions.profileVersion ?? "unknown",
+      skillPackageVersion: payload.skill_package_version ?? fallback?.versions.skillPackageVersion ?? "unknown",
+      promptVersion: payload.prompt_version ?? fallback?.versions.promptVersion ?? "unknown",
+      contextSnapshotVersion: payload.context_snapshot_version ?? fallback?.versions.contextSnapshotVersion ?? "unknown",
+    },
+    toolPermissions: payload.tool_permissions ?? fallback?.toolPermissions ?? [],
+    weaknessTags: payload.weakness_tags ?? fallback?.weaknessTags ?? [],
     qualityMetrics: {
       schemaPassRate: payload.quality_metrics?.schema_pass_rate ?? fallback?.qualityMetrics.schemaPassRate ?? 0,
       evidenceQuality: payload.quality_metrics?.evidence_quality ?? fallback?.qualityMetrics.evidenceQuality ?? 0,
     },
-    cfoAttributionRefs: fallback?.cfoAttributionRefs ?? [],
+    cfoAttributionRefs: payload.cfo_attribution_refs ?? fallback?.cfoAttributionRefs ?? [],
     deniedActions: (payload.denied_actions ?? []).map((item) => ({ reasonCode: item.reason_code ?? "unknown" })),
+    failureRecords: (payload.failure_records ?? fallback?.failureRecords ?? []).map((item) =>
+      typeof item === "string" ? item : item.reason_code ?? "unknown",
+    ),
   };
 }
 
@@ -304,6 +437,7 @@ export async function loadAgentCapabilityConfigReadModel(agentId: string): Promi
 export async function loadKnowledgeReadModel(): Promise<KnowledgeReadModel> {
   const fallback = buildKnowledgeReadModel();
   const payload = await fetchEnvelope<ApiMemoryReadModel[]>("/api/knowledge/memory-items");
+  const firstMemoryId = payload[0]?.memory_id ?? fallback.memoryResults[0]?.memoryId ?? "memory";
 
   return {
     ...fallback,
@@ -317,11 +451,15 @@ export async function loadKnowledgeReadModel(): Promise<KnowledgeReadModel> {
     memoryResults: payload.length
       ? payload.map((item) => ({
           memoryId: item.memory_id ?? "memory",
+          currentVersionId: item.current_version_id ?? "memory-version",
           title: item.title ?? "未命名记忆",
           relationSummary: item.relations?.[0]
             ? `${item.relations[0].relation_type ?? "related_to"} ${item.relations[0].target_ref ?? "unknown"}`
             : "无关联",
           sensitivity: item.sensitivity ?? "public_internal",
+          extractionStatus: item.extraction_status ?? item.status ?? "unknown",
+          promotionState: item.promotion_state ?? "candidate",
+          tags: item.tags ?? [],
         }))
       : fallback.memoryResults,
     relationGraph: payload.flatMap((item) =>
@@ -329,15 +467,74 @@ export async function loadKnowledgeReadModel(): Promise<KnowledgeReadModel> {
         sourceMemoryId: item.memory_id ?? "memory",
         targetRef: relation.target_ref ?? "unknown",
         relationType: relation.relation_type ?? "related_to",
+        reason: relation.reason ?? "API relation",
       })),
     ),
     contextInjectionInspector: payload.length
       ? payload.map((item) => ({
           contextSnapshotId: item.current_version_id ?? "ctx-api",
+          sourceRef: item.memory_id ?? "memory",
           whyIncluded: item.why_included ?? "fenced_background_context_only",
           redactionStatus: "applied",
+          deniedRefs: [],
         }))
       : fallback.contextInjectionInspector,
+    organizeSuggestions: fallback.organizeSuggestions.map((item) => ({
+      ...item,
+      targetMemoryRefs: [firstMemoryId],
+    })),
+  };
+}
+
+export async function createMemoryItem(contentMarkdown: string): Promise<MemoryWriteApiReadModel> {
+  const payload = await fetchEnvelope<ApiMemoryReadModel>("/api/knowledge/memory-items", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      source_type: "owner_note",
+      source_refs: ["knowledge-ui"],
+      content_markdown: contentMarkdown,
+      suggested_memory_type: "research_note",
+      tags: ["owner_capture", "research"],
+      sensitivity: "public_internal",
+      client_seen_context_snapshot_id: "ctx-v1",
+    }),
+  });
+
+  return {
+    memoryId: payload.memory_id ?? "memory",
+    currentVersionId: payload.current_version_id ?? "memory-version",
+  };
+}
+
+export async function applyMemoryOrganizeSuggestion(
+  memoryId: string,
+  currentVersionId: string,
+  _tags: string[],
+): Promise<MemoryRelationApiReadModel> {
+  const payload = await fetchEnvelope<{
+    relation_id?: string;
+    source_memory_id?: string;
+    memory_id?: string;
+    target_ref?: string;
+    relation_type?: string;
+  }>(`/api/knowledge/memory-items/${memoryId}/relations`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      target_ref: "knowledge-method-1",
+      relation_type: "supports",
+      reason: "Owner applied organize suggestion from Knowledge workspace",
+      evidence_refs: ["knowledge_memory_workspace"],
+      client_seen_version_id: currentVersionId,
+    }),
+  });
+
+  return {
+    relationId: payload.relation_id ?? "relation",
+    sourceMemoryId: payload.source_memory_id ?? payload.memory_id ?? memoryId,
+    targetRef: payload.target_ref ?? "knowledge-method-1",
+    relationType: payload.relation_type ?? "supports",
   };
 }
 
@@ -419,6 +616,51 @@ export async function loadInvestmentDossierReadModel(workflowId: string): Promis
           hardDissent: row.hard_dissent ?? false,
         }))
       : fallback.analystStanceMatrix,
+    dataReadiness: {
+      qualityBand: payload.data_readiness?.quality_band ?? fallback.dataReadiness.qualityBand,
+      decisionCoreStatus: payload.data_readiness?.decision_core_status ?? fallback.dataReadiness.decisionCoreStatus,
+      executionCoreStatus: payload.data_readiness?.execution_core_status ?? fallback.dataReadiness.executionCoreStatus,
+      issues: payload.data_readiness?.issues ?? fallback.dataReadiness.issues,
+    },
+    rolePayloadDrilldowns: (payload.role_payload_drilldowns ?? []).length
+      ? (payload.role_payload_drilldowns ?? []).map((item) => ({
+          role: item.role ?? "Analyst",
+          highlights: item.highlights ?? [],
+        }))
+      : fallback.rolePayloadDrilldowns,
+    consensus: {
+      score: payload.consensus?.score ?? payload.consensus?.consensus_score ?? fallback.consensus.score,
+      actionConviction: payload.consensus?.action_conviction ?? fallback.consensus.actionConviction,
+      thresholdLabel: payload.consensus?.threshold_label ?? fallback.consensus.thresholdLabel,
+    },
+    debate: {
+      roundsUsed: payload.debate?.rounds_used ?? fallback.debate.roundsUsed,
+      retainedHardDissent: payload.debate?.retained_hard_dissent ?? fallback.debate.retainedHardDissent,
+      riskReviewRequired: payload.debate?.risk_review_required ?? fallback.debate.riskReviewRequired,
+      issues: payload.debate?.issues ?? fallback.debate.issues,
+    },
+    optimizerDeviation: {
+      singleNameDeviation: payload.optimizer_deviation?.single_name_deviation ?? fallback.optimizerDeviation.singleNameDeviation,
+      portfolioDeviation: payload.optimizer_deviation?.portfolio_deviation ?? fallback.optimizerDeviation.portfolioDeviation,
+      recommendation: payload.optimizer_deviation?.recommendation ?? fallback.optimizerDeviation.recommendation,
+    },
+    riskReview: {
+      reviewResult: payload.risk_review?.review_result ?? fallback.riskReview.reviewResult,
+      repairability: payload.risk_review?.repairability ?? fallback.riskReview.repairability,
+      ownerExceptionRequired: payload.risk_review?.owner_exception_required ?? fallback.riskReview.ownerExceptionRequired,
+      reasonCodes: payload.risk_review?.reason_codes ?? fallback.riskReview.reasonCodes,
+    },
+    paperExecution: {
+      status: payload.paper_execution?.status ?? fallback.paperExecution.status,
+      pricingMethod: payload.paper_execution?.pricing_method ?? fallback.paperExecution.pricingMethod,
+      window: payload.paper_execution?.window ?? fallback.paperExecution.window,
+      fees: payload.paper_execution?.fees ?? fallback.paperExecution.fees,
+      tPlusOne: payload.paper_execution?.t_plus_one ?? fallback.paperExecution.tPlusOne,
+    },
+    attribution: {
+      summary: payload.attribution?.summary ?? fallback.attribution.summary,
+      links: payload.attribution?.links ?? fallback.attribution.links,
+    },
     forbiddenActions,
     traceRoute: `/investment/${workflowId}/trace`,
   };
@@ -467,6 +709,41 @@ export async function loadGovernanceReadModel(): Promise<GovernanceReadModel> {
   };
 }
 
+export async function loadApprovalRecordReadModel(approvalId: string): Promise<ApprovalRecordReadModel> {
+  const fallback = buildApprovalRecordReadModel({ approvalId });
+  const payload = await fetchEnvelope<ApiApprovalCenterReadModel>("/api/approvals");
+  const approval = (payload.approval_center ?? []).find((item) => item.approval_id === approvalId);
+
+  if (!approval) {
+    return buildApprovalRecordReadModel({
+      approvalId,
+      subject: `审批包 ${approvalId}`,
+      triggerReason: "approval_not_found",
+      recommendation: "request_changes",
+      comparisonOptions: ["等待服务端返回完整审批材料"],
+      riskAndImpact: ["当前审批记录未出现在审批中心 read model"],
+      evidenceRefs: [],
+      allowedActions: [],
+    });
+  }
+
+  return buildApprovalRecordReadModel({
+    approvalId: approval.approval_id ?? fallback.approvalId,
+    subject: approval.subject ?? fallback.subject,
+    triggerReason: approval.trigger_reason ?? fallback.triggerReason,
+    recommendation: approval.recommended_decision ?? approval.decision ?? fallback.recommendation,
+    alternatives: approval.alternatives ?? fallback.alternatives,
+    comparisonOptions: approval.comparison_options ?? fallback.comparisonOptions,
+    impactScope: approval.effective_scope ?? fallback.impactScope,
+    riskAndImpact: approval.risk_and_impact ?? fallback.riskAndImpact,
+    timeoutDisposition: approval.timeout_disposition ?? fallback.timeoutDisposition,
+    rollbackRef: approval.rollback_ref ?? fallback.rollbackRef,
+    evidenceRefs: approval.evidence_refs ?? fallback.evidenceRefs,
+    traceRoute: approval.trace_route ?? fallback.traceRoute,
+    allowedActions: approval.allowed_actions ?? fallback.allowedActions,
+  });
+}
+
 export async function loadFinanceOverviewReadModel(): Promise<FinanceOverviewReadModel> {
   const fallback = buildFinanceOverviewReadModel();
   const payload = await fetchEnvelope<ApiFinanceOverviewReadModel>("/api/finance/overview");
@@ -485,6 +762,28 @@ export async function loadFinanceOverviewReadModel(): Promise<FinanceOverviewRea
       stress: payload.finance_health?.stress_test_summary ?? fallback.health.stress,
     },
     reminders: (payload.manual_todo ?? []).map((item) => item.risk_hint ?? "manual_todo"),
+  };
+}
+
+export async function updateFinanceAsset(): Promise<FinanceAssetUpdateApiReadModel> {
+  const payload = await fetchEnvelope<{
+    asset_id?: string;
+    asset_type?: string;
+  }>("/api/finance/assets", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      asset_type: "cash",
+      valuation: { amount: 1000000, currency: "CNY" },
+      valuation_date: "2026-05-04",
+      source: "owner_ui",
+      client_seen_version: 1,
+    }),
+  });
+
+  return {
+    assetId: payload.asset_id ?? "asset",
+    assetType: payload.asset_type ?? "cash",
   };
 }
 

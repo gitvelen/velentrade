@@ -79,12 +79,21 @@ export type AgentProfileReadModel = {
   capabilitySummary: string;
   canDo: string[];
   cannotDo: string[];
+  versions: {
+    profileVersion: string;
+    skillPackageVersion: string;
+    promptVersion: string;
+    contextSnapshotVersion: string;
+  };
+  toolPermissions: string[];
+  weaknessTags: string[];
   qualityMetrics: {
     schemaPassRate: number;
     evidenceQuality: number;
   };
   cfoAttributionRefs: string[];
   deniedActions: Array<{ reasonCode: string }>;
+  failureRecords: string[];
 };
 
 export type CapabilityConfigReadModel = {
@@ -136,6 +145,49 @@ export type InvestmentDossierReadModel = {
     confidence: number;
     hardDissent: boolean;
   }>;
+  dataReadiness: {
+    qualityBand: string;
+    decisionCoreStatus: string;
+    executionCoreStatus: string;
+    issues: string[];
+  };
+  rolePayloadDrilldowns: Array<{
+    role: string;
+    highlights: string[];
+  }>;
+  consensus: {
+    score: number;
+    actionConviction: number;
+    thresholdLabel: string;
+  };
+  debate: {
+    roundsUsed: number;
+    retainedHardDissent: boolean;
+    riskReviewRequired: boolean;
+    issues: string[];
+  };
+  optimizerDeviation: {
+    singleNameDeviation: string;
+    portfolioDeviation: string;
+    recommendation: string;
+  };
+  riskReview: {
+    reviewResult: string;
+    repairability: string;
+    ownerExceptionRequired: boolean;
+    reasonCodes: string[];
+  };
+  paperExecution: {
+    status: string;
+    pricingMethod: string;
+    window: string;
+    fees: string;
+    tPlusOne: string;
+  };
+  attribution: {
+    summary: string;
+    links: string[];
+  };
   forbiddenActions: Record<string, { actionVisible: boolean; reasonCode: string }>;
   traceRoute: string;
 };
@@ -151,11 +203,59 @@ export type TraceDebugReadModel = {
 };
 
 export type KnowledgeReadModel = {
+  dailyBrief: Array<{ briefId: string; priority: string; title: string; supportingEvidenceOnly: boolean }>;
+  researchPackages: Array<{ packageId: string; title: string; status: string; evidenceRefs: string[] }>;
   memoryCollections: Array<{ collectionId: string; title: string; resultCount: number }>;
-  memoryResults: Array<{ memoryId: string; title: string; relationSummary: string; sensitivity: string }>;
-  relationGraph: Array<{ sourceMemoryId: string; targetRef: string; relationType: string }>;
-  contextInjectionInspector: Array<{ contextSnapshotId: string; whyIncluded: string; redactionStatus: string }>;
+  memoryResults: Array<{
+    memoryId: string;
+    currentVersionId: string;
+    title: string;
+    relationSummary: string;
+    sensitivity: string;
+    extractionStatus: string;
+    promotionState: string;
+    tags: string[];
+  }>;
+  relationGraph: Array<{ sourceMemoryId: string; targetRef: string; relationType: string; reason: string }>;
+  organizeSuggestions: Array<{
+    suggestionId: string;
+    targetMemoryRefs: string[];
+    suggestedTags: string[];
+    requiresGatewayWrite: boolean;
+    riskIfApplied: string;
+  }>;
+  contextInjectionInspector: Array<{
+    contextSnapshotId: string;
+    sourceRef: string;
+    whyIncluded: string;
+    redactionStatus: string;
+    deniedRefs: string[];
+  }>;
+  proposals: Array<{
+    proposalId: string;
+    proposalType: string;
+    impactLevel: string;
+    validationResultRefs: string[];
+    effectiveScope: string;
+    rollbackPlan: string;
+  }>;
   defaultContextProposalPath: string;
+};
+
+export type ApprovalRecordReadModel = {
+  approvalId: string;
+  subject: string;
+  triggerReason: string;
+  recommendation: string;
+  alternatives: string[];
+  comparisonOptions: string[];
+  impactScope: string;
+  riskAndImpact: string[];
+  timeoutDisposition: string;
+  rollbackRef: string;
+  evidenceRefs: string[];
+  traceRoute: string;
+  allowedActions: string[];
 };
 
 export type FinanceOverviewReadModel = {
@@ -527,6 +627,51 @@ export function buildInvestmentDossierReadModel(): InvestmentDossierReadModel {
       { role: "Quant", direction: "中性", confidence: 0.61, hardDissent: false },
       { role: "Event", direction: "反向", confidence: 0.82, hardDissent: true },
     ],
+    dataReadiness: {
+      qualityBand: "degraded",
+      decisionCoreStatus: "conditional_pass",
+      executionCoreStatus: "blocked",
+      issues: ["事件源冲突待补证", "执行核心数据不足"],
+    },
+    rolePayloadDrilldowns: [
+      { role: "Macro", highlights: ["市场状态偏谨慎", "流动性边界收紧"] },
+      { role: "Fundamental", highlights: ["估值修复空间存在", "资产质量仍需补证"] },
+      { role: "Quant", highlights: ["因子信号中性", "波动放大"] },
+      { role: "Event", highlights: ["公告冲击未消化", "保留硬异议"] },
+    ],
+    consensus: {
+      score: 0.72,
+      actionConviction: 0.58,
+      thresholdLabel: "行动强度不足，不进入纸面执行",
+    },
+    debate: {
+      roundsUsed: 2,
+      retainedHardDissent: true,
+      riskReviewRequired: true,
+      issues: ["事件冲击是否短期可修复", "低行动强度是否需要观察"],
+    },
+    optimizerDeviation: {
+      singleNameDeviation: "4.2pp",
+      portfolioDeviation: "1.1pp",
+      recommendation: "先补证，不生成 Owner 例外",
+    },
+    riskReview: {
+      reviewResult: "conditional_pass",
+      repairability: "repairable",
+      ownerExceptionRequired: false,
+      reasonCodes: ["retained_hard_dissent_risk_review", "execution_core_blocked_no_trade"],
+    },
+    paperExecution: {
+      status: "blocked",
+      pricingMethod: "minute_vwap",
+      window: "2h",
+      fees: "未产生",
+      tPlusOne: "未进入锁定",
+    },
+    attribution: {
+      summary: "等待正式执行与归因样本；当前仅保留反思入口。",
+      links: ["reflection-draft-001", "handoff-risk-001"],
+    },
     forbiddenActions: {
       risk_rejected_no_override: { actionVisible: false, reasonCode: "risk_rejected_no_override" },
       execution_core_blocked_no_trade: { actionVisible: false, reasonCode: "execution_core_blocked_no_trade" },
@@ -597,20 +742,23 @@ export function buildGovernanceReadModel(): GovernanceReadModel {
   };
 }
 
-export function buildApprovalRecordReadModel() {
-  return {
+export function buildApprovalRecordReadModel(overrides: Partial<ApprovalRecordReadModel> = {}) {
+  const record: ApprovalRecordReadModel = {
     approvalId: "ap-001",
     subject: "Quant Analyst 能力配置草案",
     triggerReason: "high_impact_agent_capability_change",
     recommendation: "request_changes",
     alternatives: ["approved", "rejected", "request_changes"],
+    comparisonOptions: ["维持当前能力版本", "降低模型路由风险后重提", "通过高影响草案但只作用于后续任务"],
     impactScope: "new_task",
+    riskAndImpact: ["影响 Quant Analyst 后续研究质量", "不改变在途 AgentRun", "不改变 Risk/Execution 规则"],
     timeoutDisposition: "不生效",
     rollbackRef: "gov-change-001",
     evidenceRefs: ["team_capability_config_report.json", "cfo-attribution-001"],
     traceRoute: "/investment/wf-001/trace",
     allowedActions: ["approved", "rejected", "request_changes"],
   };
+  return { ...record, ...overrides };
 }
 
 export function buildTeamReadModel(): TeamReadModel {
@@ -637,9 +785,18 @@ export function buildTeamReadModel(): TeamReadModel {
       capabilitySummary: "按岗位读取 ContextSlice，提交 typed artifact 或 command。",
       canDo: ["读取组织透明资料", "提交授权范围内产物", "提出补证请求"],
       cannotDo: ["直接推进 workflow", "热改在途 AgentRun", "读取未授权财务原始字段"],
+      versions: {
+        profileVersion: card.profileVersion,
+        skillPackageVersion: card.skillPackageVersion,
+        promptVersion: card.promptVersion,
+        contextSnapshotVersion: card.contextSnapshotVersion,
+      },
+      toolPermissions: ["只读 DB", "文件读取", "受控服务请求"],
+      weaknessTags: card.weaknessTags,
       qualityMetrics: { schemaPassRate: 1, evidenceQuality: card.recentQualityScore },
       cfoAttributionRefs: card.agentId === "quant_analyst" ? ["cfo-attribution-001"] : [],
       deniedActions: card.deniedActionCount ? [{ reasonCode: "memory_sensitive_denied" }] : [],
+      failureRecords: card.failureCount ? ["schema_validation_failed"] : [],
     })),
     capabilityConfigReadModel: {
       agentId: "quant_analyst",
@@ -691,10 +848,54 @@ export function buildDevOpsHealthReadModel(): DevOpsHealthReadModel {
 
 export function buildKnowledgeReadModel(): KnowledgeReadModel {
   return {
+    dailyBrief: [
+      { briefId: "daily-brief-001", priority: "P1", title: "半导体链关注度上升", supportingEvidenceOnly: true },
+    ],
+    researchPackages: [
+      { packageId: "research-1", title: "半导体资料包", status: "reviewing", evidenceRefs: ["memory-1", "artifact-research-1"] },
+    ],
     memoryCollections: [{ collectionId: "collection-1", title: "半导体资料", resultCount: 12 }],
-    memoryResults: [{ memoryId: "memory-1", title: "政策跟踪", relationSummary: "supports research-1", sensitivity: "public_internal" }],
-    relationGraph: [{ sourceMemoryId: "memory-1", targetRef: "research-1", relationType: "supports" }],
-    contextInjectionInspector: [{ contextSnapshotId: "ctx-v1", whyIncluded: "Researcher digest", redactionStatus: "applied" }],
+    memoryResults: [
+      {
+        memoryId: "memory-1",
+        currentVersionId: "memory-version-1",
+        title: "政策跟踪",
+        relationSummary: "supports research-1",
+        sensitivity: "public_internal",
+        extractionStatus: "extracted",
+        promotionState: "candidate",
+        tags: ["政策", "半导体"],
+      },
+    ],
+    relationGraph: [{ sourceMemoryId: "memory-1", targetRef: "research-1", relationType: "supports", reason: "证据支持研究资料包" }],
+    organizeSuggestions: [
+      {
+        suggestionId: "organize-001",
+        targetMemoryRefs: ["memory-1"],
+        suggestedTags: ["政策", "半导体"],
+        requiresGatewayWrite: true,
+        riskIfApplied: "错误归类会影响后续召回，需要人工确认",
+      },
+    ],
+    contextInjectionInspector: [
+      {
+        contextSnapshotId: "ctx-v1",
+        sourceRef: "memory-1",
+        whyIncluded: "Researcher digest",
+        redactionStatus: "applied",
+        deniedRefs: ["finance-raw-001"],
+      },
+    ],
+    proposals: [
+      {
+        proposalId: "proposal-knowledge-001",
+        proposalType: "Knowledge / Prompt / Skill",
+        impactLevel: "medium",
+        validationResultRefs: ["researcher_workflow_report.json"],
+        effectiveScope: "new_task",
+        rollbackPlan: "rollback-knowledge-001",
+      },
+    ],
     defaultContextProposalPath: "/governance?change=default-context",
   };
 }
@@ -735,6 +936,17 @@ export function buildWorkbenchReports(): Record<string, Report> {
         ],
       },
       view_layers: { owner: owner.todayAttention, dossier: dossier.stageRail, traceRoute: dossier.traceRoute },
+      dossier_business_panels: {
+        data_readiness: dossier.dataReadiness,
+        role_payload_drilldowns: dossier.rolePayloadDrilldowns,
+        consensus: dossier.consensus,
+        debate: dossier.debate,
+        optimizer_deviation: dossier.optimizerDeviation,
+        risk_review: dossier.riskReview,
+        paper_execution: dossier.paperExecution,
+        attribution: dossier.attribution,
+      },
+      knowledge_memory_workspace: buildKnowledgeReadModel(),
       trace_entry_return_path: {
         from_dossier: "/investment/wf-001/trace",
         from_approval_detail: "/investment/wf-001/trace?returnTo=%2Fgovernance%2Fapprovals%2Fap-001",
@@ -749,6 +961,7 @@ export function buildWorkbenchReports(): Record<string, Report> {
     "governance_task_report.json": buildReportEnvelope("governance_task_report.json", "TC-ACC-007-01", "ACC-007", {
       task_center_states: governance.taskCenter,
       approval_center_items: governance.approvalCenter,
+      approval_packet_completeness: buildApprovalRecordReadModel(),
       manual_todo_isolation: governance.manualTodoIsolation,
       agent_capability_draft_states: governance.agentCapabilityDraftStates,
       governance_change_links: ["gov-change-001"],
@@ -792,9 +1005,9 @@ export function buildReportEnvelope(
   const result = failures.length > 0 || guardResults.some((guard) => guard.result !== "pass") ? "fail" : "pass";
   return {
     report_id: reportId,
-    generated_at: "2026-04-30T00:00:00Z",
+    generated_at: new Date().toISOString(),
     generated_by: "velentrade.wi004",
-    git_revision: "working-tree",
+    git_revision: "runtime-generated-report",
     work_item_refs: ["WI-004"],
     test_case_refs: [tc],
     fixture_refs: [`FX-${tc}`],
@@ -802,7 +1015,7 @@ export function buildReportEnvelope(
     checked_requirements: [acc === "ACC-006" ? "REQ-006" : "REQ-007"],
     checked_acceptances: [acc],
     checked_invariants: ["INV-FRONTEND-READ-MODEL-ONLY"],
-    artifact_refs: [],
+    artifact_refs: [reportId],
     failures,
     residual_risk: [],
     schema_version: "1.0.0",

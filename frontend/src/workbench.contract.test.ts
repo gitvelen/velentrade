@@ -144,6 +144,15 @@ describe("WI-004 workbench contracts", () => {
     expect(reports["team_capability_config_report.json"].in_flight_agent_run_snapshot_unchanged).toBe(true);
   });
 
+  it("records concrete artifact refs and fresh metadata in WI-004 reports", () => {
+    const reports = buildWorkbenchReports();
+    const report = reports["web_command_routing_report.json"];
+
+    expect(report.artifact_refs).toContain("web_command_routing_report.json");
+    expect(report.git_revision).not.toBe("working-tree");
+    expect(Date.parse(report.generated_at as string)).not.toBeNaN();
+  });
+
   it("marks WI-004 verification reports failed when a guard or failure fails", () => {
     const report = buildReportEnvelope(
       "web_command_routing_report.json",

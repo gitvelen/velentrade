@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { createRoot } from "react-dom/client";
 import {
   AlertTriangle,
@@ -26,6 +26,7 @@ import {
   GovernanceReadModel,
   InvestmentDossierReadModel,
   KnowledgeReadModel,
+  ApprovalRecordReadModel,
   RequestBriefPreview,
   ResolvedWorkbenchRoute,
   TeamReadModel,
@@ -45,11 +46,15 @@ import {
   routeOwnerCommand,
 } from "./workbench";
 import {
+  ApiRequestError,
   RequestBriefApiReadModel,
   TaskCardApiReadModel,
+  applyMemoryOrganizeSuggestion,
   confirmRequestBrief,
   createCapabilityDraft,
+  createMemoryItem,
   createRequestBrief,
+  loadApprovalRecordReadModel,
   loadAgentCapabilityConfigReadModel,
   loadAgentProfileReadModel,
   loadDevOpsHealthReadModel,
@@ -60,11 +65,18 @@ import {
   loadTeamReadModel,
   loadTraceDebugReadModel,
   submitApprovalDecision,
+  updateFinanceAsset,
 } from "./api";
 import "./styles.css";
 
 type Navigate = (href: string) => void;
 type ConfirmedTaskFeedback = { label: string; href?: string; status: "success" | "error" };
+type ReadModelStatus = "loading" | "ready" | "error";
+type RemoteReadModel<T> = {
+  data: T;
+  status: ReadModelStatus;
+  retry: () => void;
+};
 
 function App() {
   const shell = buildShellReadModel();
@@ -225,7 +237,7 @@ export function renderWorkbenchPage(route: ResolvedWorkbenchRoute, navigate: Nav
     case "agent-config":
       return <AgentConfigPage agentId={route.params.agentId} onNavigate={navigate} />;
     case "approval-detail":
-      return <ApprovalDetailPage onNavigate={navigate} />;
+      return <ApprovalDetailPage approvalId={route.params.approvalId} onNavigate={navigate} />;
     default:
       return <NotFoundPage onNavigate={navigate} />;
   }
@@ -290,7 +302,8 @@ function InvestmentQueuePage({ onNavigate }: { onNavigate: Navigate }) {
 }
 
 function InvestmentDossierPage({ route, onNavigate }: { route: ResolvedWorkbenchRoute; onNavigate: Navigate }) {
-  const dossier = useInvestmentDossierReadModel(route.params.workflowId ?? "wf-001");
+  const dossierState = useInvestmentDossierReadModel(route.params.workflowId ?? "wf-001");
+  const dossier = dossierState.data;
   const selectedStage = getSelectedStage(route.query.stage, dossier.workflow.currentStage);
   const stageView = getStageView(selectedStage);
   return (
@@ -302,6 +315,7 @@ function InvestmentDossierPage({ route, onNavigate }: { route: ResolvedWorkbench
         </div>
         <WorkbenchLink className="inline-action" href={dossier.traceRoute} onNavigate={onNavigate}>查看审计</WorkbenchLink>
       </div>
+      <ReadModelStatusBanner status={dossierState.status} onRetry={dossierState.retry} />
       <div className="stage-rail">
         {dossier.stageRail.map((stage) => (
           <button
@@ -332,12 +346,91 @@ function InvestmentDossierPage({ route, onNavigate }: { route: ResolvedWorkbench
         ))}
       </div>
       <GuardPanel />
+      <DossierBusinessPanels dossier={dossier} />
     </section>
   );
 }
 
+function DossierBusinessPanels({ dossier }: { dossier: InvestmentDossierReadModel }) {
+  return (
+    <>
+      <MiniList
+        icon={<ShieldAlert />}
+        title="数据就绪"
+        items={[
+          `质量档位 ${formatStatus(dossier.dataReadiness.qualityBand)}`,
+          `决策核心 ${formatStatus(dossier.dataReadiness.decisionCoreStatus)}`,
+          `执行核心 ${formatStatus(dossier.dataReadiness.executionCoreStatus)}`,
+          ...dossier.dataReadiness.issues,
+        ]}
+      />
+      <MiniList
+        icon={<Layers3 />}
+        title="角色 payload"
+        items={dossier.rolePayloadDrilldowns.map((item) => `${item.role} · ${item.highlights.join(" / ")}`)}
+      />
+      <MetricCard
+        icon={<CheckCircle2 />}
+        title="共识与行动强度"
+        value={`${Math.round(dossier.consensus.score * 100)}% / ${Math.round(dossier.consensus.actionConviction * 100)}%`}
+        detail={dossier.consensus.thresholdLabel}
+        tone="jade"
+      />
+      <MiniList
+        icon={<ShieldAlert />}
+        title="分歧看板"
+        items={[
+          dossier.debate.retainedHardDissent ? "硬异议仍保留" : "硬异议已消除",
+          dossier.debate.riskReviewRequired ? "需风控复核" : "无需风控复核",
+          ...dossier.debate.issues,
+        ]}
+      />
+      <MiniList
+        icon={<GitBranch />}
+        title="辩论时间线"
+        items={[`已用 ${dossier.debate.roundsUsed} 轮`, ...dossier.debate.issues.map((item) => `议题：${item}`)]}
+      />
+      <MiniList
+        icon={<FileSearch />}
+        title="优化偏离"
+        items={[
+          `单股偏离 ${dossier.optimizerDeviation.singleNameDeviation}`,
+          `组合偏离 ${dossier.optimizerDeviation.portfolioDeviation}`,
+          dossier.optimizerDeviation.recommendation,
+        ]}
+      />
+      <MiniList
+        icon={<ShieldAlert />}
+        title="风控结论"
+        items={[
+          `结果 ${formatStatus(dossier.riskReview.reviewResult)}`,
+          `可修复性 ${formatStatus(dossier.riskReview.repairability)}`,
+          dossier.riskReview.ownerExceptionRequired ? "需要 Owner 例外审批" : "不生成 Owner 例外审批",
+          ...dossier.riskReview.reasonCodes.map(formatReason),
+        ]}
+      />
+      <MiniList
+        icon={<WalletCards />}
+        title="纸面执行"
+        items={[
+          `状态 ${formatStatus(dossier.paperExecution.status)}`,
+          `方式 ${dossier.paperExecution.pricingMethod} · 窗口 ${dossier.paperExecution.window}`,
+          `费用 ${dossier.paperExecution.fees} · T+1 ${dossier.paperExecution.tPlusOne}`,
+          "不显示继续成交入口",
+        ]}
+      />
+      <MiniList
+        icon={<Brain />}
+        title="归因回链"
+        items={[dossier.attribution.summary, ...dossier.attribution.links]}
+      />
+    </>
+  );
+}
+
 function TraceDebugPage({ route, onNavigate }: { route: ResolvedWorkbenchRoute; onNavigate: Navigate }) {
-  const trace = useTraceDebugReadModel(route.params.workflowId ?? "wf-001");
+  const traceState = useTraceDebugReadModel(route.params.workflowId ?? "wf-001");
+  const trace = traceState.data;
   const returnHref = route.query.returnTo ?? "/investment/wf-001";
   const returnLabel = getTraceReturnLabel(returnHref);
   return (
@@ -349,6 +442,7 @@ function TraceDebugPage({ route, onNavigate }: { route: ResolvedWorkbenchRoute; 
         </div>
         <WorkbenchLink className="inline-action" href={returnHref} onNavigate={onNavigate}>{returnLabel}</WorkbenchLink>
       </div>
+      <ReadModelStatusBanner status={traceState.status} onRetry={traceState.retry} />
       <MiniList icon={<Bot />} title="AgentRun 树" items={trace.agentRunTree.map((run) => `${run.runId} · ${run.stage} · ${run.profileVersion}`)} />
       <MiniList icon={<GitBranch />} title="CollaborationCommand" items={trace.commands.map((command) => `${command.commandType} · ${command.admission} · ${command.reasonCode}`)} />
       <MiniList icon={<FileSearch />} title="CollaborationEvent" items={trace.events.map((event) => `${event.eventType} · ${event.summary}`)} />
@@ -359,22 +453,54 @@ function TraceDebugPage({ route, onNavigate }: { route: ResolvedWorkbenchRoute; 
 }
 
 function FinancePage() {
-  const finance = useFinanceOverviewReadModel();
+  const financeState = useFinanceOverviewReadModel();
+  const finance = financeState.data;
+  const [assetUpdateStatus, setAssetUpdateStatus] = useState<"idle" | "submitting" | "done" | "failed">("idle");
+  const [updatedAssetId, setUpdatedAssetId] = useState<string | null>(null);
   return (
     <section className="page-grid finance-grid">
       <h1 className="sr-only">财务</h1>
+      <ReadModelStatusBanner status={financeState.status} onRetry={financeState.retry} />
       <MiniList icon={<WalletCards />} title="资产概览" items={finance.assets.map((asset) => `${asset.label} · ${asset.value} · ${formatStatus(asset.status)}`)} />
       <MetricCard icon={<ShieldAlert />} title="风险预算" value={finance.health.riskBudget} detail={`流动性 ${finance.health.liquidity} · 压力 ${finance.health.stress}`} tone="jade" />
       <MiniList icon={<AlertTriangle />} title="提醒" items={finance.reminders} />
+      <div className="flat-panel">
+        <h3><WalletCards size={16} />财务档案</h3>
+        <button
+          className="inline-action"
+          disabled={assetUpdateStatus === "submitting"}
+          onClick={() => {
+            setAssetUpdateStatus("submitting");
+            updateFinanceAsset()
+              .then((payload) => {
+                setUpdatedAssetId(payload.assetId);
+                setAssetUpdateStatus("done");
+              })
+              .catch(() => setAssetUpdateStatus("failed"));
+          }}
+          type="button"
+        >
+          {assetUpdateStatus === "submitting" ? "正在更新..." : "更新现金档案"}
+        </button>
+        {assetUpdateStatus === "done" ? (
+          <p className="panel-note">财务档案已更新 {updatedAssetId} · 不触发审批、执行或交易链路</p>
+        ) : assetUpdateStatus === "failed" ? (
+          <p className="panel-note danger">财务档案更新失败，请重试。</p>
+        ) : (
+          <p className="panel-note">资产档案更新只影响财务视图，不触发审批、执行或交易链路。</p>
+        )}
+      </div>
     </section>
   );
 }
 
 function GovernanceHealthPanel() {
-  const health = useDevOpsHealthReadModel();
+  const healthState = useDevOpsHealthReadModel();
+  const health = healthState.data;
   return (
     <div className="flat-panel list-panel" data-panel="health">
       <h3><AlertTriangle size={16} />数据/服务健康</h3>
+      <ReadModelStatusBanner status={healthState.status} onRetry={healthState.retry} />
       <ul>
         {health.routineChecks.map((check) => (
           <li key={check.checkId}>{check.checkId} · {check.status}</li>
@@ -391,15 +517,123 @@ function GovernanceHealthPanel() {
 }
 
 function KnowledgePage({ onNavigate }: { onNavigate: Navigate }) {
-  const knowledge = useKnowledgeReadModel();
+  const knowledgeState = useKnowledgeReadModel();
+  const knowledge = knowledgeState.data;
+  const [captureStatus, setCaptureStatus] = useState<"idle" | "submitting" | "done" | "failed">("idle");
+  const [capturedMemoryId, setCapturedMemoryId] = useState<string | null>(null);
+  const defaultMemoryDraft = "Owner 捕获记忆：后续研究资料需要保留来源、标签和适用边界。";
+  const memoryDraftRef = useRef<HTMLInputElement>(null);
+  const [organizeStatus, setOrganizeStatus] = useState<"idle" | "submitting" | "done" | "failed">("idle");
+  const [organizeRelationId, setOrganizeRelationId] = useState<string | null>(null);
+  const firstSuggestion = knowledge.organizeSuggestions[0];
+  const suggestionMemoryId = firstSuggestion?.targetMemoryRefs[0] ?? knowledge.memoryResults[0]?.memoryId ?? "memory";
+  const suggestionVersionId = knowledge.memoryResults.find((item) => item.memoryId === suggestionMemoryId)?.currentVersionId
+    ?? knowledge.memoryResults[0]?.currentVersionId
+    ?? "memory-version";
   return (
     <section className="page-grid knowledge-grid">
       <h1 className="sr-only">知识</h1>
+      <ReadModelStatusBanner status={knowledgeState.status} onRetry={knowledgeState.retry} />
+      <MiniList icon={<Brain />} title="每日简报" items={knowledge.dailyBrief.map((item) => `${item.priority} · ${item.title} · ${item.supportingEvidenceOnly ? "只作支撑证据" : "正式资料"}`)} />
+      <MiniList icon={<FileSearch />} title="研究资料包" items={knowledge.researchPackages.map((item) => `${item.title} · ${formatStatus(item.status)} · ${item.evidenceRefs.join(" / ")}`)} />
       <MiniList icon={<Brain />} title="资料集" items={knowledge.memoryCollections.map((item) => `${item.title} · ${item.resultCount} 条`)} />
-      <MiniList icon={<GitBranch />} title="关联线索" items={knowledge.relationGraph.map((item) => `${item.sourceMemoryId} 支撑 ${item.targetRef}`)} />
       <div className="flat-panel">
-        <h3><LockKeyhole size={16} />上下文保护</h3>
-        <ul>{knowledge.contextInjectionInspector.map((item) => <li key={item.contextSnapshotId}>研究摘要已纳入 · {formatStatus(item.redactionStatus)}</li>)}</ul>
+        <h3><Layers3 size={16} />记忆工作区</h3>
+        <p className="panel-note">capture / review / digest / organize · Memory 不是正式业务事实源</p>
+        <input
+          aria-label="记忆正文"
+          defaultValue={defaultMemoryDraft}
+          ref={memoryDraftRef}
+        />
+        <button
+          className="inline-action"
+          disabled={captureStatus === "submitting"}
+          onClick={() => {
+            setCaptureStatus("submitting");
+            createMemoryItem(memoryDraftRef.current?.value ?? defaultMemoryDraft)
+              .then((payload) => {
+                setCapturedMemoryId(payload.memoryId);
+                setCaptureStatus("done");
+              })
+              .catch(() => setCaptureStatus("failed"));
+          }}
+          type="button"
+        >
+          {captureStatus === "submitting" ? "正在捕获..." : "捕获记忆"}
+        </button>
+        {captureStatus === "done" ? (
+          <p className="panel-note">已捕获记忆 {capturedMemoryId} · 经 Gateway 写入 · append-only</p>
+        ) : captureStatus === "failed" ? (
+          <p className="panel-note danger">记忆捕获失败，请重试。</p>
+        ) : null}
+        <ul>
+          {knowledge.memoryResults.map((item) => (
+            <li key={item.memoryId}>
+              {item.title} · 抽取状态 {formatStatus(item.extractionStatus)} · 晋升状态 {formatStatus(item.promotionState)} · sensitivity {item.sensitivity} · {item.tags.join(" / ")}
+            </li>
+          ))}
+        </ul>
+      </div>
+      <MiniList
+        icon={<GitBranch />}
+        title="关系图"
+        items={knowledge.relationGraph.map((item) => `${item.sourceMemoryId} ${formatRelationType(item.relationType)} ${item.targetRef} · ${item.reason}`)}
+      />
+      <MiniList
+        icon={<ClipboardCheck />}
+        title="待应用组织建议"
+        items={knowledge.organizeSuggestions.map((item) =>
+          `${item.suggestionId} · ${item.suggestedTags.join(" / ")} · ${item.requiresGatewayWrite ? "经 Gateway 应用" : "无需写入"} · ${item.riskIfApplied}`,
+        )}
+      />
+      <div className="flat-panel">
+        <button
+          className="inline-action"
+          disabled={!firstSuggestion || organizeStatus === "submitting"}
+          onClick={() => {
+            if (!firstSuggestion) {
+              return;
+            }
+            setOrganizeStatus("submitting");
+            applyMemoryOrganizeSuggestion(suggestionMemoryId, suggestionVersionId, firstSuggestion.suggestedTags)
+              .then((payload) => {
+                setOrganizeRelationId(payload.relationId);
+                setOrganizeStatus("done");
+              })
+              .catch(() => setOrganizeStatus("failed"));
+          }}
+          type="button"
+        >
+          {organizeStatus === "submitting" ? "正在应用..." : "应用建议 / 应用组织建议"}
+        </button>
+        {organizeStatus === "done" ? (
+          <p className="panel-note">组织建议已提交 {organizeRelationId} · 组织建议已经通过 Gateway 应用 · 未覆盖旧 MemoryVersion</p>
+        ) : organizeStatus === "failed" ? (
+          <p className="panel-note danger">组织建议应用失败，请重试。</p>
+        ) : (
+          <p className="panel-note">应用建议只追加 relation / collection 变更，不直接使 DefaultContext 生效。</p>
+        )}
+      </div>
+      <div className="flat-panel">
+        <h3><LockKeyhole size={16} />Context 注入检查</h3>
+        <ul>
+          {knowledge.contextInjectionInspector.map((item) => (
+            <li key={`${item.contextSnapshotId}-${item.sourceRef}`}>
+              {item.contextSnapshotId} · {item.sourceRef} · why_included {item.whyIncluded} · {formatStatus(item.redactionStatus)} · denied refs {item.deniedRefs.join(" / ") || "none"}
+            </li>
+          ))}
+        </ul>
+      </div>
+      <div className="flat-panel">
+        <h3><Sparkles size={16} />Knowledge / Prompt / Skill 提案</h3>
+        <ul>
+          {knowledge.proposals.map((proposal) => (
+            <li key={proposal.proposalId}>
+              {proposal.proposalId} · diff / manifest · {formatStatus(proposal.impactLevel)} · 验证结果 {proposal.validationResultRefs.join(" / ")} · 适用范围 {formatStatus(proposal.effectiveScope)} · 回滚 {proposal.rollbackPlan}
+            </li>
+          ))}
+        </ul>
+        <p className="panel-note">提案不直接生效；低/中影响走自动验证，高影响进入审批中心。</p>
         <WorkbenchLink className="inline-action" href={knowledge.defaultContextProposalPath} onNavigate={onNavigate}>进入治理提案</WorkbenchLink>
       </div>
     </section>
@@ -407,8 +641,10 @@ function KnowledgePage({ onNavigate }: { onNavigate: Navigate }) {
 }
 
 function GovernancePage({ route, onNavigate }: { route: ResolvedWorkbenchRoute; onNavigate: Navigate }) {
-  const governance = useGovernanceReadModel();
-  const team = useTeamReadModel();
+  const governanceState = useGovernanceReadModel();
+  const governance = governanceState.data;
+  const teamState = useTeamReadModel();
+  const team = teamState.data;
   const selectedPanel = getGovernancePanel(route.query);
   const taskCenter = route.query.task === "manual"
     ? governance.taskCenter.filter((task) => task.taskType === "manual_todo")
@@ -430,6 +666,8 @@ function GovernancePage({ route, onNavigate }: { route: ResolvedWorkbenchRoute; 
           ))}
         </div>
       </div>
+      <ReadModelStatusBanner status={governanceState.status} onRetry={governanceState.retry} />
+      {selectedPanel === "team" ? <ReadModelStatusBanner status={teamState.status} onRetry={teamState.retry} /> : null}
       {selectedPanel === "tasks" ? (
         <div className="flat-panel list-panel" data-panel="tasks">
           <h3><Layers3 size={16} />任务中心</h3>
@@ -482,19 +720,24 @@ function GovernancePage({ route, onNavigate }: { route: ResolvedWorkbenchRoute; 
 }
 
 function AgentTeamPage({ onNavigate }: { onNavigate: Navigate }) {
-  const team = useTeamReadModel();
+  const teamState = useTeamReadModel();
+  const team = teamState.data;
   return (
     <section className="page-grid team-grid">
       <div className="section-header">
         <h1>Agent 团队</h1>
       </div>
+      <ReadModelStatusBanner status={teamState.status} onRetry={teamState.retry} />
+      <MetricCard icon={<Bot />} title="团队健康" value={`${team.teamHealth.healthyAgentCount}/9`} detail={`运行 ${team.teamHealth.activeAgentRunCount} · 失败/越权 ${team.teamHealth.failedOrDeniedCount}`} tone="jade" />
+      <MetricCard icon={<Sparkles />} title="待处理能力草案" value={`${team.teamHealth.pendingDraftCount}`} detail="只进入治理变更，不热改在途任务" tone="gold" />
       {team.agentCards.map((agent) => (
         <article className="agent-card" key={agent.agentId}>
           <div>
             <strong>{agent.displayName}</strong>
-            <span>{agent.profileVersion}</span>
+            <span>{agent.profileVersion} · Prompt {agent.promptVersion} · Context {agent.contextSnapshotVersion}</span>
           </div>
-          <p>胜任度 {Math.round(agent.recentQualityScore * 100)}% · 越权 {agent.deniedActionCount}</p>
+          <p>胜任度 {Math.round(agent.recentQualityScore * 100)}% · 失败 {agent.failureCount} · 越权 {agent.deniedActionCount}</p>
+          <p className="panel-note">短板：{agent.weaknessTags.length ? agent.weaknessTags.join("、") : "暂无突出短板"}</p>
           <div className="agent-actions">
             <WorkbenchLink href={`/governance/team/${agent.agentId}`} onNavigate={onNavigate}><FileSearch size={15} />画像</WorkbenchLink>
             <WorkbenchLink href={`/governance/team/${agent.agentId}/config`} onNavigate={onNavigate}><Sparkles size={15} />草案</WorkbenchLink>
@@ -506,7 +749,8 @@ function AgentTeamPage({ onNavigate }: { onNavigate: Navigate }) {
 }
 
 function AgentProfilePage({ agentId, onNavigate }: { agentId: string; onNavigate: Navigate }) {
-  const profile = useAgentProfileReadModel(agentId);
+  const profileState = useAgentProfileReadModel(agentId);
+  const profile = profileState.data;
   return (
     <section className="page-grid profile-grid">
       <div className="section-header with-actions">
@@ -515,19 +759,48 @@ function AgentProfilePage({ agentId, onNavigate }: { agentId: string; onNavigate
         </div>
         <WorkbenchLink className="inline-action" href={`/governance/team/${profile.agentId}/config`} onNavigate={onNavigate}>能力草案</WorkbenchLink>
       </div>
+      <ReadModelStatusBanner status={profileState.status} onRetry={profileState.retry} />
       <MiniList icon={<CheckCircle2 />} title="能做什么" items={profile.canDo} />
       <MiniList icon={<ShieldAlert />} title="不能做什么" items={profile.cannotDo} />
       <MiniList icon={<ClipboardCheck />} title="质量指标" items={[`结构校验 ${profile.qualityMetrics.schemaPassRate}`, `证据质量 ${profile.qualityMetrics.evidenceQuality}`]} />
+      <MiniList
+        icon={<GitBranch />}
+        title="版本与权限"
+        items={[
+          `Profile ${profile.versions.profileVersion}`,
+          `Skill ${profile.versions.skillPackageVersion}`,
+          `Prompt ${profile.versions.promptVersion}`,
+          `Context ${profile.versions.contextSnapshotVersion}`,
+          `工具权限 ${profile.toolPermissions.join(" / ")}`,
+        ]}
+      />
+      <MiniList
+        icon={<Brain />}
+        title="CFO 归因"
+        items={profile.cfoAttributionRefs.length ? profile.cfoAttributionRefs : ["暂无 CFO 归因关注"]}
+      />
+      <MiniList
+        icon={<AlertTriangle />}
+        title="越权/失败"
+        items={[
+          ...profile.deniedActions.map((item) => item.reasonCode),
+          ...profile.failureRecords,
+          ...(profile.weaknessTags.length ? profile.weaknessTags.map((item) => `短板：${item}`) : ["暂无越权或失败记录"]),
+        ]}
+      />
     </section>
   );
 }
 
 function AgentConfigPage({ agentId, onNavigate }: { agentId: string; onNavigate: Navigate }) {
-  const team = useTeamReadModel();
-  const config = useAgentCapabilityConfigReadModel(agentId);
+  const teamState = useTeamReadModel();
+  const team = teamState.data;
+  const configState = useAgentCapabilityConfigReadModel(agentId);
+  const config = configState.data;
   const draft = team.capabilityDraftSubmission;
   const [savedChangeRef, setSavedChangeRef] = useState<string | null>(null);
   const [draftSubmitting, setDraftSubmitting] = useState(false);
+  const [draftError, setDraftError] = useState(false);
   return (
     <section className="page-grid profile-grid">
       <div className="section-header with-actions">
@@ -537,6 +810,8 @@ function AgentConfigPage({ agentId, onNavigate }: { agentId: string; onNavigate:
         </div>
         <WorkbenchLink className="inline-action" href="/governance/approvals/ap-001" onNavigate={onNavigate}>查看审批包</WorkbenchLink>
       </div>
+      <ReadModelStatusBanner status={teamState.status} onRetry={teamState.retry} />
+      <ReadModelStatusBanner status={configState.status} onRetry={configState.retry} />
       <MiniList icon={<Sparkles />} title="可编辑字段" items={config.editableFields} />
       <MetricCard icon={<LockKeyhole />} title="热改阻断" value="已阻断" detail={formatReason(config.forbiddenDirectUpdateReason)} tone="danger" />
       <MiniList icon={<GitBranch />} title="生效范围" items={config.effectiveScopeOptions.map(formatStatus)} />
@@ -547,9 +822,10 @@ function AgentConfigPage({ agentId, onNavigate }: { agentId: string; onNavigate:
           disabled={savedChangeRef !== null || draftSubmitting}
           onClick={() => {
             setDraftSubmitting(true);
+            setDraftError(false);
             createCapabilityDraft(agentId)
               .then((payload) => setSavedChangeRef(payload.governanceChangeRef))
-              .catch(() => setSavedChangeRef(draft.governanceChangeRef))
+              .catch(() => setDraftError(true))
               .finally(() => setDraftSubmitting(false));
           }}
           type="button"
@@ -562,6 +838,8 @@ function AgentConfigPage({ agentId, onNavigate }: { agentId: string; onNavigate:
           <p className="panel-note">
             已生成治理变更草案 {savedChangeRef} · 高影响，需进入 Owner 审批 · 只对后续任务生效 · 在途 AgentRun 继续使用旧快照
           </p>
+        ) : draftError ? (
+          <p className="panel-note danger">草案提交失败：未创建治理变更草案，请重试。</p>
         ) : (
           <p className="panel-note">提交后只生成治理变更草案，不会热改正在运行的 Agent。</p>
         )}
@@ -570,12 +848,14 @@ function AgentConfigPage({ agentId, onNavigate }: { agentId: string; onNavigate:
   );
 }
 
-function ApprovalDetailPage({ onNavigate }: { onNavigate: Navigate }) {
-  const approval = buildApprovalRecordReadModel();
+function ApprovalDetailPage({ approvalId, onNavigate }: { approvalId: string; onNavigate: Navigate }) {
+  const approvalState = useApprovalRecordReadModel(approvalId);
+  const approval = approvalState.data;
   const [submittedDecision, setSubmittedDecision] = useState<string | null>(null);
   const [approvalResponse, setApprovalResponse] = useState<ApprovalDecisionApiReadModel | null>(null);
   const [approvalSubmitting, setApprovalSubmitting] = useState(false);
   const [approvalError, setApprovalError] = useState(false);
+  const [approvalConflict, setApprovalConflict] = useState<{ code: string; traceId: string } | null>(null);
   const traceHref = `${approval.traceRoute}?returnTo=${encodeURIComponent(`/governance/approvals/${approval.approvalId}`)}`;
   return (
     <section className="page-grid approval-grid">
@@ -586,7 +866,16 @@ function ApprovalDetailPage({ onNavigate }: { onNavigate: Navigate }) {
         </div>
         <WorkbenchLink className="inline-action" href={traceHref} onNavigate={onNavigate}>审计追溯</WorkbenchLink>
       </div>
+      <ReadModelStatusBanner status={approvalState.status} onRetry={approvalState.retry} />
       <MetricCard icon={<ClipboardCheck />} title="推荐结论" value={formatStatus(approval.recommendation)} detail={`影响 ${formatStatus(approval.impactScope)}`} tone="gold" />
+      <MiniList icon={<Layers3 />} title="对比分析" items={approval.comparisonOptions} />
+      <MiniList icon={<ShieldAlert />} title="风险与影响" items={approval.riskAndImpact} />
+      <MiniList
+        icon={<GitBranch />}
+        title="影响范围"
+        items={[`适用范围：${formatStatus(approval.impactScope)} / 只对后续任务生效`, `回滚方式：${approval.rollbackRef}`, `超时${approval.timeoutDisposition}`]}
+      />
+      <MiniList icon={<FileSearch />} title="替代方案" items={approval.alternatives.map(formatStatus)} />
       <div className="flat-panel">
         <h3><Layers3 size={16} />可选动作</h3>
         <div className="command-actions">
@@ -599,10 +888,20 @@ function ApprovalDetailPage({ onNavigate }: { onNavigate: Navigate }) {
                 setSubmittedDecision(action);
                 setApprovalSubmitting(true);
                 setApprovalError(false);
+                setApprovalConflict(null);
                 setApprovalResponse(null);
                 submitApprovalDecision(approval.approvalId, action)
                   .then((payload) => setApprovalResponse(payload))
-                  .catch(() => setApprovalError(true))
+                  .catch((error: unknown) => {
+                    if (
+                      error instanceof ApiRequestError
+                      && (error.statusCode === 409 || error.code === "SNAPSHOT_MISMATCH" || error.code === "CONFLICT")
+                    ) {
+                      setApprovalConflict({ code: error.code, traceId: error.traceId });
+                    } else {
+                      setApprovalError(true);
+                    }
+                  })
                   .finally(() => setApprovalSubmitting(false));
               }}
               type="button"
@@ -615,6 +914,8 @@ function ApprovalDetailPage({ onNavigate }: { onNavigate: Navigate }) {
           <p className="panel-note">正在提交：{formatStatus(submittedDecision)} · 按钮已锁定，等待后端返回最新审批状态</p>
         ) : approvalResponse ? (
           <p className="panel-note">后端状态：{formatStatus(approvalResponse.decision)} · 生效范围：{formatStatus(approvalResponse.effectiveScope)}</p>
+        ) : approvalConflict ? (
+          <p className="panel-note danger">审批状态已变化，请刷新 · {approvalConflict.code} · {approvalConflict.traceId}</p>
         ) : approvalError && submittedDecision ? (
           <p className="panel-note danger">提交失败：{formatStatus(submittedDecision)} · 请刷新后重试，不保留本地乐观结论。</p>
         ) : submittedDecision ? (
@@ -628,186 +929,111 @@ function ApprovalDetailPage({ onNavigate }: { onNavigate: Navigate }) {
   );
 }
 
-function useTeamReadModel() {
-  const [team, setTeam] = useState<TeamReadModel>(() => buildTeamReadModel());
+function useRemoteReadModel<T>(
+  fallbackFactory: () => T,
+  loader: () => Promise<T>,
+  deps: React.DependencyList,
+): RemoteReadModel<T> {
+  const [reloadToken, setReloadToken] = useState(0);
+  const [state, setState] = useState<{ data: T; status: ReadModelStatus }>(() => ({
+    data: fallbackFactory(),
+    status: "loading",
+  }));
 
   useEffect(() => {
     let cancelled = false;
-    loadTeamReadModel()
+    setState((current) => ({ ...current, status: "loading" }));
+    loader()
       .then((payload) => {
         if (!cancelled) {
-          setTeam(payload);
+          setState({ data: payload, status: "ready" });
         }
       })
-      .catch(() => {});
+      .catch(() => {
+        if (!cancelled) {
+          setState((current) => ({ ...current, status: "error" }));
+        }
+      });
     return () => {
       cancelled = true;
     };
-  }, []);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [...deps, reloadToken]);
 
-  return team;
+  return {
+    data: state.data,
+    status: state.status,
+    retry: () => setReloadToken((token) => token + 1),
+  };
+}
+
+function ReadModelStatusBanner({ status, onRetry }: { status: ReadModelStatus; onRetry: () => void }) {
+  if (status === "ready") {
+    return null;
+  }
+  if (status === "loading") {
+    return <div className="status-banner">正在读取最新数据</div>;
+  }
+  return (
+    <div className="status-banner danger">
+      <span>读取最新数据失败 · 显示上次可用数据</span>
+      <button className="ghost-button" onClick={onRetry} type="button">重试</button>
+    </div>
+  );
+}
+
+function useTeamReadModel() {
+  return useRemoteReadModel<TeamReadModel>(() => buildTeamReadModel(), loadTeamReadModel, []);
 }
 
 function useAgentProfileReadModel(agentId: string) {
   const fallback = buildTeamReadModel().agentProfileReadModels.find((item) => item.agentId === agentId)
     ?? buildTeamReadModel().agentProfileReadModels[0];
-  const [profile, setProfile] = useState<AgentProfileReadModel>(fallback);
-
-  useEffect(() => {
-    let cancelled = false;
-    loadAgentProfileReadModel(agentId)
-      .then((payload) => {
-        if (!cancelled) {
-          setProfile(payload);
-        }
-      })
-      .catch(() => {});
-    return () => {
-      cancelled = true;
-    };
-  }, [agentId]);
-
-  return profile;
+  return useRemoteReadModel<AgentProfileReadModel>(() => fallback, () => loadAgentProfileReadModel(agentId), [agentId]);
 }
 
 function useAgentCapabilityConfigReadModel(agentId: string) {
-  const [config, setConfig] = useState<CapabilityConfigReadModel>(() => buildTeamReadModel().capabilityConfigReadModel);
-
-  useEffect(() => {
-    let cancelled = false;
-    loadAgentCapabilityConfigReadModel(agentId)
-      .then((payload) => {
-        if (!cancelled) {
-          setConfig(payload);
-        }
-      })
-      .catch(() => {});
-    return () => {
-      cancelled = true;
-    };
-  }, [agentId]);
-
-  return config;
+  return useRemoteReadModel<CapabilityConfigReadModel>(
+    () => buildTeamReadModel().capabilityConfigReadModel,
+    () => loadAgentCapabilityConfigReadModel(agentId),
+    [agentId],
+  );
 }
 
 function useKnowledgeReadModel() {
-  const [knowledge, setKnowledge] = useState<KnowledgeReadModel>(() => buildKnowledgeReadModel());
-
-  useEffect(() => {
-    let cancelled = false;
-    loadKnowledgeReadModel()
-      .then((payload) => {
-        if (!cancelled) {
-          setKnowledge(payload);
-        }
-      })
-      .catch(() => {});
-    return () => {
-      cancelled = true;
-    };
-  }, []);
-
-  return knowledge;
+  return useRemoteReadModel<KnowledgeReadModel>(() => buildKnowledgeReadModel(), loadKnowledgeReadModel, []);
 }
 
 function useTraceDebugReadModel(workflowId: string) {
-  const [trace, setTrace] = useState<TraceDebugReadModel>(() => buildTraceDebugReadModel());
-
-  useEffect(() => {
-    let cancelled = false;
-    loadTraceDebugReadModel(workflowId)
-      .then((payload) => {
-        if (!cancelled) {
-          setTrace(payload);
-        }
-      })
-      .catch(() => {});
-    return () => {
-      cancelled = true;
-    };
-  }, [workflowId]);
-
-  return trace;
+  return useRemoteReadModel<TraceDebugReadModel>(() => buildTraceDebugReadModel(), () => loadTraceDebugReadModel(workflowId), [workflowId]);
 }
 
 function useInvestmentDossierReadModel(workflowId: string) {
-  const [dossier, setDossier] = useState<InvestmentDossierReadModel>(() => buildInvestmentDossierReadModel());
-
-  useEffect(() => {
-    let cancelled = false;
-    loadInvestmentDossierReadModel(workflowId)
-      .then((payload) => {
-        if (!cancelled) {
-          setDossier(payload);
-        }
-      })
-      .catch(() => {});
-    return () => {
-      cancelled = true;
-    };
-  }, [workflowId]);
-
-  return dossier;
+  return useRemoteReadModel<InvestmentDossierReadModel>(
+    () => buildInvestmentDossierReadModel(),
+    () => loadInvestmentDossierReadModel(workflowId),
+    [workflowId],
+  );
 }
 
 function useGovernanceReadModel() {
-  const [governance, setGovernance] = useState<GovernanceReadModel>(() => buildGovernanceReadModel());
-
-  useEffect(() => {
-    let cancelled = false;
-    loadGovernanceReadModel()
-      .then((payload) => {
-        if (!cancelled) {
-          setGovernance(payload);
-        }
-      })
-      .catch(() => {});
-    return () => {
-      cancelled = true;
-    };
-  }, []);
-
-  return governance;
+  return useRemoteReadModel<GovernanceReadModel>(() => buildGovernanceReadModel(), loadGovernanceReadModel, []);
 }
 
 function useFinanceOverviewReadModel() {
-  const [finance, setFinance] = useState<FinanceOverviewReadModel>(() => buildFinanceOverviewReadModel());
-
-  useEffect(() => {
-    let cancelled = false;
-    loadFinanceOverviewReadModel()
-      .then((payload) => {
-        if (!cancelled) {
-          setFinance(payload);
-        }
-      })
-      .catch(() => {});
-    return () => {
-      cancelled = true;
-    };
-  }, []);
-
-  return finance;
+  return useRemoteReadModel<FinanceOverviewReadModel>(() => buildFinanceOverviewReadModel(), loadFinanceOverviewReadModel, []);
 }
 
 function useDevOpsHealthReadModel() {
-  const [health, setHealth] = useState<DevOpsHealthReadModel>(() => buildDevOpsHealthReadModel());
+  return useRemoteReadModel<DevOpsHealthReadModel>(() => buildDevOpsHealthReadModel(), loadDevOpsHealthReadModel, []);
+}
 
-  useEffect(() => {
-    let cancelled = false;
-    loadDevOpsHealthReadModel()
-      .then((payload) => {
-        if (!cancelled) {
-          setHealth(payload);
-        }
-      })
-      .catch(() => {});
-    return () => {
-      cancelled = true;
-    };
-  }, []);
-
-  return health;
+function useApprovalRecordReadModel(approvalId: string) {
+  return useRemoteReadModel<ApprovalRecordReadModel>(
+    () => buildApprovalRecordReadModel({ approvalId }),
+    () => loadApprovalRecordReadModel(approvalId),
+    [approvalId],
+  );
 }
 
 function NotFoundPage({ onNavigate }: { onNavigate: Navigate }) {
@@ -1032,6 +1258,21 @@ function formatReason(value: string) {
     non_a_asset_no_trade: "非 A 股不生成交易入口",
     retained_hard_dissent_risk_review: "硬异议保留，需风控复核",
     risk_rejected_no_override: "风控拒绝，不可绕过",
+  };
+  return labels[value] ?? value;
+}
+
+function formatRelationType(value: string) {
+  const labels: Record<string, string> = {
+    applies_to: "适用于",
+    contradicts: "反驳",
+    derived_from: "来源于",
+    duplicates: "重复",
+    promotes_to: "晋升到",
+    promotes_to_knowledge: "晋升知识",
+    related_to: "关联",
+    supports: "支撑",
+    supersedes: "取代",
   };
   return labels[value] ?? value;
 }
