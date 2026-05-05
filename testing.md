@@ -3206,3 +3206,38 @@ Design approved 前，`reviews/design-review.yaml` 必须记录 R8 cold-start dr
       visible_failure_state: partial
       trace_retry_verified: false
   wording_guard: "Testing 阶段只能说 full-integration foundation 证据已聚合到 integrated_runtime；不得说全部功能完成、生产外部数据已验收或 owner_verified 已完成。"
+
+- handoff_id: HANDOFF-DEPLOYMENT-20260505
+  phase: Deployment
+  work_item_refs: [WI-001, WI-002, WI-003, WI-004, WI-005, WI-006, WI-007, WI-008, WI-009, WI-010]
+  highest_completion_level: integrated_runtime
+  evidence_refs:
+    - deployment.md#3-执行证据
+    - deployment.md#4-运行验证
+    - testing.md#RUN-WI001-ACC001-ALEMBIC-CHAIN-REGRESSION-20260505
+    - testing.md#HANDOFF-TESTING-20260505
+  unfinished_items:
+    - source_ref: deployment.md#6-人工验收与收口
+      priority: P0
+      current_completion_level: integrated_runtime
+      target_completion_level: owner_verified
+      blocker: deployment.md 已记录 artifact deploy、pytest、compileall、Vitest 和 Vite build 证据，manual_verification_ready 为 pass，但人工验收 status 仍是 pending。
+      next_step: 由用户/Owner 进行人工验收；只有明确通过后，才能把 deployment.md acceptance conclusion 改为 pass 并执行 complete-change。
+    - source_ref: deployment.md#release_mode
+      priority: P0
+      current_completion_level: integrated_runtime
+      target_completion_level: owner_verified
+      blocker: 当前发布模式为 artifact/local-artifact，runtime_ready 为 not-applicable；它证明构建产物和自动化验证通过，不等于生产 runtime 发布或外部 provider 生产可用性验收。
+      next_step: 若需要 runtime 发布，先把 release_mode 切到 runtime 并重新执行 VELENTRADE_RUN_COMPOSE_SMOKE=1 的部署验证；否则仅按 artifact 交付口径验收。
+  fixture_or_fallback_paths:
+    - surface: local artifact deployment package
+      completion_level: integrated_runtime
+      real_api_verified: false
+      visible_failure_state: not_applicable
+      trace_retry_verified: false
+    - surface: owner manual acceptance
+      completion_level: integrated_runtime
+      real_api_verified: not_applicable
+      visible_failure_state: not_applicable
+      trace_retry_verified: not_applicable
+  wording_guard: "Deployment 当前只能说 artifact deploy ready 且 manual_verification_ready=pass；人工验收未通过前，不得说 completed、owner_verified、已发布生产 runtime 或可以 complete-change。"
