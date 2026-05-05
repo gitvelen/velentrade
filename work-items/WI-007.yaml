@@ -1,5 +1,6 @@
 wi_id: WI-007
 phase_scope: Implementation
+completion_level: integrated_runtime
 
 goal: "交付 IC 分析链，从四 Analyst 独立 Memo 到共识/行动强度计算、S3 辩论和 hard dissent 风控交接。"
 derived_from: design.md#7

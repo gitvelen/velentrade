@@ -674,8 +674,8 @@ Design approved 前，`reviews/design-review.yaml` 必须记录 R8 cold-start dr
 
 - run_note: 当前处于 Design 阶段，尚未进入实现与测试执行阶段；本文件只登记 planned TC、WI 映射和 report schema 期望。
 
-- acceptance_ref: ACC-001
-  run_id: RUN-WI001-ACC001-20260430
+- run_id: RUN-WI001-ACC001-20260430
+  acceptance_ref: ACC-001
   test_case_ref: TC-ACC-001-01
   verification_type: automated
   test_type: static_and_integration
@@ -3064,3 +3064,48 @@ Design approved 前，`reviews/design-review.yaml` 必须记录 R8 cold-start dr
   - WI-006/ACC-029 已追加 foundation 级 `integrated_runtime` 自动化证据：同一 docker compose runtime 下验证 DevOps health/incident API、severity、safe degradation、recovery validation、investment_resume_allowed=false、Risk handoff、sensitive log finding、cost/token observability-only、PostgreSQL artifact/command/handoff audit/outbox、API restart 后读回。DevOps 仍不拥有业务 Risk 放行、投资执行恢复或高影响配置热改。
   - 2026-05-02 docker compose runtime blocker 已修复到 WI-001/WI-004 `integrated_runtime` foundation 级：允许 Dockerfile/预构建镜像/`wheelhouse/`，runtime image 在 build 阶段通过 PyPI mirror 或 wheelhouse 安装依赖，api/worker/beat/agent-runner 启动命令不再 `pip install -e .`；同一 compose runtime 已通过 same-origin frontend、Chromium 浏览器点击、RequestBrief->Task、agent-runner fake_test、API restart 后 task 持久化和六个服务 running 检查。仍不能外推到全 V1，因为 S0-S7、真实外部数据、纸面执行和 Owner 人工验收未闭环。
   - 若后续任何 P0 自动化不可行，必须回到 Requirement 或 review 明确记录例外理由。
+
+<!-- CODESPEC:TESTING:HANDOFFS -->
+## 5. 主动未完成清单与语义验收
+
+- handoff_id: HANDOFF-IMPLEMENTATION-20260505
+  phase: Implementation
+  work_item_refs: [WI-001, WI-002, WI-003, WI-004, WI-005, WI-006, WI-007, WI-008, WI-009, WI-010]
+  highest_completion_level: integrated_runtime
+  evidence_refs:
+    - authority-repairs/REPAIR-20260505030241.yaml
+    - testing.md#RUN-WI001-ACC001-FULL-RUNTIME-FOUNDATION-20260503
+    - testing.md#RUN-WI004-ACC006-READMODEL-ERROR-REPORT-METADATA-20260504
+    - testing.md#RUN-WI004-ACC007-FINANCE-ASSET-BROWSER-UPDATE-20260504
+    - testing.md#RUN-WI009-ACC021-FULL-RUNTIME-FOUNDATION-20260503
+  unfinished_items:
+    - source_ref: work-items/WI-004.yaml#completion_level
+      priority: P0
+      current_completion_level: api_connected
+      target_completion_level: integrated_runtime
+      blocker: WI-004 最新 Dossier/Agent Team/Knowledge/Approval/Finance rich browser surfaces 已有 API-connected branch-local 证据，但尚未把 2026-05-04 的丰富页面、错误态、trace/retry 和受控写入全部放入同一 docker compose runtime full-integration RUN。
+      next_step: Testing 阶段用同一 PostgreSQL/Redis/Celery/FastAPI/same-origin frontend/Chromium runtime 重跑 WI-004 rich surface E2E，并追加 full-integration RUN 证据。
+    - source_ref: work-items/WI-010.yaml#completion_level
+      priority: P0
+      current_completion_level: db_persistent
+      target_completion_level: integrated_runtime
+      blocker: WI-010 authority repair 已证明 ICContextPackage/ICChairBrief/PositionDisposalTask 的 Gateway/API/PostgreSQL 持久化，但该 repair 自身尚未作为独立 full-integration RUN 闭环记录到 Testing 阶段。
+      next_step: Testing 阶段复用真实 compose runtime 复核三类一等 artifact/read model/API restart 路径，并将 WI-010 completion_level 提升或保留为明确残留风险。
+    - source_ref: testing.md#owner_verified
+      priority: P0
+      current_completion_level: integrated_runtime
+      target_completion_level: owner_verified
+      blocker: 当前没有 Owner 人工验收结论；Implementation 证据不能替代 Deployment 阶段人工验收。
+      next_step: Deployment 阶段完成 runtime readiness、smoke、回滚/监控和人工验收后，单独记录 owner_verified evidence。
+  fixture_or_fallback_paths:
+    - surface: WI-004 rich frontend read models and fallback/error labels
+      completion_level: api_connected
+      real_api_verified: partial
+      visible_failure_state: true
+      trace_retry_verified: true
+    - surface: external market/fund/gold provider production availability
+      completion_level: integrated_runtime
+      real_api_verified: false
+      visible_failure_state: true
+      trace_retry_verified: false
+  wording_guard: "只能报告当前最高为 integrated_runtime foundation；WI-004 最新 rich surfaces 仍是 api_connected，WI-010 为 db_persistent，未经过 Owner 人工验收，不得表述为全部完成或 owner_verified。"

@@ -1,5 +1,6 @@
 wi_id: WI-006
 phase_scope: Implementation
+completion_level: integrated_runtime
 
 goal: "交付 DevOps incident、health、degradation、recovery 和 Risk notification。"
 derived_from: design.md#7

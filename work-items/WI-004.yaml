@@ -1,5 +1,6 @@
 wi_id: WI-004
 phase_scope: Implementation
+completion_level: api_connected
 
 goal: "交付简体中文高端浅色卡面 Web 工作台的 Owner 决策视图、投资 Dossier、治理下 Agent 团队工作区、命令层、任务中心、审批中心和知识/记忆工作台。"
 derived_from: design.md#7

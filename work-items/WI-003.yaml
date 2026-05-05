@@ -1,5 +1,6 @@
 wi_id: WI-003
 phase_scope: Implementation
+completion_level: integrated_runtime
 
 goal: "交付 A 股投资准入链，从机会注册、Topic Queue 到 IC Context Package 和 CIO IC Chair Brief。"
 derived_from: design.md#7

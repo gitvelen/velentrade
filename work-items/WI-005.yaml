@@ -1,5 +1,6 @@
 wi_id: WI-005
 phase_scope: Implementation
+completion_level: integrated_runtime
 
 goal: "交付财务档案、归因评价、CFO 治理、研究知识、Memory capture/organize、Prompt/Skill 提案和反思学习闭环。"
 derived_from: design.md#7

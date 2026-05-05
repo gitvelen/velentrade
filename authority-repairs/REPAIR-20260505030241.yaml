@@ -1,0 +1,26 @@
+repair_id: REPAIR-20260505030241
+status: closed
+phase: Implementation
+gate: verification
+reason:
+  Implementation gate repair: design work-item derivation lacks parser subheading and active work-items lack R10 completion_level fields; repair only records existing evidence levels without changing product scope
+allowed_paths:
+  - design.md
+  - testing.md
+  - work-items/WI-001.yaml
+  - work-items/WI-002.yaml
+  - work-items/WI-003.yaml
+  - work-items/WI-004.yaml
+  - work-items/WI-005.yaml
+  - work-items/WI-006.yaml
+  - work-items/WI-007.yaml
+  - work-items/WI-008.yaml
+  - work-items/WI-009.yaml
+  - work-items/WI-010.yaml
+opened_at: 2026-05-05T03:02:41Z
+opened_revision: 4231cfee39f85497a65af836bf8f18ce7e7a421f
+closed_at: 2026-05-05T03:08:22Z
+closed_revision: 4231cfee39f85497a65af836bf8f18ce7e7a421f
+evidence: verification gate passed with R10 completion_level fields on all active work-items; active-work-items-complete passed after design derivation subheading; testing RUN boundary normalized so TC-ACC-032 parsing is bounded
+gate_result: pass
+smoke_result: pass

@@ -1,5 +1,6 @@
 wi_id: WI-009
 phase_scope: Implementation
+completion_level: integrated_runtime
 
 goal: "交付纸面执行链，从 Paper Account 初始化、Paper Order/Execution 到 execution_core 阻断和持仓监控处置。"
 derived_from: design.md#7

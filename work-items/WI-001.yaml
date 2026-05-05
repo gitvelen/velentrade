@@ -1,5 +1,6 @@
 wi_id: WI-001
 phase_scope: Implementation
+completion_level: integrated_runtime
 
 goal: "交付核心 PostgreSQL domain schema、scope/role/service registry、Agent CapabilityProfile、团队页 Agent 画像 API 基础、组织透明读受控写、Memory/Knowledge 基础、Authority Gateway、artifact/collaboration ledger、财务安全和 Requirement 结构报告基础。"
 derived_from: design.md#7

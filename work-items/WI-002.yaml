@@ -1,5 +1,6 @@
 wi_id: WI-002
 phase_scope: Implementation
+completion_level: integrated_runtime
 
 goal: "交付 workflow/data/service/governance runtime，让 S0-S7、数据质量、服务边界、市场状态、Decision Service 编排入口、ContextSnapshot、DefaultContextBinding/MemoryCollection/AgentCapability 版本和配置/Prompt/Skill 治理可被 fixture 自动验证。"
 derived_from: design.md#7

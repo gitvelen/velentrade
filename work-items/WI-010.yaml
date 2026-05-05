@@ -1,5 +1,6 @@
 wi_id: WI-010
 phase_scope: Implementation
+completion_level: db_persistent
 
 goal: "执行 Design/contract authority repair，将已批准需求中的 ICContextPackage、ICChairBrief 和 PositionDisposalTask 补成当前版本一等 artifact/read model 契约，并实现对应 API/DB/Gateway 持久化验证。"
 derived_from: design.md#7

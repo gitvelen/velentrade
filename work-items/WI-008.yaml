@@ -1,5 +1,6 @@
 wi_id: WI-008
 phase_scope: Implementation
+completion_level: integrated_runtime
 
 goal: "交付 IC 决策链，从 Decision Service、CIO Decision 到优化器偏离、Risk Review、Owner 例外审批和 reopen/timeout 规则。"
 derived_from: design.md#7
