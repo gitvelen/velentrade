@@ -3074,6 +3074,20 @@ Design approved 前，`reviews/design-review.yaml` 必须记录 R8 cold-start dr
   residual_risk: DevOps runtime persists the incident payload, DevOps commands and Risk handoff through the generic Gateway ledger; DevOps is still not allowed to make business Risk decisions, resume investment execution, or hot-edit high-impact configuration.
   reopen_required: false
 
+- acceptance_ref: ACC-001
+  run_id: RUN-WI001-ACC001-ALEMBIC-CHAIN-REGRESSION-20260505
+  test_case_ref: TC-ACC-001-01
+  verification_type: automated
+  test_type: regression
+  test_scope: branch-local-regression
+  completion_level: db_persistent
+  executed_at: 2026-05-05
+  command_or_steps: "python -m pytest tests/core/test_wi001_db_foundation.py::test_alembic_is_configured_with_a_wi001_foundation_revision -q"
+  artifact_ref: "passed 1 test; verified the single Alembic head while locating the WI-001 foundation migration by walking the down_revision chain after WI-010 added later migrations."
+  result: pass
+  residual_risk: none
+  reopen_required: false
+
 <!-- CODESPEC:TESTING:RISKS -->
 ## 4. 残留风险与返工判断
 

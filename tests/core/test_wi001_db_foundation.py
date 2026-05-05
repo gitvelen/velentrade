@@ -136,17 +136,31 @@ def test_alembic_is_configured_with_a_wi001_foundation_revision():
 
     assert len(heads) == 1
 
+    required_foundation_tables = {
+        "artifact",
+        "task_envelope",
+        "workflow_stage",
+        "data_request",
+        "governance_change",
+        "paper_order",
+        "collaboration_session",
+        "memory_item",
+    }
+
     revision = script.get_revision(heads[0])
     assert revision is not None
-    text = Path(revision.path).read_text(encoding="utf-8")
-    assert "artifact" in text
-    assert "task_envelope" in text
-    assert "workflow_stage" in text
-    assert "data_request" in text
-    assert "governance_change" in text
-    assert "paper_order" in text
-    assert "collaboration_session" in text
-    assert "memory_item" in text
+    found_foundation_revision = False
+    while revision is not None:
+        text = Path(revision.path).read_text(encoding="utf-8")
+        if required_foundation_tables.issubset(set(text.split('"'))):
+            found_foundation_revision = True
+            break
+
+        down_revision = revision.down_revision
+        assert not isinstance(down_revision, tuple)
+        revision = script.get_revision(down_revision) if down_revision else None
+
+    assert found_foundation_revision
 
 
 def test_alembic_env_prefers_runtime_database_url_env():
