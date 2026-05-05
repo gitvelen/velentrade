@@ -78,6 +78,7 @@ allowed_paths:
   - design.md
   - .dockerignore
   - Dockerfile
+  - meta.yaml
   - pyproject.toml
   - alembic.ini
   - docker-compose.yml
@@ -99,6 +100,7 @@ allowed_paths:
   - tests/model_gateway/**
   - tests/security/**
   - tests/requirements/**
+  - reviews/implementation-review.yaml
 forbidden_paths:
   - versions/**
   - spec.md

@@ -1,0 +1,14 @@
+repair_id: REPAIR-20260505033526
+status: closed
+phase: Implementation
+gate: design-quality
+reason: Design gate requires AI reading contract appendix reading matrix after reopening Implementation; add matrix without changing architecture or product scope.
+allowed_paths:
+  - design.md
+opened_at: 2026-05-05T03:35:26Z
+opened_revision: cfd7b38f3b748f0820e0dced665469416273bbd2
+closed_at: 2026-05-05T03:38:14Z
+closed_revision: cfd7b38f3b748f0820e0dced665469416273bbd2
+evidence: design-quality passed after adding design appendix reading matrix and R8 implementation input section; no product or architecture scope changed.
+gate_result: pass
+smoke_result: pass

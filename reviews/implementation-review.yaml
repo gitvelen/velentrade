@@ -18,6 +18,13 @@ target_work_item: WI-001
 gate_results:
   design-quality: passed
   implementation-ready-WI-001: passed
+gate_evidence:
+  - command: codespec check-gate design-quality
+    result: pass
+  - command: CODESPEC_TARGET_PHASE=Implementation codespec check-gate implementation-ready
+    result: pass
+  - command: CODESPEC_TARGET_PHASE=Implementation codespec check-gate review-quality
+    result: pass
 semantic_review:
   severity_counts:
     P0: 0
@@ -32,9 +39,13 @@ semantic_review:
     - WI-001 KnowledgeItem foundation schema is explicitly under domain.memory; domain.knowledge remains forbidden for WI-001 business workflow implementation.
     - WI-004 and WI-005 now use foundation dependencies plus execution_slices so fixture-first frontend and finance/researcher slices can start before the full investment execution chain is complete.
     - Design to Implementation transition still requires explicit human confirmation.
+findings:
+  - severity: none
+    summary: Implementation review found no P0/P1/P2 blockers for starting WI-001 after design-quality and implementation-ready gates passed.
 residual_risk:
   level: medium
   items:
     - Third-party data source adapter availability, license, and rate limits must be confirmed before real adapter implementation.
     - Frontend package manager can be selected in WI-004 without changing architecture boundaries.
     - Paper VWAP fidelity is bounded by available market-data granularity and must stay inside the V1 medium-realism contract.
+decision_notes: Approved Design -> Implementation handoff for WI-001; review evidence schema was normalized during the 2026-05-05 Implementation reopen without changing the original verdict.

@@ -10,6 +10,18 @@
 - 命中 Agent 协作、能力画像、运行存储、安全、检索、SkillPackage、前端工作台、workflow/data/service、投资主链、财务知识反思或 DevOps 观测时，必须读取对应 design appendix。
 - 若实现需要改变本文架构、接口、状态机、安全边界、外部交互或已批准需求，必须停止并回写 Design 或 Requirement。
 
+| 读取触发 | 必读 appendix | 权威边界 | 冲突处理 |
+|---|---|---|---|
+| 命中 Agent 能力、岗位画像、SkillPackage、可读写边界或 runner 行为 | `design-appendices/agent-capability-profiles.md` | 展开 Agent 能力、工具、上下文和输出契约；不新增正式 REQ/ACC/VO | 与本文 spine、contracts 或 `spec.md` 冲突时停止并回写 Design/Requirement |
+| 命中 AgentRun、协作命令、Handoff、Authority Gateway 或过程档案 | `design-appendices/agent-collaboration-protocol.md` | 展开协作机制、准入、事件、交接和受控写入；不得改变业务事实源 | 与 frozen contract 或 workflow 权威冲突时停止并修复上游 |
+| 命中 PostgreSQL、Memory/Knowledge、ContextSnapshot、安全、运行存储或只读/写入权限 | `design-appendices/runtime-storage-architecture.md` | 展开存储、权限、审计和上下文生效语义；不得替代 `contracts/*.md` schema | 与安全边界或 fact_source 冲突时停止并回写 Design |
+| 命中 Web 工作台、导航、页面区块、状态、trace/debug 或浏览器验证 | `design-appendices/frontend-workbench-design.md` | 展开 Owner/Agent/DevOps 可见界面与状态；不新增后端能力 | 与 read model contract 冲突时先修 `contracts/api-read-models.md` |
+| 命中 S0-S7、数据服务、质量门、外部数据、市场状态、治理配置或 Celery 调度 | `design-appendices/workflow-data-service-design.md` | 展开 workflow/data/service runbook 和 guard；不改变投资裁决职责 | 与 Decision/Risk/Owner 边界冲突时停止并回写 Design |
+| 命中 Decision Service、优化偏离、CIO Decision Packet、Owner exception 或重开建议 | `design-appendices/decision-service-design.md` | 展开确定性决策服务输入输出与边界；不授予服务投资裁决权 | 与 CIO/Risk/Owner 职责冲突时以本文 spine 和 contracts 为准 |
+| 命中机会、Topic Queue、IC Context、Analyst Memo、辩论、Risk Review、纸面执行或持仓处置 | `design-appendices/investment-chain-design.md` | 展开 A 股投资主链 runbook、artifact 和 guard；不新增真实交易或回测 | 与 Risk rejected、execution_core 或非 A 股边界冲突时停止 |
+| 命中财务档案、归因、CFO、因子研究、Researcher、Knowledge/Prompt/Skill 提案或反思 | `design-appendices/finance-knowledge-reflection-design.md` | 展开财务知识反思链路；不把 Memory/Knowledge 变成事实源 | 与治理生效、审批或敏感字段边界冲突时回写 Design |
+| 命中 DevOps health、incident、降级、恢复、成本/Token 或安全日志 | `design-appendices/devops-observability-design.md` | 展开技术运维与观测 runbook；不允许 DevOps 放行业务 Risk | 与投资恢复、Risk 放行或高影响配置冲突时停止 |
+
 <!-- CODESPEC:DESIGN:OVERVIEW -->
 ## 1. 设计概览
 
@@ -511,3 +523,13 @@ runtime_packaging:
 - Agent 相关用 fake LLM、fixture data 和 deterministic schema validation。
 - 前端用 Vitest 做组件逻辑，Playwright 做 Owner/Dossier/Trace 关键路径。
 - 禁止 live LLM、live data source 或 SQLite 替代作为 P0 pass 条件。
+
+## 8. 实现阶段输入
+
+runbook: 实现必须从第 1 节运行主干 Spine、当前 WI 的 `r8_runbook_scope`、命中领域的 `design-appendices/*` 和 `testing.md` 的对应 TC 冷启动；任何 S0-S7、AgentRun、Authority Gateway、Decision/Risk/Owner、纸面执行、财务知识反思或 DevOps 流程都按 appendix runbook 执行，不得用对象清单替代运行语义。
+
+contract_summary: 共享接口和 schema 以 frozen `contracts/*.md` 为准，当前 WI 只读取其 `contract_refs`；API/read model、artifact/schema、verification report、Gateway allowlist、PostgreSQL mirror 和错误码若需要改变，必须先走 authority repair 或回写 Design，不得在实现中隐式扩大契约。
+
+view_summary: Owner 默认看工作台摘要、Investment Dossier 和必要审批/任务状态；Agent/DevOps/审计者分别通过团队页、Trace/Debug、health/incident 和 artifact/event/handoff 视图追踪过程证据。前端实现以 `frontend-workbench-design.md`、`api-read-models.md` 和 `design-previews/frontend-workbench/` 为输入，不能把 fixture/fallback 伪装成真实完成。
+
+verification_summary: 每个 WI 必须通过 `test_case_refs` 对应的 `TC-*`、`required_verification` 命令和 `testing.md` RUN 证据闭环；P0 默认自动化，branch-local、db_persistent、full-integration 和 owner_verified 必须按完成等级如实记录，不能用静态扫描、fixture 或 report 常量替代真实 runtime 行为。
