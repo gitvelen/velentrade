@@ -30,7 +30,7 @@ active_work_items:
   - WI-009
   - WI-010
   - WI-011
-implementation_base_revision: b66c1291165de3252786f24bd102b96abd2feb91 # 当前 Implementation 回路的 git 基线；进入 Testing 前按此基线检查累计变更
+implementation_base_revision: 67262bb3812f39ebccde785d93c68cd47a7b201e # 当前 Implementation 回路的 git 基线；进入 Testing 前按此基线检查累计变更
 # active_work_items 语义：
 # - Implementation 阶段：正在执行的 WI（单分支串行时累积，多分支并行时各分支独立）
 # - Testing 阶段：保留 Implementation 阶段的值，用于 verification gate 聚合所有需要验证的 work items
@@ -45,7 +45,7 @@ feature_branch: master # 主执行分支 / parent feature 分支名（如 "featu
 # 阻塞信息（仅当 status=blocked 时填写）
 blocked_reason: null # 阻塞原因描述
 blocked_by: null # 阻塞依赖（如 "WI-001" 或外部因素）
-updated_at: 2026-05-08 # 最后更新时间
+updated_at: 2026-05-10 # 最后更新时间
 updated_by: codespec-cli # 最后更新人
 gate_evidence:
   implementation_entry:
