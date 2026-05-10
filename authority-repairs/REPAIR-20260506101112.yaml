@@ -1,0 +1,14 @@
+repair_id: REPAIR-20260506101112
+status: closed
+phase: Implementation
+gate: scope
+reason: WI-011 Owner real-data repair requires backend/API/DB cleanup/API tests scope expansion after Owner found degraded health, dirty Knowledge data, and frontend dossier fixture fallback; frozen contracts remain unchanged.
+allowed_paths:
+  - work-items/WI-011.yaml
+opened_at: 2026-05-06T10:11:12Z
+opened_revision: b66c1291165de3252786f24bd102b96abd2feb91
+closed_at: 2026-05-06T10:18:48Z
+closed_revision: b66c1291165de3252786f24bd102b96abd2feb91
+evidence: "WI-011 scope expanded for Owner real-data repair. `CODESPEC_SCOPE_MODE=changed-files CODESPEC_CHANGED_FILES=work-items/WI-011.yaml ../.codespec/scripts/check-gate.sh scope` passed, and `env -u CODESPEC_CHANGED_FILES -u CODESPEC_CHANGED_FILES_FILE -u CODESPEC_SCOPE_MODE ../.codespec/scripts/smoke.sh` passed. `codespec authority-repair close` could not be used directly because close gate and nested smoke inherit the same changed-files environment; the failed close attempt was environment coupling, not a gate or smoke failure."
+gate_result: pass
+smoke_result: pass

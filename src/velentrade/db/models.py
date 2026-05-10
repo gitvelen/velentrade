@@ -194,6 +194,40 @@ Table(
 )
 
 Table(
+    "data_collection_schedule",
+    Base.metadata,
+    Column("schedule_id", String, primary_key=True),
+    Column("display_name", String, nullable=False),
+    Column("status", String, nullable=False),
+    Column("cadence", String, nullable=False),
+    Column("interval_seconds", Integer, nullable=False),
+    Column("universe_scope", String, nullable=False),
+    Column("request_template", JSONB, nullable=False),
+    Column("symbols", JSONB, nullable=False),
+    Column("last_success_at", DateTime(timezone=True), nullable=True),
+    Column("last_failure_at", DateTime(timezone=True), nullable=True),
+    Column("failure_count", Integer, nullable=False),
+    Column("created_at", DateTime(timezone=True), nullable=False),
+    Column("updated_at", DateTime(timezone=True), nullable=False),
+)
+
+Table(
+    "data_collection_run",
+    Base.metadata,
+    Column("run_id", String, primary_key=True),
+    Column("schedule_id", String, nullable=False),
+    Column("request_id", String, nullable=False),
+    Column("status", String, nullable=False),
+    Column("started_at", DateTime(timezone=True), nullable=False),
+    Column("completed_at", DateTime(timezone=True), nullable=True),
+    Column("requested_count", Integer, nullable=False),
+    Column("succeeded_count", Integer, nullable=False),
+    Column("failed_count", Integer, nullable=False),
+    Column("quality_summary", JSONB, nullable=False),
+    Column("failure_summary", JSONB, nullable=False),
+)
+
+Table(
     "data_request",
     Base.metadata,
     Column("request_id", String, primary_key=True),
@@ -207,6 +241,24 @@ Table(
     Column("requesting_stage", String, nullable=False),
     Column("requesting_agent_or_service", String, nullable=False),
     Column("created_at", DateTime(timezone=True), nullable=False),
+)
+
+Table(
+    "daily_quote",
+    Base.metadata,
+    Column("quote_id", String, primary_key=True),
+    Column("symbol", String, nullable=False),
+    Column("trade_date", String, nullable=False),
+    Column("open", Float, nullable=True),
+    Column("high", Float, nullable=True),
+    Column("low", Float, nullable=True),
+    Column("close", Float, nullable=True),
+    Column("volume", Float, nullable=True),
+    Column("source_timestamp", String, nullable=False),
+    Column("source_id", String, nullable=False),
+    Column("quality_report_id", String, nullable=False),
+    Column("created_at", DateTime(timezone=True), nullable=False),
+    UniqueConstraint("symbol", "trade_date", "source_id", name="uq_daily_quote_symbol_date_source"),
 )
 
 Table(

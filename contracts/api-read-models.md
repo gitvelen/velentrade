@@ -13,6 +13,7 @@ consumers:
   - WI-008
   - WI-009
   - WI-010
+  - WI-011
 requirement_refs:
   - REQ-003
   - REQ-004
@@ -476,10 +477,22 @@ r8_read_model_shapes:
     sections:
       stage_rail:
         item_fields: ["stage", "node_status", "responsible_role", "reason_code", "artifact_count", "reopen_marker"]
+      data_readiness:
+        fields: ["quality_band", "decision_core_status", "execution_core_status", "issues", "lineage_refs", "owner_summary", "source_status", "data_gaps"]
+        source_status_item_fields: ["source_name", "source_ref", "required_usage", "requested_fields", "obtained_fields", "missing_fields", "status", "quality_label", "evidence_ref"]
+        source_status_values: ["available", "partial", "failed", "missing"]
+        data_gap_item_fields: ["gap", "affects_stage", "impact", "next_action"]
+        invariant: "S1 Owner 默认页的数据来源、已获取字段、缺失字段和状态必须由后端投影提供；前端不得仅靠 lineage_refs/source refs 推断业务状态。"
       analyst_stance_matrix:
         item_fields: ["role", "direction_score", "confidence", "evidence_quality", "hard_dissent", "view_update_refs"]
       debate:
-        fields: ["debate_required", "rounds", "issues", "view_changes", "cio_synthesis", "retained_hard_dissent", "risk_review_required"]
+        fields: ["debate_required", "rounds", "issues", "view_changes", "cio_synthesis", "retained_hard_dissent", "risk_review_required", "owner_summary", "status_summary", "core_disputes", "view_change_details", "retained_dissent_details", "round_details", "next_actions"]
+        core_dispute_item_fields: ["title", "why_it_matters", "involved_roles", "current_conclusion", "required_evidence"]
+        view_change_detail_item_fields: ["role", "before", "after", "reason", "impact"]
+        retained_dissent_detail_item_fields: ["source_role", "dissent", "counter_risks", "handling", "forbidden_actions"]
+        round_detail_item_fields: ["round_no", "issue", "participants", "input_evidence", "outcome", "unresolved_questions"]
+        next_action_item_fields: ["action", "owner", "completion_signal", "next_stage"]
+        invariant: "S3 Owner 默认页与点击详情必须消费后端结构化字段；字段缺失时前端显示后端未返回辩论详情，不得从字符串自行编造业务解释。"
       decision_service:
         fields: ["service_call_id", "input_artifact_refs", "decision_packet_ref", "input_completeness", "guard_result_ref", "major_deviation", "exception_candidate_ref", "reopen_recommendation_ref", "reason_codes"]
       decision_packet:

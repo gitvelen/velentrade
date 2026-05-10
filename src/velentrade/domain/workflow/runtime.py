@@ -255,7 +255,7 @@ class WorkflowRuntime:
             reason = "request_brief_not_confirmed"
         else:
             state = "ready"
-            reason = "request_brief_confirmed"
+            reason = brief.route_reason if brief.route_type == "manual_todo" else "request_brief_confirmed"
         now = utc_now()
         task = TaskEnvelope(
             task_id=new_id("task"),

@@ -13,12 +13,13 @@ import {
 } from "./workbench";
 
 describe("WI-004 workbench contracts", () => {
-  it("uses the approved Chinese top navigation and keeps Agent team under governance", () => {
+  it("uses the approved Chinese top navigation and keeps team under governance", () => {
     const shell = buildShellReadModel();
 
     expect(shell.navItems.map((item) => item.label)).toEqual(["全景", "投资", "财务", "知识", "治理"]);
     expect(shell.navItems.map((item) => item.label)).not.toContain("团队");
-    expect(shell.governanceModules).toContain("Agent 团队");
+    expect(shell.governanceModules).toEqual(["待办", "团队", "变更", "健康", "审计"]);
+    expect(shell.governanceModules).not.toContain("Agent 团队");
   });
 
   it("maps every approved navigation and drill-down route to a distinct workbench page", () => {
@@ -102,11 +103,14 @@ describe("WI-004 workbench contracts", () => {
     expect(ownerContent.removed_page_subtitles).toContain("待处理、风险、审批和系统状态");
   });
 
-  it("separates task center, approval center, manual todo and hot patch denials", () => {
+  it("keeps task and approval contracts separate while exposing unified owner todos", () => {
     const governance = buildGovernanceReadModel();
 
+    expect(governance.modules).toEqual(["待办", "团队", "变更", "健康", "审计"]);
     expect(governance.taskCenter.map((task) => task.taskType)).toContain("manual_todo");
     expect(governance.approvalCenter.every((approval) => approval.kind === "approval")).toBe(true);
+    expect(governance.unifiedTodos.some((todo) => todo.todoType === "approval")).toBe(true);
+    expect(governance.unifiedTodos.some((todo) => todo.todoType === "manual_todo")).toBe(true);
     expect(governance.manualTodoIsolation.connectedToS5S6).toBe(false);
     expect(governance.uiGuardResponses.riskRejected.actionVisible).toBe(false);
     expect(governance.uiGuardResponses.agentCapabilityHotPatch.reasonCode).toBe("agent_capability_hot_patch_denied");
@@ -130,6 +134,10 @@ describe("WI-004 workbench contracts", () => {
       "web_command_routing_report.json",
     ]);
     expect(reports["web_command_routing_report.json"].nav_scan.top_level_labels).toEqual(["全景", "投资", "财务", "知识", "治理"]);
+    expect(reports["web_command_routing_report.json"].unified_todo_card_assertions).toMatchObject({
+      duplicateApprovalCardVisible: false,
+      duplicateManualTodoCardVisible: false,
+    });
     expect(reports["web_command_routing_report.json"].draft_clarification_prompts).toEqual([
       "请补充目标对象或主题",
       "请补充希望产出的结果",
@@ -141,6 +149,9 @@ describe("WI-004 workbench contracts", () => {
     expect(reports["governance_task_report.json"].agent_capability_hot_patch_denial.reason_code).toBe(
       "agent_capability_hot_patch_denied",
     );
+    const todoItems = reports["governance_task_report.json"].unified_todo_items as Array<{ todoType: string }>;
+    expect(todoItems.map((item) => item.todoType)).toContain("approval");
+    expect(todoItems.map((item) => item.todoType)).toContain("manual_todo");
     expect(reports["team_capability_config_report.json"].in_flight_agent_run_snapshot_unchanged).toBe(true);
   });
 

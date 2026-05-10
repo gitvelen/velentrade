@@ -4,7 +4,13 @@ from copy import deepcopy
 from typing import Any
 
 from velentrade.domain.common import utc_now
-from velentrade.domain.data.quality import DataQualityService, DataRequest, RequiredField
+from velentrade.domain.data.quality import (
+    DataQualityService,
+    DataRequest,
+    RequiredField,
+    build_intraday_monitor_templates,
+    screen_all_market_candidates,
+)
 from velentrade.domain.data.sources import (
     DataCollectionService,
     DataSourceDefinition,
@@ -209,6 +215,36 @@ def _data_report() -> dict[str, Any]:
         0.95,
         0.95,
     )
+    screening_result = screen_all_market_candidates(
+        [
+            {
+                "symbol": "600000.SH",
+                "is_a_share_common_stock": True,
+                "is_st": False,
+                "is_delisted": False,
+                "is_suspended": False,
+                "listing_days": 500,
+                "avg_turnover_20d": 80_000_000,
+                "data_quality_score": 0.95,
+                "fundamental_quality": 0.91,
+                "price_volume_strength": 0.82,
+                "event_heat": 0.42,
+            },
+            {
+                "symbol": "000001.SZ",
+                "is_a_share_common_stock": True,
+                "is_st": True,
+                "is_delisted": False,
+                "is_suspended": False,
+                "listing_days": 500,
+                "avg_turnover_20d": 90_000_000,
+                "data_quality_score": 0.99,
+                "fundamental_quality": 0.99,
+                "price_volume_strength": 0.99,
+                "event_heat": 0.99,
+            },
+        ]
+    )
     return _envelope(
         "data_quality_degradation_report.json",
         {
@@ -246,6 +282,11 @@ def _data_report() -> dict[str, Any]:
             },
             "cache_decision_policy": service.evaluate(base_request, 0.95, 0.95, cache_hit=True).cache_usage,
             "conflict_resolution_report": service.evaluate(base_request, 0.95, 0.95, conflict_severity="critical").reason_code,
+            "all_market_screening_result": screening_result,
+            "intraday_monitor_templates": build_intraday_monitor_templates(
+                holding_symbols=screening_result["eligible_symbols"],
+                candidate_symbols=screening_result["eligible_symbols"],
+            ),
             "execution_core_freshness_gate": execution.execution_core_status,
             "blocked_decisions": [blocked.reason_code, execution.reason_code],
         },

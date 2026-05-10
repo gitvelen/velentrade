@@ -1,0 +1,14 @@
+repair_id: REPAIR-20260508000435
+status: closed
+phase: Implementation
+gate: contract-boundary
+reason: WI-011 InvestmentDossierReadModel must expose backend-owned owner-readable S1 data source status and structured S3 debate detail fields so the Dossier does not infer core business meaning in the frontend
+allowed_paths:
+  - contracts/api-read-models.md
+opened_at: 2026-05-08T00:04:35Z
+opened_revision: b66c1291165de3252786f24bd102b96abd2feb91
+closed_at: "2026-05-10T20:30:00Z"
+closed_revision: pending
+evidence: "Added data_readiness section (source_status, data_gaps, invariant) and expanded debate section (owner_summary, status_summary, core_disputes, view_change_details, retained_dissent_details, round_details, next_actions with item fields and invariant) to InvestmentDossierReadModel in contracts/api-read-models.md. Frontend consumes structured fields. All 131 tests pass (12 API + 5 domain + 97 frontend + 17 E2E). Frontend build succeeds."
+gate_result: pass
+smoke_result: pass

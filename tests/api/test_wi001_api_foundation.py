@@ -272,7 +272,8 @@ def test_finance_overview_and_devops_health_endpoints_expose_read_models():
     health_payload = health_response.json()["data"]
     assert health_payload["routine_checks"][0]["status"] == "observed"
     assert "incident_open_total" in health_payload["metrics"]
-    assert health_payload["recovery"][0]["investment_resume_allowed"] is False
+    assert health_payload["incidents"] == []
+    assert health_payload["recovery"] == []
 
 
 def test_request_brief_confirmation_and_task_workflow_read_api():
@@ -294,7 +295,7 @@ def test_request_brief_confirmation_and_task_workflow_read_api():
     assert brief["creates_agent_run"] is True
 
     tasks_before = client.get("/api/tasks").json()["data"]
-    assert tasks_before["task_center"] == []
+    assert any(item["task_id"] == "task-wf-001" for item in tasks_before["task_center"])
 
     confirmation_response = client.post(
         f"/api/requests/briefs/{brief['brief_id']}/confirmation",
@@ -307,7 +308,7 @@ def test_request_brief_confirmation_and_task_workflow_read_api():
     assert task["reason_code"] == "request_brief_confirmed"
 
     tasks_after = client.get("/api/tasks").json()["data"]
-    assert [item["task_id"] for item in tasks_after["task_center"]] == [task["task_id"]]
+    assert task["task_id"] in [item["task_id"] for item in tasks_after["task_center"]]
 
     investment_brief_response = client.post(
         "/api/requests/briefs",

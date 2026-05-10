@@ -170,6 +170,38 @@ def build_wi001_seed_bundle() -> dict:
             "created_at": now,
         },
     ]
+    data_collection_schedules = [
+        {
+            "schedule_id": "after-close-visible-a-share-daily",
+            "display_name": "收盘后可见 A 股日线采集",
+            "status": "active",
+            "cadence": "interval",
+            "interval_seconds": 900,
+            "universe_scope": "explicit_symbols",
+            "symbols": ["600000.SH"],
+            "request_template": {
+                "request_id_prefix": "after-close-visible-a-share-daily",
+                "trace_id_prefix": "trace-after-close-visible-a-share-daily",
+                "data_domain": "a_share_market",
+                "required_usage": "decision_core",
+                "freshness_requirement": "same_trading_day",
+                "required_fields": [
+                    {"name": "symbol", "present": True, "valid": True, "critical": True, "weight": 1.0},
+                    {"name": "trade_date", "present": True, "valid": True, "critical": True, "weight": 1.0},
+                    {"name": "close", "present": True, "valid": True, "critical": True, "weight": 1.0},
+                    {"name": "volume", "present": True, "valid": True, "critical": False, "weight": 1.0},
+                    {"name": "source_timestamp", "present": True, "valid": True, "critical": False, "weight": 1.0},
+                ],
+                "requesting_stage": "scheduled_after_close",
+                "requesting_agent_or_service": "data_collection_quality_service",
+            },
+            "last_success_at": None,
+            "last_failure_at": None,
+            "failure_count": 0,
+            "created_at": now,
+            "updated_at": now,
+        }
+    ]
     paper_account = {
         "account_id": "paper-account-v1",
         "base_currency": "CNY",
@@ -202,6 +234,7 @@ def build_wi001_seed_bundle() -> dict:
         "skill_package_versions": skill_package_version_rows,
         "data_domains": data_domains,
         "data_sources": data_sources,
+        "data_collection_schedules": data_collection_schedules,
         "paper_account": paper_account,
         "owner_session": owner_session,
         "owner_auth": owner_auth,
@@ -241,6 +274,10 @@ def apply_wi001_seed(engine: Engine) -> None:
         connection.execute(
             tables["data_source_registry"].insert(),
             bundle["data_sources"],
+        )
+        connection.execute(
+            tables["data_collection_schedule"].insert(),
+            bundle["data_collection_schedules"],
         )
         connection.execute(
             tables["paper_account"].insert(),

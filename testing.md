@@ -85,6 +85,18 @@ Design 阶段应优先把以下 fixture 落到测试数据工厂或 contract fix
   covers: 缓存命中但决策核心数据不可用。
   expected_focus: 缓存可展示/研究，不产生新的执行授权。
 
+- fixture_id: FX-SCHEDULED-DATA-COLLECTION
+  covers: inputs 中定义的定时数据采集节奏、默认可见 schedule、DataCollectionRun、规范化日线落库和 latest-success cache restore。
+  expected_focus: Celery beat schedule 非空；本地 runtime 默认采集少量明确 A 股标的；采集结果写入 DataRequest/DataLineage/DataQualityReport/DataCollectionRun/DailyQuote；provider 失败时走 fallback/cache 或阻断，不伪造 pass。
+
+- fixture_id: FX-ALL-MARKET-SCREENING
+  covers: 收盘后全市场初筛的数据准备与候选池基础筛选。
+  expected_focus: fixture universe 执行 A 股普通股、非 ST/退市/停牌、上市满 250 个交易日、20 日均成交额 >= 5000 万、数据质量 >= 0.9 的硬过滤，并按基本面质量、量价强度、事件热度三路排序去重。
+
+- fixture_id: FX-INTRADAY-HOLDING-MONITOR
+  covers: 盘中持仓和候选池监控节奏。
+  expected_focus: 持仓 30 秒、候选池 5 分钟 cadence 形成 DataRequest 模板和监控触发输入；P0/P1 阈值只生成观察/研究/处置触发，不跳过 IC、Risk 或审计。
+
 - fixture_id: FX-SOURCE-CONFLICT-CRITICAL
   covers: 关键字段多源冲突。
   expected_focus: 标准化后冲突报告、字段重要性降级或阻断、Owner 不直接裁判原始数据。
@@ -161,7 +173,7 @@ Design 阶段应优先把以下 fixture 落到测试数据工厂或 contract fix
   statement: MemoryCollection、KnowledgeItem 或 DefaultContextBinding 生效必须生成新的 ContextSnapshot，且只作用于新任务或新 attempt。
 
 - invariant_id: INV-TEAM-CONFIG-NO-HOT-PATCH
-  statement: 治理下 Agent 团队工作区提交 Agent 能力、Prompt、SkillPackage、工具权限、模型路由或默认上下文配置只能生成治理变更草案；不得热改在途 AgentRun。
+  statement: 治理下团队工作区提交能力、Prompt、SkillPackage、工具权限、模型路由或默认上下文配置只能生成治理变更草案；老板默认页面不使用 Agent 技术词，且不得热改在途 AgentRun。
 
 - invariant_id: INV-APPENDIX-NO-FORMAL-ID
   statement: appendices 不定义正式需求、验收或验证义务编号。
@@ -171,9 +183,10 @@ Design 阶段应优先把以下 fixture 落到测试数据工厂或 contract fix
 Design 修复后，以下 TC 不得只验证字段存在，必须验证 `trigger -> workflow/service/AgentRun/command -> artifact/event/handoff -> read model/view -> guard/report` 的完整链路。
 
 - `TC-ACC-005-01` 必须执行 `FX-AGENT-COLLABORATION-PROTOCOL`：证明 CollaborationSession、AgentRun、CollaborationCommand、CollaborationEvent、HandoffPacket、Authority Gateway、TraceDebugReadModel 能形成可回放协作链；命令必须覆盖 accepted/rejected/expired 至少两类结果。
-- `TC-ACC-003-01` 必须执行 `FX-AGENT-CAPABILITY-DRAFT` 的只读部分：证明治理下 Agent 团队工作区九个 Agent 卡面、Agent 画像、版本、近期质量和越权/失败记录可见。
-- `TC-ACC-006-01` 必须引用 `design-previews/frontend-workbench/` Markdown review pack 和 `index.html` 样式预览：证明一级主导航为 `全景 / 投资 / 财务 / 知识 / 治理`、团队不再作为一级菜单、Agent 团队位于治理下且可通过治理二级模块切换进入、route canonical parent 清晰、默认简体中文、漂亮优先且护眼其次的高端浅色卡面，Owner Decision View、Investment Dossier View 和 Trace/Debug 审计层分离，并用页面线框验证 Agent 协作展示不是长聊天 transcript。
-- `TC-ACC-007-01` 必须验证任务中心、审批中心、manual_todo、变更管理、AgentCapabilityChange 和数据/服务健康在 UI/read model/API guard 三层分离。
+- `TC-ACC-003-01` 必须执行 `FX-AGENT-CAPABILITY-DRAFT` 的只读部分：证明治理下团队工作区九个角色卡面、团队画像、近期质量和越权/失败记录可见，老板默认列表不暴露版本、上下文快照或机器 ID。
+- `TC-ACC-006-01` 必须引用 `design-previews/frontend-workbench/` Markdown review pack 和 `index.html` 样式预览：证明一级主导航为 `全景 / 投资 / 财务 / 知识 / 治理`、团队不再作为一级菜单、团队位于治理下且可通过治理二级模块切换进入、route canonical parent 清晰、默认简体中文、漂亮优先且护眼其次的高端浅色卡面，Owner Decision View、Investment Dossier View 和 Trace/Debug 审计层分离，并用页面线框验证 Agent 协作展示不是长聊天 transcript。
+- `TC-ACC-006-01` 对 S3 Investment Dossier 的验证必须断言 `/api/workflows/{id}/dossier` 返回结构化 `debate.owner_summary/status_summary/core_disputes/view_change_details/retained_dissent_details/round_details/next_actions`，前端中间卡片直接消费这些字段，且不同摘要条目打开不同详情；字段缺失时只能显示“后端未返回辩论详情”。
+- `TC-ACC-007-01` 必须验证 Owner-facing 待办合并 UI，并验证任务、审批、manual_todo、变更、AgentCapabilityChange 和健康在 read model/API guard 层保持契约分离。
 - `TC-ACC-017-01` 必须验证 IC Debate Runbook：CIO agenda、四 Analyst view_update/comment/request_evidence、Debate Manager 轮次/超时/重算、DebateSummary、Handoff 和 Risk handoff。
 - `TC-ACC-023-01` 必须验证非 A 股资产只生成 planning/risk/manual_todo，不出现审批、执行或交易入口。
 - `TC-ACC-025-01` 必须验证异常或周期归因才触发 CFOInterpretation、GovernanceProposal 或 ReflectionAssignment；正常日度归因自动发布。
@@ -230,7 +243,7 @@ Design approved 前，`reviews/design-review.yaml` 必须记录 R8 cold-start dr
   scenario: Agent 能力契约字段齐全、四位 Analyst 具备独立岗位能力，且团队页可见 Agent 画像。
   given: 每个正式 Agent 的 CapabilityProfile fixture、四位 Analyst 的 role-specific profile、SkillPackage、rubric、权限默认域、TeamReadModel 和 AgentProfileReadModel fixture。
   when: 按能力契约 schema 校验角色定位、输入、工具、SOP、判断标准、rubric、记忆/上下文、产物、权限、升级路径、失败处理、评价回路，以及 Macro/Fundamental/Quant/Event 是否不是同一模板换 role 参数，并渲染团队页卡面。
-  then: 每个 Agent 能力卡字段齐全且无禁用职责或越权能力；四位 Analyst 均具备独立数据域、工具、Skill、role_payload、rubric 和失败状态；治理下 Agent 团队工作区以中文卡面展示九个正式 Agent 的画像、版本、近期产物质量和失败/越权记录。
+  then: 每个 Agent 能力卡字段齐全且无禁用职责或越权能力；四位 Analyst 均具备独立数据域、工具、Skill、role_payload、rubric 和失败状态；治理下团队工作区以中文卡面展示九个正式角色的画像、近期产物质量和失败/越权记录，老板默认列表不暴露版本、上下文快照或机器 ID。
   evidence_expectation: agent_capability_contract_report.json 包含 per_agent_pass、missing_fields、team_read_model、agent_profile_read_models、sop_rubric_pass、escalation_path_pass、quality_metrics、denied_action_records 和 authority_conflicts。
   status: planned
 
@@ -272,11 +285,11 @@ Design approved 前，`reviews/design-review.yaml` 必须记录 R8 cold-start dr
   test_type: e2e
   verification_mode: automated
   required_stage: testing
-  scenario: Web 主导航、中文高端浅色卡面、治理下 Agent 团队工作区、三层可视化与自由对话命令路由。
+  scenario: Web 主导航、中文高端浅色卡面、治理下团队工作区、三层可视化与自由对话命令路由。
   given: Web 测试环境、`FX-OWNER-COMMAND-TRIAGE`、`FX-HOT-EVENT-RESEARCH-TASK`、Owner attention 卡片、Dossier stage fixture、TeamReadModel fixture 和 Trace/Debug 入口 fixture。
   when: 打开主导航，提交投资调研、热点学习、审批、执行、规则、财务、系统和人工事项自然语言请求，并从 Owner Decision View drill down 到 Dossier、Knowledge/Research、Governance 与 Trace/Debug。
-  then: 页面一级主导航存在 `全景 / 投资 / 财务 / 知识 / 治理` 且不包含团队；Dossier、Trace、Agent 画像、能力配置草案和审批包不作为一级菜单；主界面默认简体中文并采用漂亮优先、护眼其次的浅色高端卡面，主题使用暖瓷底色、墨色文字、玉绿主强调、靛蓝/暗金/胭脂红辅助色，卡片标题默认中文，不出现 Daily Brief、Task Center 等可中文化英文标题；Owner 默认卡片不展示非 A 股边界守卫、Prompt/Skill 版本、ContextSnapshot、trace_id、read model 等过程材料；治理页提供任务、审批、Agent 团队、变更、健康、审计二级模块切换，Agent 团队不只藏在卡片入口中；治理下 Agent 团队工作区展示九个 Agent 卡、胜任度、CFO 归因引用、能力短板和能力草案入口；Owner Decision View、Investment Dossier View 和 Trace/Debug 审计层分层清晰；卡片按“需处理事项、核心状态、支撑证据/健康/审计”的业务优先级排列；所有可动作请求先生成 Request Brief、任务卡或治理变更草案；Preview 显示 task_type、semantic lead、process authority、预期产物、阻断条件和审批可能性；热点学习默认生成 research_task，由 Researcher 承接，不显示审批/执行/交易入口；低置信或范围不清的输入停留 draft 并显示补充问题；Owner 卡片跳转到正确 Dossier/Knowledge/Approval/Health/治理 Agent 团队；StageRail 点击只改变 selected_stage 和 URL query，不推进 workflow。
-  evidence_expectation: web_command_routing_report.json 包含 nav_assertions、chinese_ui_scan、premium_light_theme_assertions、owner_facing_content_assertions、governance_module_tabs_assertions、card_layout_order_assertions、governance_agent_team_assertions、three_layer_view_assertions、request_briefs、route_decisions、semantic_lead_assignments、task_cards、research_task_cards、draft_clarification_prompts、drilldown_routes、stage_rail_selection、trace_entry_return_path 和 blocked_direct_actions。
+  then: 页面一级主导航存在 `全景 / 投资 / 财务 / 知识 / 治理` 且不包含团队；Dossier、Trace、团队画像、能力配置方案和审批包不作为一级菜单；主界面默认简体中文并采用漂亮优先、护眼其次的浅色高端卡面，主题使用暖瓷底色、墨色文字、玉绿主强调、靛蓝/暗金/胭脂红辅助色，卡片标题默认中文，不出现 Daily Brief、Task Center 等可中文化英文标题；Owner 默认卡片不展示非 A 股边界守卫、Prompt/Skill 版本、ContextSnapshot、trace_id、read model、`ap-*`、`gov-*`、`incident-*`、`trace-*`、`ctx-*` 等过程材料或机器 ID；Owner Decision View 只展示一个“待办”卡片合并 pending approval 与 actionable/manual task，不再同时展示独立“审批”和“人工待办”卡片；治理页提供待办、团队、变更、健康、审计二级模块切换，待办模块合并展示可处理审批和可办理任务，团队页面直接展示各角色卡片，不再有“进入 Agent 团队”中转卡；治理下团队工作区展示九个角色卡、胜任度、CFO 归因引用、能力短板和能力提升入口；Owner 默认页面不使用 `Agent/Agents/AgentRun/ContextSnapshot` 等技术词，专业术语只保留在配置或审计详情；Owner Decision View、Investment Dossier View 和 Trace/Debug 审计层分层清晰；卡片按“需处理事项、核心状态、支撑证据/健康/审计”的业务优先级排列；所有可动作请求先生成 Request Brief、任务卡或治理变更草案；Preview 显示 task_type、semantic lead、process authority、预期产物、阻断条件和审批可能性；热点学习默认生成 research_task，由 Researcher 承接，不显示审批/执行/交易入口；低置信或范围不清的输入停留 draft 并显示补充问题；Owner 待办卡片跳转到治理待办，审批项从待办进入真实 Approval detail，人工待办从待办进入对应业务模块办理；StageRail 点击只改变 selected_stage 和 URL query，不推进 workflow；知识页只展示经验、资料和整理建议，Knowledge/Prompt/Skill 或默认上下文提案归治理的“变更/待办”模块处理。
+  evidence_expectation: web_command_routing_report.json 包含 nav_assertions、chinese_ui_scan、premium_light_theme_assertions、owner_facing_content_assertions、unified_todo_card_assertions、governance_module_tabs_assertions、card_layout_order_assertions、governance_agent_team_assertions、three_layer_view_assertions、request_briefs、route_decisions、semantic_lead_assignments、task_cards、research_task_cards、draft_clarification_prompts、drilldown_routes、stage_rail_selection、trace_entry_return_path 和 blocked_direct_actions。
   status: planned
 
 - tc_id: TC-ACC-007-01
@@ -287,11 +300,11 @@ Design approved 前，`reviews/design-review.yaml` 必须记录 R8 cold-start dr
   test_type: e2e
   verification_mode: automated
   required_stage: testing
-  scenario: 任务中心、审批中心、manual_todo 与 Agent 能力配置草案隔离。
+  scenario: Owner-facing 待办合并展示，底层任务、审批、manual_todo 与团队能力配置方案保持契约隔离。
   given: 投资任务、research_task、非 A 股人工任务、Owner 例外审批任务、治理变更任务、团队页 Agent 能力配置草案、系统 incident、审批动作和财务敏感字段 fixture。
   when: 渲染治理区并推进任务状态，提交 `approved / rejected / request_changes`、Agent 能力草案和 Owner timeout 场景。
-  then: 所有任务具备 Task Envelope；投资任务绑定 S0-S7 与 reason code；research_task 显示 Researcher、资料包/候选议题/补证状态且不进入审批/执行/交易链；治理变更和 Agent 能力配置草案进入治理状态机；低/中影响草案自动验证后只对新任务或新 attempt 生效，高影响草案进入 Owner 审批；incident 与 manual_todo 不进入审批/执行/交易链；Owner 审批材料包含对比分析、影响范围、替代方案和建议；审批提交后以后端状态刷新；财务敏感字段在 Dossier/Trace/非 CFO 视图只显示脱敏摘要；旧 in-flight AgentRun 继续引用旧 ContextSnapshot。
-  evidence_expectation: governance_task_report.json 包含 task_envelope_states、status_mapping、research_task_isolation、semantic_lead_task_cards、governance_state_machine、agent_capability_draft_states、incident_state_mapping、manual_todo_isolation、approval_packet_completeness、approval_action_feedback、owner_timeout_ui_state、in_flight_snapshot_unchanged 和 finance_sensitive_redaction_ui；team_capability_config_report.json 包含 TeamReadModel、AgentProfileReadModel、AgentCapabilityConfigReadModel、草案提交、impact triage、自动验证/Owner 审批和热改拒绝。
+  then: 所有任务具备 Task Envelope；治理待办默认合并展示可处理审批和待补充、待办理或受阻任务，运行中和展示型任务不出现在默认待办页；API/read model 层仍保持 TaskCenterReadModel、ApprovalCenterReadModel 和 manual_todo 边界分离，manual_todo 不进入审批/执行/交易链；投资任务绑定 S0-S7 与 reason code；research_task 显示 Researcher、资料包/候选议题/补证状态且不进入审批/执行/交易链；治理变更和团队能力配置方案进入治理状态机；低/中影响方案自动验证后只对新任务或新 attempt 生效，高影响方案进入 Owner 审批并在待办 UI 中可进入真实审批详情；incident 与 manual_todo 不进入审批/执行/交易链；Owner 审批材料包含对比分析、影响范围、替代方案和建议；审批提交后以后端状态刷新；财务敏感字段在 Dossier/Trace/非 CFO 视图只显示脱敏摘要；旧 in-flight AgentRun 继续引用旧 ContextSnapshot。
+  evidence_expectation: governance_task_report.json 包含 unified_todo_items、task_envelope_states、status_mapping、research_task_isolation、semantic_lead_task_cards、governance_state_machine、agent_capability_draft_states、incident_state_mapping、manual_todo_isolation、approval_packet_completeness、approval_action_feedback、owner_timeout_ui_state、in_flight_snapshot_unchanged 和 finance_sensitive_redaction_ui；team_capability_config_report.json 包含 TeamReadModel、AgentProfileReadModel、AgentCapabilityConfigReadModel、草案提交、impact triage、自动验证/Owner 审批和热改拒绝。
   status: planned
 
 - tc_id: TC-ACC-008-01
@@ -318,10 +331,10 @@ Design approved 前，`reviews/design-review.yaml` 必须记录 R8 cold-start dr
   verification_mode: automated
   required_stage: testing
   scenario: 数据质量三档降级、切源与阻断。
-  given: Data Domain Registry、Source Registry、Data Request、quality_score 为 0.95/0.85/0.65 的 `decision_core` 数据、关键字段最低分、当前 workflow 配置快照、`execution_core` 低于生效阈值、缓存命中和多源冲突 fixture。
-  when: 执行数据就绪、切源、缓存使用、冲突归一和正式决策推进。
-  then: 0.95 正常；0.85 只能 conditional_pass 并需 Owner 例外；0.65 先触发切源/fallback，仍不可恢复时阻断新决策/执行；关键字段最低有效分或 critical conflict 可覆盖综合均值并阻断；`execution_core` 低于当前生效阈值或 freshness fail 时严格阻断纸面执行；缓存不得生成新的执行授权。
-  evidence_expectation: data_quality_degradation_report.json 包含 registry_contracts、data_request_schema、component_scores、quality_band_actions、critical_field_minimums、fallback_attempts、cache_decision_policy、conflict_resolution_report、workflow_config_snapshot、execution_core_effective_threshold、execution_core_freshness_gate、execution_core_block、risk_review_constraints、blocked_decisions 和 report_payload_contracts 要求的 guard_results。
+  given: Data Domain Registry、Source Registry、DataCollectionSchedule、Data Request、quality_score 为 0.95/0.85/0.65 的 `decision_core` 数据、关键字段最低分、当前 workflow 配置快照、`execution_core` 低于生效阈值、缓存命中、多源冲突 fixture、FX-SCHEDULED-DATA-COLLECTION、FX-ALL-MARKET-SCREENING 和 FX-INTRADAY-HOLDING-MONITOR。
+  when: 执行 beat schedule 安装、定时数据采集、规范化落库、数据就绪、切源、缓存使用、冲突归一和正式决策推进。
+  then: Celery beat schedule 默认非空；采集结果写入 DataRequest/DataLineage/DataQualityReport/DataCollectionRun/DailyQuote；0.95 正常；0.85 只能 conditional_pass 并需 Owner 例外；0.65 先触发切源/fallback，仍不可恢复时阻断新决策/执行；关键字段最低有效分或 critical conflict 可覆盖综合均值并阻断；`execution_core` 低于当前生效阈值或 freshness fail 时严格阻断纸面执行；缓存不得生成新的执行授权；收盘后初筛和盘中持仓监控只产生候选/观察/研究/处置触发，不跳过 IC、Risk 或审计。
+  evidence_expectation: data_quality_degradation_report.json 包含 registry_contracts、data_collection_schedules、data_collection_runs、daily_quote_rows、beat_schedule_entries、data_request_schema、component_scores、quality_band_actions、critical_field_minimums、fallback_attempts、cache_decision_policy、conflict_resolution_report、all_market_screening_result、intraday_monitor_templates、workflow_config_snapshot、execution_core_effective_threshold、execution_core_freshness_gate、execution_core_block、risk_review_constraints、blocked_decisions 和 report_payload_contracts 要求的 guard_results。
   status: planned
 
 - tc_id: TC-ACC-010-01
@@ -1594,7 +1607,7 @@ Design approved 前，`reviews/design-review.yaml` 必须记录 R8 cold-start dr
   executed_at: 2026-05-02
   artifact_ref: python -m pytest tests/api/test_wi001_api_foundation.py tests/core/test_wi001_seed_bundle.py -q
   result: pass
-  residual_risk: Agent 团队 read model 已接 API；仍未证明 live browser 与 FastAPI 的端到端闭环。
+  residual_risk: 团队 read model 已接 API；仍未证明 live browser 与 FastAPI 的端到端闭环。
   reopen_required: false
 
 - acceptance_ref: ACC-004
@@ -2518,6 +2531,19 @@ Design approved 前，`reviews/design-review.yaml` 必须记录 R8 cold-start dr
   residual_risk: Celery registers scheduled data collection requests, executes collect_data_request through Redis worker, loads Source Registry from PostgreSQL, persists DataRequest/DataLineage/DataQualityReport, and restores latest successful lineage as cache when provider fetch fails. Automated transport remains fake/local and does not claim external provider availability.
   reopen_required: false
 
+- acceptance_ref: ACC-009
+  run_id: RUN-WI002-ACC009-SCHEDULED-DB-ROWS-20260506
+  test_case_ref: TC-ACC-009-01
+  verification_type: automated
+  test_type: postgres_celery_schedule_regression
+  test_scope: branch-local
+  completion_level: db_persistent
+  executed_at: 2026-05-06
+  artifact_ref: PYTHONPATH=src python3 -m pytest tests/domain/workflow tests/domain/data tests/domain/services tests/domain/governance tests/worker -q; PYTHONPATH=src python3 -m compileall -q src/velentrade
+  result: pass
+  residual_risk: PostgreSQL/Alembic container tests verified seeded default data_collection_schedule, database-loaded Celery beat schedule, collect_data_request persistence to DataRequest/DataLineage/DataQualityReport/DataCollectionRun/DailyQuote, latest-success cache compatibility, and report payloads for all-market screening fixture plus intraday holding/candidate monitor templates. Provider fetch remains deterministic fake transport for P0 automation; this is not a live-provider production readiness or owner_verified result.
+  reopen_required: false
+
 - acceptance_ref: ACC-008
   run_id: RUN-WI002-ACC008-STAGE-GUARD-REOPEN-20260502
   test_case_ref: TC-ACC-008-01
@@ -3096,7 +3122,7 @@ Design approved 前，`reviews/design-review.yaml` 必须记录 R8 cold-start dr
 - notes:
   - 本阶段已追加 WI-001/WI-004 的 `api_connected` 与 `db_persistent` 级实现证据；历史 `RUN-FULL-*` 仍仅为 `fixture_contract`。
   - Implementation 阶段必须按 `contracts/verification-report-schemas.md` 生成可复核 report artifact。
-  - WI-004 已补 Investment Dossier 浏览器可见业务区块：DataReadiness、role_payload、共识/行动强度、分歧、辩论、优化偏离、Risk、纸面执行和归因回链，并保持 Risk rejected、execution_core blocked、非 A 股和低行动强度无执行捷径；Agent 团队工作区已补团队健康、待处理草案、失败/越权、能力短板、CFO 归因、Prompt/Context 版本和画像权限边界；Knowledge/Memory 页已补每日简报、研究资料包、Memory 工作区、关系图、组织建议、Context 注入检查、Knowledge/Prompt/Skill 提案、Owner Memory capture 和 relation append 组织建议应用；Finance 页已补浏览器级现金资产档案更新入口并明确不触发审批/执行/交易链路；审批包详情已补对比分析、影响范围、替代方案、风险影响、回滚和超时不生效边界，并补 route approval_id 加载/提交一致性与 409/SNAPSHOT_MISMATCH 刷新提示；能力草案 API 失败不再伪造成功；read model 加载失败会显示重试和 fallback 标记；WI-004 report envelope 已补 artifact_refs 与 parseable generated_at metadata；当前为 branch-local `api_connected` 证据，仍未达到 owner_verified。
+  - WI-004 已补 Investment Dossier 浏览器可见业务区块：DataReadiness、role_payload、共识/行动强度、分歧、辩论、优化偏离、Risk、纸面执行和归因回链，并保持 Risk rejected、execution_core blocked、非 A 股和低行动强度无执行捷径；团队工作区已补团队健康、待处理草案、失败/越权、能力短板、CFO 归因、Prompt/Context 版本和画像权限边界；Knowledge/Memory 页已补每日简报、研究资料包、Memory 工作区、关系图、组织建议、Context 注入检查、Knowledge/Prompt/Skill 提案、Owner Memory capture 和 relation append 组织建议应用；Finance 页已补浏览器级现金资产档案更新入口并明确不触发审批/执行/交易链路；审批包详情已补对比分析、影响范围、替代方案、风险影响、回滚和超时不生效边界，并补 route approval_id 加载/提交一致性与 409/SNAPSHOT_MISMATCH 刷新提示；能力草案 API 失败不再伪造成功；read model 加载失败会显示重试和 fallback 标记；WI-004 report envelope 已补 artifact_refs 与 parseable generated_at metadata；当前为 branch-local `api_connected` 证据，仍未达到 owner_verified。
   - WI-002 已追加 foundation 级 `integrated_runtime` 自动化证据：同一 docker compose runtime 下验证 PostgreSQL/Alembic、Redis/Celery worker、FastAPI workflow endpoint、Chromium 浏览器交互、S0-S7 persistence、Reopen Event、公开 A 股 K 线 Source Registry/采集落库、execution_core 阻断、服务边界、市场状态和治理 ContextSnapshot 生效边界。Tencent 公开 A 股 K 线 live provider smoke 仍只作单独证据，不作为 P0 pass 条件；真实外部 provider 生产可用性、全 V1 业务语义和 Owner 人工验收仍未完成。
   - WI-003 已追加 foundation 级 `integrated_runtime` 自动化证据：同一 docker compose runtime 下验证 PostgreSQL/Alembic、Redis/Celery worker、FastAPI workflow/Gateway endpoint、Chromium 浏览器交互、Opportunity Registry、Topic Queue、P0 抢占、IC Context Package 和 CIO Chair Brief 持久化载荷。2026-05-03 WI-010 repair 已补 first-class ICContextPackage/ICChairBrief Gateway artifact、Artifact API、Dossier projection 和 API restart 后 PostgreSQL 可读证据；仍未补浏览器级 IC 材料编辑或 owner_verified 证据。
   - WI-007 已追加 foundation 级 `integrated_runtime` 自动化证据：同一 docker compose runtime 下验证 PostgreSQL/Alembic、Redis/Celery worker、FastAPI Gateway/Collaboration/Workflow/Dossier endpoint、Chromium 浏览器交互、四 Analyst Memo artifact、S3 CollaborationCommand/Event、hard dissent Risk handoff、PostgreSQL audit/outbox 和 API restart 后 Dossier 可见。WI-007 scope 明确不拥有 Risk verdict、Owner exception、paper execution 或前端页面实现。
@@ -3113,8 +3139,156 @@ Design approved 前，`reviews/design-review.yaml` 必须记录 R8 cold-start dr
   - 2026-05-02 docker compose runtime blocker 已修复到 WI-001/WI-004 `integrated_runtime` foundation 级：允许 Dockerfile/预构建镜像/`wheelhouse/`，runtime image 在 build 阶段通过 PyPI mirror 或 wheelhouse 安装依赖，api/worker/beat/agent-runner 启动命令不再 `pip install -e .`；同一 compose runtime 已通过 same-origin frontend、Chromium 浏览器点击、RequestBrief->Task、agent-runner fake_test、API restart 后 task 持久化和六个服务 running 检查。仍不能外推到全 V1，因为 S0-S7、真实外部数据、纸面执行和 Owner 人工验收未闭环。
   - 若后续任何 P0 自动化不可行，必须回到 Requirement 或 review 明确记录例外理由。
 
+- acceptance_ref: ACC-006
+  run_id: RUN-WI011-ACC006-OWNER-WORKBENCH-REFINE-20260506
+  test_case_ref: TC-ACC-006-01
+  verification_type: automated
+  test_type: frontend_e2e
+  test_scope: branch-local-api-connected
+  completion_level: api_connected
+  executed_at: 2026-05-06
+  command_or_steps: "npm --prefix frontend test; npm --prefix frontend run build; uv run --with pytest --with websocket-client pytest tests/e2e -q"
+  artifact_ref: Vitest passed 67 tests; Vite production build passed; e2e passed 12 tests. RED/GREEN coverage now asserts Owner Decision View renders a single 待办 card instead of separate 审批/人工待办 cards, governance modules are 待办/团队/变更/健康/审计, 待办 approval entries route to the live approval_id before POST decision, overview system health is derived from `/api/devops/health` instead of a local degraded fixture and shows the concrete degradation/recovery reason, Investment Dossier header height stays <=44px with StageRail directly below the compact header after loading, and S3 current blocker is explained separately from the S6 execution-data no-trade guard.
+  result: pass
+  residual_risk: Automated branch-local browser/API evidence only; Owner manual acceptance remains pending.
+  reopen_required: false
+
+- acceptance_ref: ACC-007
+  run_id: RUN-WI011-ACC007-GOVERNANCE-SEPARATION-20260506
+  test_case_ref: TC-ACC-007-01
+  verification_type: automated
+  test_type: frontend_e2e
+  test_scope: branch-local-api-connected
+  completion_level: api_connected
+  executed_at: 2026-05-06
+  command_or_steps: "npm --prefix frontend test; npm --prefix frontend run build; uv run --with pytest --with websocket-client pytest tests/e2e -q"
+  artifact_ref: Vitest passed 67 tests; Vite production build passed; e2e passed 12 tests. Governance default module is now 待办, merging approval and actionable/manual task cards in the Owner-facing UI while preserving `/api/tasks` and `/api/approvals` contract separation; approval details still submit through `/api/approvals/{id}/decision`, and manual_todo finance handling still writes through `/api/finance/assets`.
+  result: pass
+  residual_risk: UI/read-model separation is verified at branch-local API-connected level; backend governance activation and Owner manual acceptance are not newly proven by this frontend refinement.
+  reopen_required: false
+
+- acceptance_ref: ACC-023
+  run_id: RUN-WI011-ACC023-MANUAL-TODO-FINANCE-PATH-20260506
+  test_case_ref: TC-ACC-023-01
+  verification_type: automated
+  test_type: browser_e2e
+  test_scope: branch-local-api-connected
+  completion_level: api_connected
+  executed_at: 2026-05-06
+  command_or_steps: "uv run --with pytest --with websocket-client pytest tests/e2e -q"
+  artifact_ref: e2e passed 12 tests, including live browser/API route from non-A trade request to manual_todo, 全景 待办 link to /governance?panel=todos, manual task card action link to /finance?todo=<taskId>, and /api/finance/assets write after submitting the finance dossier form.
+  result: pass
+  residual_risk: Confirms no approval/execution/trade shortcut is exposed for this browser path; does not add a generic manual_todo close API by design.
+  reopen_required: false
+
+- acceptance_ref: ACC-027
+  run_id: RUN-WI011-ACC027-KNOWLEDGE-GOVERNANCE-OWNERSHIP-20260506
+  test_case_ref: TC-ACC-027-01
+  verification_type: automated
+  test_type: frontend_e2e
+  test_scope: branch-local-api-connected
+  completion_level: api_connected
+  executed_at: 2026-05-06
+  command_or_steps: "npm --prefix frontend test; npm --prefix frontend run build; uv run --with pytest --with websocket-client pytest tests/e2e -q"
+  artifact_ref: Vitest passed 67 tests; Vite production build passed; e2e passed 12 tests. Knowledge page now uses Owner-readable cards for 每日简报、研究资料包、经验记录、资料关系 and 整理建议; it shows research package source in the default view, replaces 捕获记忆 with 保存经验, replaces 应用组织建议 with 应用整理建议, avoids leaking Memory/relation IDs after writes, and keeps Knowledge/Prompt/Skill proposal entry and 治理 proposal jump out of the Knowledge page.
+  result: pass
+  residual_risk: Proposal activation/new default-context behavior remains governance-owned and is not newly activated by the Knowledge page.
+  reopen_required: false
+
+- acceptance_ref: ACC-028
+  run_id: RUN-WI011-ACC028-TEAM-WORDING-HOT-EDIT-GUARD-20260506
+  test_case_ref: TC-ACC-028-01
+  verification_type: automated
+  test_type: frontend_e2e
+  test_scope: branch-local-api-connected
+  completion_level: api_connected
+  executed_at: 2026-05-06
+  command_or_steps: "npm --prefix frontend test; npm --prefix frontend run build; uv run --with pytest --with websocket-client pytest tests/e2e -q"
+  artifact_ref: Vitest passed 67 tests; Vite production build passed; e2e passed 12 tests. Owner default pages use 团队/能力提升 wording instead of Agent/Agents/AgentRun/ContextSnapshot, keep capability changes as governance proposals, and hide machine IDs by default in governance health/change/audit views.
+  result: pass
+  residual_risk: This is owner-facing UI/read-model guard evidence; it does not replace backend hot-edit denial or Owner manual acceptance evidence.
+  reopen_required: false
+
+- acceptance_ref: ACC-006
+  run_id: RUN-WI011-ACC006-GOVERNANCE-TEAM-LIVE-PROFILE-20260506
+  test_case_ref: TC-ACC-006-01
+  verification_type: automated
+  test_type: frontend_e2e
+  test_scope: branch-local-api-connected
+  completion_level: api_connected
+  executed_at: 2026-05-06
+  command_or_steps: "npm --prefix frontend test; npm --prefix frontend run build; uv run --with pytest --with websocket-client pytest tests/e2e -q"
+  artifact_ref: Vitest passed 74 tests; Vite production build passed; e2e passed 16 tests. RED/GREEN coverage now reproduces the governance team card blank-page bug with object-shaped `/api/team/{agentId}` permissions, normalizes read/write/tool/service/collaboration permissions into Owner-readable rows, and live browser/API coverage clicks CIO and Fundamental Analyst cards from governance team into real profile pages without blank body, JS errors or `[object Object]`.
+  result: pass
+  residual_risk: Browser/API evidence remains branch-local and does not replace Owner manual acceptance. Full workspace scope gate still fails on unrelated out-of-scope dirty file `src/velentrade/domain/data/__init__.py`.
+  reopen_required: false
+
+- acceptance_ref: ACC-007
+  run_id: RUN-WI011-ACC007-TEAM-CAPABILITY-DRAFT-LINK-20260506
+  test_case_ref: TC-ACC-007-01
+  verification_type: automated
+  test_type: frontend_e2e
+  test_scope: branch-local-api-connected
+  completion_level: api_connected
+  executed_at: 2026-05-06
+  command_or_steps: "npm --prefix frontend test; npm --prefix frontend run build; uv run --with pytest --with httpx pytest tests/api/test_wi011_owner_real_data.py -q; uv run --with pytest --with websocket-client pytest tests/e2e -q"
+  artifact_ref: Vitest passed 74 tests; Vite production build passed; WI-011 API tests passed 9 tests; e2e passed 16 tests. Coverage now follows governance team card -> profile -> capability plan -> `/api/team/{agentId}/capability-drafts`, asserts the returned governance change is shown, and keeps the copy that capability plans affect only new tasks/new attempts while in-flight tasks keep the old snapshot.
+  result: pass
+  residual_risk: Confirms the Owner-facing draft submission link and API call path, not backend governance activation or Owner approval completion. Full workspace scope gate remains blocked by unrelated WI-002 dirty state.
+  reopen_required: false
+
+- acceptance_ref: ACC-028
+  run_id: RUN-WI011-ACC028-TEAM-PERMISSION-NORMALIZATION-20260506
+  test_case_ref: TC-ACC-028-01
+  verification_type: automated
+  test_type: frontend_e2e
+  test_scope: branch-local-api-connected
+  completion_level: api_connected
+  executed_at: 2026-05-06
+  command_or_steps: "npm --prefix frontend test; npm --prefix frontend run build; uv run --with pytest pytest tests/domain/observability tests/domain/knowledge -q; uv run --with pytest --with websocket-client pytest tests/e2e -q"
+  artifact_ref: Vitest passed 74 tests; Vite production build passed; observability/knowledge tests passed 5 tests; e2e passed 16 tests. Team profile rendering now accepts backend object-shaped permission maps, formats skill package and context snapshot values into Owner-readable copy, and includes a route-level fallback so malformed team detail data shows `团队画像暂不可用` instead of blanking the workbench.
+  result: pass
+  residual_risk: This covers UI/read-model normalization and no-hot-edit messaging; it does not prove owner_verified acceptance. Scope gate failure is unrelated to these WI-011 files and remains unresolved.
+  reopen_required: false
+
 <!-- CODESPEC:TESTING:HANDOFFS -->
 ## 5. 主动未完成清单与语义验收
+
+- handoff_id: HANDOFF-WI011-IMPLEMENTATION-20260506
+  phase: Implementation
+  work_item_refs: [WI-011]
+  highest_completion_level: api_connected
+  evidence_refs:
+    - testing.md#RUN-WI011-ACC006-OWNER-WORKBENCH-REFINE-20260506
+    - testing.md#RUN-WI011-ACC007-GOVERNANCE-SEPARATION-20260506
+    - testing.md#RUN-WI011-ACC023-MANUAL-TODO-FINANCE-PATH-20260506
+    - testing.md#RUN-WI011-ACC027-KNOWLEDGE-GOVERNANCE-OWNERSHIP-20260506
+    - testing.md#RUN-WI011-ACC028-TEAM-WORDING-HOT-EDIT-GUARD-20260506
+    - testing.md#RUN-WI011-ACC006-GOVERNANCE-TEAM-LIVE-PROFILE-20260506
+    - testing.md#RUN-WI011-ACC007-TEAM-CAPABILITY-DRAFT-LINK-20260506
+    - testing.md#RUN-WI011-ACC028-TEAM-PERMISSION-NORMALIZATION-20260506
+    - authority-repairs/REPAIR-20260506082825.yaml
+    - authority-repairs/REPAIR-20260506061914.yaml
+  unfinished_items:
+    - source_ref: work-items/WI-011.yaml#required_verification
+      priority: P0
+      current_completion_level: api_connected
+      target_completion_level: integrated_runtime
+      blocker: `../.codespec/codespec check-gate scope` 本轮失败，首个错误为 `changed file src/velentrade/domain/data/__init__.py is outside allowed_paths of WI-011`；工作树中仍存在既有 WI-011 范围外未提交/未跟踪文件（包括 WI-002 后端、迁移和测试改动）。这些不是本次 Owner 工作台团队能力链路的业务测试失败。
+      next_step: 先由对应 WI 收口或清理/提交这些 out-of-scope dirty files，再重跑 WI-011 scope gate；不要通过回滚用户或其他 WI 改动来制造干净结果。
+    - source_ref: testing.md#owner_verified
+      priority: P0
+      current_completion_level: api_connected
+      target_completion_level: owner_verified
+      blocker: 本轮只有自动化前端、构建和 live browser/API e2e 证据，没有 Owner 人工验收结论。
+      next_step: 用户/Owner 在实际页面确认“待办/团队/知识/投资/健康/审计”新口径后，单独记录 owner_verified evidence。
+  fixture_or_fallback_paths:
+    - surface: Owner workbench frontend read models and browser/API route smoke
+      completion_level: api_connected
+      real_api_verified: partial
+      visible_failure_state: true
+      trace_retry_verified: partial
+  wording_guard: "只能报告 WI-011 前端与 live browser/API 分支验证通过；scope gate 尚未通过且没有 Owner 人工验收，不得表述为 owner_verified 或全量 Implementation clean。"
 
 - handoff_id: HANDOFF-IMPLEMENTATION-20260505
   phase: Implementation
@@ -3241,3 +3415,323 @@ Design approved 前，`reviews/design-review.yaml` 必须记录 R8 cold-start dr
       visible_failure_state: not_applicable
       trace_retry_verified: not_applicable
   wording_guard: "Deployment 当前只能说 artifact deploy ready 且 manual_verification_ready=pass；人工验收未通过前，不得说 completed、owner_verified、已发布生产 runtime 或可以 complete-change。"
+
+- acceptance_ref: ACC-006
+  run_id: RUN-WI011-ACC006-OWNER-REAL-DATA-REPAIR-20260506
+  test_case_ref: TC-ACC-006-01
+  verification_type: automated
+  test_type: api_frontend_e2e
+  test_scope: same-origin-8443-runtime
+  completion_level: integrated_runtime
+  executed_at: 2026-05-06
+  artifact_ref: uv run --with pytest --with httpx pytest tests/api/test_wi001_api_foundation.py tests/api/test_wi011_owner_real_data.py -q passed 17 tests; uv run --with pytest --with httpx pytest tests/domain/observability tests/domain/knowledge -q passed 5 tests; npm --prefix frontend test -- --run passed 67 tests; npm --prefix frontend run build passed; docker compose up -d --build api refreshed the 8443-backed API; uv run --with pytest --with websocket-client pytest tests/e2e -q passed 12 tests against https://127.0.0.1:8443/. curl -k /api/devops/health returned incidents=[] and recovery=[]; curl -k /api/workflows/wf-001/dossier returned backend-seeded wf-001 with current_stage S3, state blocked, S3 reason retained_hard_dissent_risk_review and S6 execution_core_status blocked; curl -k /api/knowledge/memory-items found no knowledge-method-1/test/Untitled Memory/测试/invalid_value records.
+  result: pass
+  residual_risk: This is same-origin local runtime evidence on 8443 and proves the Owner default surfaces no longer silently substitute frontend fixture business conclusions; it is still not owner_verified manual acceptance and does not prove production external provider readiness.
+  reopen_required: false
+
+- acceptance_ref: ACC-007
+  run_id: RUN-WI011-ACC007-TODO-REAL-ACTION-REPAIR-20260506
+  test_case_ref: TC-ACC-007-01
+  verification_type: automated
+  test_type: api_frontend_e2e
+  test_scope: same-origin-8443-runtime
+  completion_level: integrated_runtime
+  executed_at: 2026-05-06
+  artifact_ref: Added backend regression that non-A trade RequestBrief confirmation creates manual_todo with route_non_a_manual_todo instead of losing the route reason as request_brief_confirmed. Added frontend regression that even historical manual_todo records with generic request_brief_confirmed route to /finance?todo=<taskId>. Browser E2E on https://127.0.0.1:8443/ confirmed Owner 待办 opens the unified governance todo panel, approval actions post to the real approval id, manual_todo opens the finance form and POSTs /api/finance/assets.
+  result: pass
+  residual_risk: Manual todo completion remains intentionally business-module-specific; no generic manual_todo completion API was added.
+  reopen_required: false
+
+- handoff_id: HANDOFF-WI011-OWNER-REAL-DATA-REPAIR-20260506
+  phase: Implementation
+  work_item_refs: [WI-011]
+  highest_completion_level: integrated_runtime
+  evidence_refs:
+    - testing.md#RUN-WI011-ACC006-OWNER-REAL-DATA-REPAIR-20260506
+    - testing.md#RUN-WI011-ACC007-TODO-REAL-ACTION-REPAIR-20260506
+    - authority-repairs/REPAIR-20260506105512.yaml
+  unfinished_items:
+    - source_ref: ../.codespec/codespec check-gate scope
+      priority: P0
+      current_completion_level: integrated_runtime
+      target_completion_level: integrated_runtime
+      blocker: Full workspace scope gate still fails on pre-existing WI-002 dirty file `src/velentrade/domain/data/__init__.py` outside WI-011 allowed_paths. This repair did not revert or absorb that unrelated change.
+      next_step: Resolve or hand off the WI-002 dirty data-domain changes separately; then rerun `../.codespec/codespec check-gate scope`.
+  fixture_or_fallback_paths:
+    - surface: Owner default workbench business cards
+      completion_level: integrated_runtime
+      real_api_verified: true
+      visible_failure_state: true
+      trace_retry_verified: partial
+    - surface: external provider production readiness
+      completion_level: integrated_runtime
+      real_api_verified: false
+      visible_failure_state: partial
+      trace_retry_verified: false
+  wording_guard: "WI-011 本轮自动化与 8443 runtime 证据通过，但 full workspace scope gate 因无关 WI-002 dirty file 未通过；不得表述为 scope gate 全绿或 owner_verified。"
+
+- acceptance_ref: ACC-006
+  run_id: RUN-WI011-ACC006-AGENT-PROCESS-OWNER-COPY-20260506
+  test_case_ref: TC-ACC-006-01
+  verification_type: automated
+  test_type: api_frontend_e2e
+  test_scope: branch-local-api-connected
+  completion_level: api_connected
+  executed_at: 2026-05-06
+  command_or_steps: "uv run --with pytest --with httpx pytest tests/api/test_wi011_owner_real_data.py -q; npm --prefix frontend test; npm --prefix frontend run build; uv run --with pytest --with websocket-client pytest tests/e2e -q; uv run --with pytest pytest tests/domain/observability tests/domain/knowledge -q; ../.codespec/codespec check-gate scope"
+  artifact_ref: API regression passed 9 tests and now asserts wf-001 Dossier returns fundamental hard dissent details, role_payload drilldown fields, DebateSummary process fields and Trace API business summaries. Frontend regression passed 71 Vitest tests and build passed; tests assert S2 hard dissent content, S3 debate process summary, Trace default hiding run/context/profile IDs, and Chinese owner copy for finance, approval packet and capability config raw tokens. Existing e2e passed 12 tests; observability/knowledge domain tests passed 5 tests.
+  result: pass
+  residual_risk: "`../.codespec/codespec check-gate scope` still fails on pre-existing out-of-scope dirty file `src/velentrade/domain/data/__init__.py`; this run is not owner_verified and did not use docker compose runtime refresh."
+  reopen_required: false
+
+- handoff_id: HANDOFF-WI011-AGENT-PROCESS-OWNER-COPY-20260506
+  phase: Implementation
+  work_item_refs: [WI-011]
+  highest_completion_level: api_connected
+  evidence_refs:
+    - testing.md#RUN-WI011-ACC006-AGENT-PROCESS-OWNER-COPY-20260506
+  unfinished_items:
+    - source_ref: ../.codespec/codespec check-gate scope
+      priority: P0
+      current_completion_level: api_connected
+      target_completion_level: integrated_runtime
+      blocker: Full workspace scope gate remains blocked by pre-existing WI-002 dirty file `src/velentrade/domain/data/__init__.py` outside WI-011 allowed_paths.
+      next_step: Resolve or hand off that WI-002 dirty file separately, rerun scope gate, then decide whether to refresh docker compose runtime evidence for this UI/API projection repair.
+    - source_ref: testing.md#owner_verified
+      priority: P0
+      current_completion_level: api_connected
+      target_completion_level: owner_verified
+      blocker: No Owner manual acceptance was recorded for the revised Dossier/Trace/finance/approval/config copy.
+      next_step: Owner reviews the actual pages and records manual acceptance in Deployment evidence if approved.
+  fixture_or_fallback_paths:
+    - surface: Agent process visibility in Investment Dossier and Trace default projection
+      completion_level: api_connected
+      real_api_verified: true
+      visible_failure_state: true
+      trace_retry_verified: partial
+    - surface: Owner-readable copy formatter coverage for future workflow read models
+      completion_level: api_connected
+      real_api_verified: partial
+      visible_failure_state: true
+      trace_retry_verified: partial
+  wording_guard: "本轮只能说 API/前端/e2e 自动化通过且完成到 api_connected；scope gate 仍被既有 WI-002 范围外脏文件阻断，且未 owner_verified。"
+
+- acceptance_ref: ACC-006
+  run_id: RUN-WI011-ACC006-AGENT-PROCESS-LIVE-RUNTIME-20260506
+  test_case_ref: TC-ACC-006-01
+  verification_type: automated
+  test_type: api_frontend_e2e
+  test_scope: same-origin-8443-runtime
+  completion_level: integrated_runtime
+  executed_at: 2026-05-06
+  command_or_steps: "npm --prefix frontend test -- --run; npm --prefix frontend run build; uv run --with pytest --with httpx pytest tests/api/test_wi011_owner_real_data.py -q; uv run --with pytest pytest tests/domain/observability tests/domain/knowledge -q; docker compose up -d --build --force-recreate api; uv run --with pytest --with websocket-client pytest tests/e2e -q; ../.codespec/codespec check-gate scope"
+  artifact_ref: Frontend regression now passes 72 Vitest tests and asserts empty workflow Trace APIs do not fall back to fixture process records. API regression passed 9 tests; observability/knowledge domain tests passed 5 tests; Vite build produced `frontend/dist/assets/index-Bs91Pu09.js`; docker compose rebuilt and recreated API/agent-runner runtime. Live 8443 `/api/workflows/wf-001/dossier` now returns fundamental hard dissent reason, role_payload drilldowns and DebateSummary fields; live `/agent-runs`, `/collaboration-events` and `/handoffs` return business process summaries. Browser E2E passed 15 tests, including `/investment/wf-001?stage=S2`, `/investment/wf-001?stage=S3`, `/investment/wf-001/trace`, finance, approval package and capability config checks for known raw backend tokens.
+  result: pass
+  residual_risk: "`../.codespec/codespec check-gate scope` still fails on pre-existing out-of-scope dirty file `src/velentrade/domain/data/__init__.py`; this evidence is integrated runtime automation, not Owner manual acceptance."
+  reopen_required: false
+
+- handoff_id: HANDOFF-WI011-AGENT-PROCESS-LIVE-RUNTIME-20260506
+  phase: Implementation
+  work_item_refs: [WI-011]
+  highest_completion_level: integrated_runtime
+  evidence_refs:
+    - testing.md#RUN-WI011-ACC006-AGENT-PROCESS-LIVE-RUNTIME-20260506
+  unfinished_items:
+    - source_ref: ../.codespec/codespec check-gate scope
+      priority: P0
+      current_completion_level: integrated_runtime
+      target_completion_level: integrated_runtime
+      blocker: Full workspace scope gate remains blocked by pre-existing WI-002 dirty file `src/velentrade/domain/data/__init__.py` outside WI-011 allowed_paths.
+      next_step: Resolve or hand off that WI-002 dirty file separately, then rerun `../.codespec/codespec check-gate scope`.
+    - source_ref: testing.md#owner_verified
+      priority: P0
+      current_completion_level: integrated_runtime
+      target_completion_level: owner_verified
+      blocker: No Owner manual acceptance was recorded for the revised Dossier/Trace/finance/approval/config copy.
+      next_step: Owner reviews the actual pages and records manual acceptance in Deployment evidence if approved.
+  fixture_or_fallback_paths:
+    - surface: Investment Dossier S2/S3 hard dissent and debate process projection
+      completion_level: integrated_runtime
+      real_api_verified: true
+      visible_failure_state: true
+      trace_retry_verified: true
+    - surface: Workflow Trace process projection
+      completion_level: integrated_runtime
+      real_api_verified: true
+      visible_failure_state: true
+      trace_retry_verified: true
+    - surface: Owner-readable copy formatter coverage for finance/approval/config pages
+      completion_level: integrated_runtime
+      real_api_verified: true
+      visible_failure_state: true
+      trace_retry_verified: partial
+  wording_guard: "可以报告 WI-011 本轮 Dossier/Trace/finance/approval/config 自动化已到 integrated_runtime；scope gate 仍被既有 WI-002 范围外脏文件阻断，且未 owner_verified。"
+
+- acceptance_ref: ACC-006
+  run_id: RUN-WI011-ACC006-OWNER-READABLE-DOSSIER-DENSITY-20260507
+  test_case_ref: TC-ACC-006-01
+  verification_type: automated
+  test_type: frontend_api_e2e
+  test_scope: owner-default-copy-and-layout
+  completion_level: integrated_runtime
+  executed_at: 2026-05-07
+  command_or_steps: "npm --prefix frontend test -- --run src/workbench.ui.test.tsx; python -m pytest tests/api/test_wi011_owner_real_data.py -q; npm --prefix frontend run build; npm --prefix frontend test -- --run; python -m pytest tests/domain/observability tests/domain/knowledge -q; python -m pytest tests/e2e -q; ../.codespec/codespec check-gate scope"
+  artifact_ref: "投资 Dossier 默认页已按老板可读信息密度返工：投资页默认不展示审计按钮和 S0 审计回链；S0/S1/S3/S4/S5/S6/S7 少量信息直接展开；S1 展示数据来源、用途、缺口和阶段影响；S3 展示四位分析师观点、依据、反证、结论变化和 CIO 综合；S4 说明为什么还不能决策；S5/S6 删除说明性边界卡；S7 归因状态合并到回链与反思入口。前端单测 75 条目标测试通过，完整 Vitest 86 条通过；WI-011 API 测试 10 条通过；Vite build 通过；observability/knowledge 域测试 5 条通过；浏览器 E2E 16 条通过。"
+  result: pass
+  residual_risk: "`../.codespec/codespec check-gate scope` 仍失败，原因是既有 WI-002 范围外脏文件 `src/velentrade/domain/data/__init__.py`，本轮未处理也未回退该文件；本轮仍未记录 Owner 手工验收。"
+  reopen_required: false
+
+- handoff_id: HANDOFF-WI011-OWNER-READABLE-DOSSIER-DENSITY-20260507
+  phase: Implementation
+  work_item_refs: [WI-011]
+  highest_completion_level: integrated_runtime
+  evidence_refs:
+    - testing.md#RUN-WI011-ACC006-OWNER-READABLE-DOSSIER-DENSITY-20260507
+  unfinished_items:
+    - source_ref: ../.codespec/codespec check-gate scope
+      priority: P0
+      current_completion_level: integrated_runtime
+      target_completion_level: integrated_runtime
+      blocker: Existing WI-002 dirty file `src/velentrade/domain/data/__init__.py` is outside WI-011 allowed_paths, so scope gate cannot pass in this workspace state.
+      next_step: Resolve or hand off the WI-002 dirty file separately, then rerun `../.codespec/codespec check-gate scope`.
+    - source_ref: testing.md#owner_verified
+      priority: P0
+      current_completion_level: integrated_runtime
+      target_completion_level: owner_verified
+      blocker: Owner has not yet recorded manual acceptance for the revised investment default pages.
+      next_step: Owner reviews `/investment/wf-001?stage=S0/S1/S3/S4/S5/S6/S7` and records manual acceptance if approved.
+  fixture_or_fallback_paths:
+    - surface: Investment Dossier owner-readable default pages
+      completion_level: integrated_runtime
+      real_api_verified: true
+      visible_failure_state: true
+      trace_retry_verified: partial
+    - surface: S1 data source projection into Dossier read model
+      completion_level: integrated_runtime
+      real_api_verified: true
+      visible_failure_state: true
+      trace_retry_verified: partial
+  wording_guard: "可以报告老板可读 Dossier 信息密度返工的前端/API/build/E2E 自动化通过；不能说 scope gate 全绿，不能说已 owner_verified。"
+
+- acceptance_ref: ACC-006
+  run_id: RUN-WI011-ACC006-STRUCTURED-S3-DEBATE-20260508
+  test_case_ref: TC-ACC-006-01
+  verification_type: automated
+  test_type: contract_api_frontend_e2e
+  test_scope: same-origin-8443-runtime
+  completion_level: integrated_runtime
+  executed_at: 2026-05-08
+  command_or_steps: "pytest tests/api/test_wi011_owner_real_data.py -q failed because bare pytest is not installed in this shell; uv run --with pytest --with httpx pytest tests/api/test_wi011_owner_real_data.py -q; npm --prefix frontend test -- --run; npm --prefix frontend run build; docker compose up -d --build api; uv run --with pytest --with websocket-client pytest tests/e2e/test_wi004_browser_live_api.py -q; uv run --with pytest --with httpx pytest tests/domain/observability tests/domain/knowledge -q; uv run --with pytest --with websocket-client pytest tests/e2e -q; ../.codespec/codespec check-gate scope"
+  artifact_ref: "S3 debate read model is now backend-owned and structured: /api/workflows/wf-001/dossier returns debate.owner_summary, status_summary, core_disputes, view_change_details, retained_dissent_details, round_details and next_actions; frontend S3 middle card renders owner_summary/current status/core dispute/view changes/retained dissent/CIO/next actions; clicking core dispute, view changes, retained dissent and rounds opens distinct detail content; missing structured fields show 后端未返回辩论详情. API regression passed 12 tests; Vitest passed 97 tests; Vite build passed; docker compose rebuilt API for 8443 live runtime; targeted browser E2E passed 9 tests; full browser E2E passed 17 tests; observability/knowledge domain tests passed 5 tests."
+  result: pass
+  residual_risk: "`../.codespec/codespec check-gate scope` failed on existing unrelated authority repair file `authority-repairs/REPAIR-20260506014730.yaml` outside the active authority repair allowed_paths. Active authority repair REPAIR-20260508000435 is still open until the workspace scope blocker is resolved and authority-repair close can rerun its gate/smoke. No Owner manual acceptance has been recorded."
+  reopen_required: false
+
+- handoff_id: HANDOFF-WI011-STRUCTURED-S3-DEBATE-20260508
+  phase: Implementation
+  work_item_refs: [WI-011]
+  highest_completion_level: integrated_runtime
+  evidence_refs:
+    - testing.md#RUN-WI011-ACC006-STRUCTURED-S3-DEBATE-20260508
+    - authority-repairs/REPAIR-20260508000435.yaml
+  unfinished_items:
+    - source_ref: ../.codespec/codespec check-gate scope
+      priority: P0
+      current_completion_level: integrated_runtime
+      target_completion_level: integrated_runtime
+      blocker: Existing unrelated authority repair file `authority-repairs/REPAIR-20260506014730.yaml` is outside the active authority repair allowed_paths, so workspace scope gate cannot pass in this state.
+      next_step: Resolve or hand off that existing authority repair file separately, then rerun `../.codespec/codespec check-gate scope`.
+    - source_ref: authority-repairs/REPAIR-20260508000435.yaml
+      priority: P0
+      current_completion_level: integrated_runtime
+      target_completion_level: integrated_runtime
+      blocker: The active authority repair remains open because close must rerun the repair gate and smoke after the workspace scope blocker is cleared.
+      next_step: Run `../.codespec/codespec authority-repair close --evidence \"structured S3 debate contract/API/frontend/E2E evidence passed\"` after the blocking unrelated repair file is resolved.
+    - source_ref: testing.md#owner_verified
+      priority: P0
+      current_completion_level: integrated_runtime
+      target_completion_level: owner_verified
+      blocker: Owner has not yet recorded manual acceptance for the revised S3 debate summary/detail UX.
+      next_step: Owner reviews `/investment/wf-001?stage=S3` and records manual acceptance if approved.
+  fixture_or_fallback_paths:
+    - surface: S3 structured debate Dossier projection
+      completion_level: integrated_runtime
+      real_api_verified: true
+      visible_failure_state: true
+      trace_retry_verified: partial
+    - surface: S3 click detail UX
+      completion_level: integrated_runtime
+      real_api_verified: true
+      visible_failure_state: true
+      trace_retry_verified: partial
+  wording_guard: "可以报告 S3 结构化辩论返工的 API/frontend/build/8443 E2E 自动化通过；不能说 scope gate 全绿、authority repair 已关闭或 owner_verified。"
+
+- acceptance_ref: ACC-006
+  run_id: RUN-WI011-ACC006-S7-DOSSIER-FIT-20260508
+  test_case_ref: TC-ACC-006-01
+  verification_type: automated
+  test_type: browser_layout_e2e
+  test_scope: same-origin-8443-runtime
+  completion_level: integrated_runtime
+  executed_at: 2026-05-08
+  command_or_steps: "Added browser E2E assertion for /investment/wf-001?stage=S7 at 1600x760; npm --prefix frontend run build; docker compose up -d --build api; uv run --with pytest --with websocket-client pytest tests/e2e/test_wi004_browser_live_api.py::test_browser_wf001_dossier_stage_layout_has_no_overlap_or_wide_blank -q; npm --prefix frontend test -- --run; uv run --with pytest --with websocket-client pytest tests/e2e/test_wi004_browser_live_api.py -q; uv run --with pytest --with websocket-client pytest tests/e2e -q"
+  artifact_ref: "Root cause was Dossier frame height using calc(100vh - 96px), which ignored the real 120px top offset plus bottom breathing room. At 1600x760 before the fix, S7 bottom was 784 and exceeded viewport; after changing the frame height to clamp(480px, calc(100vh - 140px), 760px), S7 bottom, rail bottom and board bottom are 740, document/body scrollHeight are 760, and the page no longer requires scrolling to reveal S7."
+  result: pass
+  residual_risk: "`../.codespec/codespec check-gate scope` remains blocked by existing unrelated authority repair file `authority-repairs/REPAIR-20260506014730.yaml` outside active repair allowed_paths. No Owner manual acceptance has been recorded."
+  reopen_required: false
+
+- acceptance_ref: ACC-006
+  run_id: RUN-WI011-ACC006-DOSSIER-REPAIR-COMPLETE-VISUALS-20260508
+  test_case_ref: TC-ACC-006-01
+  verification_type: automated
+  test_type: frontend_browser_layout_e2e
+  test_scope: same-origin-8443-runtime
+  completion_level: integrated_runtime
+  executed_at: 2026-05-08
+  command_or_steps: "Added regressions for S0 three bordered sections, S2 summary item retention after detail opens, S2 matrix/conclusion font-density metrics, and S7 fit at 1600x760. Ran npm --prefix frontend test -- --run; npm --prefix frontend run build; docker compose up -d --build api; uv run --with pytest --with websocket-client pytest tests/e2e/test_wi004_browser_live_api.py -q; uv run --with pytest --with websocket-client pytest tests/e2e -q; ../.codespec/codespec check-gate scope."
+  artifact_ref: "Frontend Vitest passed 97 tests. Vite build passed and 8443 now serves /assets/index-CKWqDLvs.js plus /assets/index-DLCz6TTM.css. Targeted browser E2E passed 9 tests and full browser E2E passed 17 tests. S0 now shows 收到什么 / 处理情况 / 准备做什么 with section borders. S2 opened-detail focus list keeps 去向 / 硬异议 / 证据 / 下一步 summary items visible; matrix row height is >=44 and conclusion rows use >=14px font. S7 rail/board/S7 bottom remains within viewport at 1600x760."
+  result: pass
+  residual_risk: "`../.codespec/codespec check-gate scope` still fails on existing unrelated authority repair file `authority-repairs/REPAIR-20260506014730.yaml` outside active repair allowed_paths. Active authority repair REPAIR-20260508000435 remains open, and Owner manual acceptance is not recorded."
+  reopen_required: false
+
+- acceptance_ref: ACC-006
+  run_id: RUN-WI011-ACC006-S1-S3-DOSSIER-DENSITY-FIT-20260508
+  test_case_ref: TC-ACC-006-01
+  verification_type: automated
+  test_type: frontend_browser_layout_e2e
+  test_scope: same-origin-8443-runtime
+  completion_level: integrated_runtime
+  executed_at: 2026-05-08
+  command_or_steps: "Added red/green regressions for S1 compact data card, S3 fixed-narrow summary label column, S3 four analyst rows visible at 1600x760, and default S0-S7 middle cards with no internal scroll overflow. Ran npm --prefix frontend test -- --run -t \"controlled trading language\" and -t \"one fixed-height reading panel\" first and confirmed they failed on the old S1 two-card layout; then ran npm --prefix frontend test -- --run; npm --prefix frontend run build; docker compose up -d --build api; uv run --with pytest --with websocket-client pytest tests/e2e/test_wi004_browser_live_api.py::test_browser_wf001_dossier_stage_layout_has_no_overlap_or_wide_blank -q; uv run --with pytest --with websocket-client pytest tests/e2e/test_wi004_browser_live_api.py -q; uv run --with pytest --with websocket-client pytest tests/e2e -q; ../.codespec/codespec check-gate scope."
+  artifact_ref: "Frontend Vitest passed 97 tests. Vite build passed and 8443 now serves /assets/index-DOjWI9bD.js plus /assets/index-Ca-Pwuxc.css. Targeted S1/S2/S3/S7 browser layout E2E passed; full live browser file passed 9 tests; full tests/e2e passed 17 tests. S1 now renders one compact 数据准备 card with 已拿到什么 / 数据缺口 / 下一步影响 sections, not the previous 数据来源与获取结果 + 缺口与下一步 two-card spread. S3 summary label column is constrained by browser assertions to <=96px with value start <=128px; all four analyst rows, including 事件分析师, are visible inside the analyst panel at 1600x760. Browser E2E also loops S0-S7 and asserts default middle cards/section lists have scrollHeight <= clientHeight + 1."
+  result: pass
+  residual_risk: "`../.codespec/codespec check-gate scope` still fails on existing unrelated authority repair file `authority-repairs/REPAIR-20260506014730.yaml` outside active repair allowed_paths. Active authority repair REPAIR-20260508000435 remains open, and Owner manual acceptance for the latest S1/S3 density changes is not recorded."
+  reopen_required: false
+
+- acceptance_ref: ACC-006
+  run_id: RUN-WI011-ACC006-S0-S7-DOSSIER-DENSITY-AUDIT-20260508
+  test_case_ref: TC-ACC-006-01
+  verification_type: automated
+  test_type: frontend_browser_layout_e2e
+  test_scope: same-origin-8443-runtime
+  completion_level: integrated_runtime
+  executed_at: 2026-05-08
+  command_or_steps: "Audited /investment/wf-001?stage=S0..S7 at 1600x760 with browser layout metrics. Added failing assertions for S1 low-quality status text (`缺失 · 缺失`) and for S0-S7 middle content being hard-stretched to the full 620px stage frame. Confirmed red via npm --prefix frontend test -- --run -t \"controlled trading language\" and uv run --with pytest --with websocket-client pytest tests/e2e/test_wi004_browser_live_api.py::test_browser_wf001_dossier_stage_layout_has_no_overlap_or_wide_blank -q. Implemented natural-height middle cards, desktop three-column direct stage sections, S2 natural summary card heights, S3 natural row layout, and normalized S1 missing-source text. Ran npm --prefix frontend test -- --run; npm --prefix frontend run build; docker compose up -d --build api; uv run --with pytest --with websocket-client pytest tests/e2e/test_wi004_browser_live_api.py::test_browser_wf001_dossier_stage_layout_has_no_overlap_or_wide_blank -q; uv run --with pytest --with websocket-client pytest tests/e2e/test_wi004_browser_live_api.py -q; uv run --with pytest --with websocket-client pytest tests/e2e -q; uv run --with pytest --with httpx pytest tests/api/test_wi011_owner_real_data.py -q; uv run --with pytest --with httpx pytest tests/domain/observability tests/domain/knowledge -q; git diff --check -- frontend/src/main.tsx frontend/src/styles.css frontend/src/workbench.ui.test.tsx tests/e2e/test_wi004_browser_live_api.py testing.md; ../.codespec/codespec check-gate scope."
+  artifact_ref: "Frontend Vitest passed 97 tests. Vite build passed and 8443 now serves /assets/index-BEHh_U3e.js plus /assets/index-bI5WOxXY.css. Targeted browser layout E2E passed; live browser file passed 9 tests; full tests/e2e passed 17 tests. WI-011 API regression passed 12 tests; observability/knowledge domain tests passed 5 tests; diff whitespace check passed. Post-fix browser audit at 1600x760 measured middle content heights: S0 319px, S1 329px, S2 471px, S3 496px, S4 262px, S5 279px, S6 237px, S7 228px versus the fixed 620px stage frame; every stage leaves visible breathing room, has no internal overflow, and no page contains `缺失 · 缺失`."
+  result: pass
+  residual_risk: "`../.codespec/codespec check-gate scope` still fails on existing unrelated authority repair file `authority-repairs/REPAIR-20260506014730.yaml` outside active repair allowed_paths. Active authority repair REPAIR-20260508000435 remains open, and Owner manual acceptance for the latest S0-S7 density audit is not recorded."
+  reopen_required: false
+
+- acceptance_ref: ACC-006
+  run_id: RUN-WI011-ACC006-S1-DATA-SOURCE-COPY-20260508
+  test_case_ref: TC-ACC-006-01
+  verification_type: automated
+  test_type: frontend_browser_layout_e2e
+  test_scope: same-origin-8443-runtime
+  completion_level: integrated_runtime
+  executed_at: 2026-05-08
+  command_or_steps: "Added red/green regressions for S1 data source copy so the available source row cannot show both `已获取：字段...` and `已获取 · 可用于研究判断`. Confirmed red with npm --prefix frontend test -- --run -t \"controlled trading language\". Implemented S1 row copy as `字段：...` plus pure business usability, then ran npm --prefix frontend test -- --run -t \"controlled trading language\"; npm --prefix frontend test -- --run; npm --prefix frontend run build; docker compose up -d --build api; uv run --with pytest --with websocket-client pytest tests/e2e/test_wi004_browser_live_api.py::test_browser_wf001_dossier_stage_layout_has_no_overlap_or_wide_blank -q; uv run --with pytest --with websocket-client pytest tests/e2e/test_wi004_browser_live_api.py -q; uv run --with pytest --with websocket-client pytest tests/e2e -q; git diff --check -- frontend/src/main.tsx frontend/src/workbench.ui.test.tsx tests/e2e/test_wi004_browser_live_api.py testing.md; ../.codespec/codespec check-gate scope."
+  artifact_ref: "Frontend Vitest passed 97 tests. Vite build passed and 8443 now serves /assets/index-Bs7oT-eZ.js plus /assets/index-bI5WOxXY.css. Targeted browser layout E2E passed; full live browser file passed 9 tests; full tests/e2e passed 17 tests; diff whitespace check passed. S1 source row now renders `腾讯公开日线行情 / 研究/决策核心 / 字段：标的代码、交易日、收盘价、成交量、来源时间戳 / 可用于研究判断`, while the execution-core missing row still renders `未取得 · 不能用于成交`."
+  result: pass
+  residual_risk: "`../.codespec/codespec check-gate scope` still fails on existing unrelated authority repair file `authority-repairs/REPAIR-20260506014730.yaml` outside active repair allowed_paths. Active authority repair REPAIR-20260508000435 remains open, and Owner manual acceptance for the latest S1 copy change is not recorded."
+  reopen_required: false

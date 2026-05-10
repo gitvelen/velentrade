@@ -12,11 +12,10 @@ import {
   buildDevOpsHealthReadModel,
   buildFinanceOverviewReadModel,
   buildGovernanceReadModel,
-  buildInvestmentDossierReadModel,
-  buildKnowledgeReadModel,
   buildApprovalRecordReadModel,
   buildTeamReadModel,
-  buildTraceDebugReadModel,
+  buildUnavailableTraceDebugReadModel,
+  buildUnifiedTodoItems,
 } from "./workbench";
 
 type ApiEnvelope<T> = {
@@ -55,6 +54,10 @@ type ApiTeamReadModel = {
   }>;
 };
 
+type ApiPermissionFieldValue = string | string[] | null | undefined;
+type ApiPermissionMap = Record<string, ApiPermissionFieldValue>;
+type ApiPermissionInput = string[] | ApiPermissionMap | undefined;
+
 type ApiAgentProfileReadModel = {
   agent_id?: string;
   display_name?: string;
@@ -65,7 +68,11 @@ type ApiAgentProfileReadModel = {
   skill_package_version?: string;
   prompt_version?: string;
   context_snapshot_version?: string;
-  tool_permissions?: string[];
+  read_permissions?: ApiPermissionMap;
+  write_permissions?: ApiPermissionMap;
+  service_permissions?: string[];
+  tool_permissions?: ApiPermissionInput;
+  collaboration_commands?: string[];
   weakness_tags?: string[];
   cfo_attribution_refs?: string[];
   quality_metrics?: {
@@ -88,7 +95,10 @@ type ApiMemoryReadModel = {
   memory_type?: string;
   status?: string;
   title?: string;
+  summary?: string;
   tags?: string[];
+  source_refs?: string[];
+  artifact_refs?: string[];
   why_included?: string;
   current_version_id?: string;
   sensitivity?: string;
@@ -104,14 +114,19 @@ type ApiMemoryReadModel = {
 type ApiAgentRunReadModel = {
   agent_run_id?: string;
   parent_run_id?: string | null;
+  agent_id?: string;
   stage?: string;
   profile_version?: string;
   context_snapshot_id?: string;
+  context_slice_id?: string;
+  run_goal?: string;
+  status?: string;
 };
 
 type ApiCollaborationEventReadModel = {
   event_type?: string;
   summary?: string;
+  payload?: Record<string, unknown>;
 };
 
 type ApiHandoffReadModel = {
@@ -136,9 +151,9 @@ type ApiFinanceOverviewReadModel = {
 };
 
 type ApiDevOpsHealthReadModel = {
-  routine_checks?: Array<{ check_id?: string; status?: string }>;
+  routine_checks?: Array<{ check_id?: string; status?: string; last_success_at?: string; next_check_at?: string }>;
   incidents?: Array<{ incident_id?: string; status?: string; incident_type?: string }>;
-  recovery?: Array<{ plan_id?: string; investment_resume_allowed?: boolean }>;
+  recovery?: Array<{ plan_id?: string; technical_recovery_status?: string; investment_resume_allowed?: boolean }>;
 };
 
 type ApiTaskCenterReadModel = {
@@ -147,6 +162,9 @@ type ApiTaskCenterReadModel = {
     task_type?: string;
     current_state?: string;
     reason_code?: string;
+    due_date?: string;
+    risk_hint?: string;
+    blocked_reason?: string;
   }>;
 };
 
@@ -157,12 +175,14 @@ type ApiApprovalCenterReadModel = {
     subject?: string;
     trigger_reason?: string;
     effective_scope?: string;
+    deadline?: string;
     recommended_decision?: string;
     decision?: string;
-    alternatives?: string[];
-    comparison_options?: string[];
-    risk_and_impact?: string[];
+    alternatives?: unknown[];
+    comparison_options?: unknown[];
+    risk_and_impact?: unknown[] | Record<string, unknown>;
     timeout_disposition?: string;
+    timeout_policy?: string;
     rollback_ref?: string;
     evidence_refs?: string[];
     trace_route?: string;
@@ -177,6 +197,8 @@ type ApiGovernanceChangeReadModel = {
   state?: string;
   effective_scope?: string;
 };
+
+let cachedApprovalCenter: NonNullable<ApiApprovalCenterReadModel["approval_center"]> = [];
 
 type ApiInvestmentDossierReadModel = {
   workflow?: {
@@ -201,7 +223,10 @@ type ApiInvestmentDossierReadModel = {
     direction?: string;
     direction_score?: number;
     confidence?: number;
+    evidence_quality?: number;
     hard_dissent?: boolean;
+    hard_dissent_reason?: string | null;
+    thesis?: string | null;
   }>;
   forbidden_actions?: Record<string, {
     action_visible?: boolean;
@@ -214,10 +239,38 @@ type ApiInvestmentDossierReadModel = {
     decision_core_status?: string;
     execution_core_status?: string;
     issues?: string[];
+    lineage_refs?: string[];
+    owner_summary?: string;
+    source_status?: Array<{
+      source_name?: string;
+      source_ref?: string;
+      required_usage?: string;
+      requested_fields?: string[];
+      obtained_fields?: string[];
+      missing_fields?: string[];
+      status?: string;
+      quality_label?: string;
+      evidence_ref?: string;
+    }>;
+    data_gaps?: Array<{
+      gap?: string;
+      affects_stage?: string;
+      impact?: string;
+      next_action?: string;
+    }>;
   };
   role_payload_drilldowns?: Array<{
     role?: string;
     highlights?: string[];
+    hard_dissent_reason?: string | null;
+    thesis?: string | null;
+    supporting_evidence_refs?: string[];
+    counter_evidence_refs?: string[];
+    key_risks?: string[];
+    applicable_conditions?: string[];
+    invalidation_conditions?: string[];
+    suggested_action_implication?: string | null;
+    role_payload?: Record<string, unknown>;
   }>;
   consensus?: {
     score?: number;
@@ -230,11 +283,75 @@ type ApiInvestmentDossierReadModel = {
     retained_hard_dissent?: boolean;
     risk_review_required?: boolean;
     issues?: string[];
+    view_changes?: string[];
+    cio_synthesis?: string | null;
+    unresolved_dissent?: string[];
+    rounds?: Array<{ round_no?: number; issue?: string; outcome?: string }>;
+    owner_summary?: string | null;
+    status_summary?: {
+      rounds_used?: number;
+      retained_hard_dissent?: boolean;
+      risk_review_required?: boolean;
+      consensus_score?: number | null;
+      action_conviction?: number | null;
+    };
+    core_disputes?: Array<{
+      title?: string;
+      why_it_matters?: string;
+      involved_roles?: string[];
+      current_conclusion?: string;
+      required_evidence?: string[];
+    }>;
+    view_change_details?: Array<{
+      role?: string;
+      before?: string;
+      after?: string;
+      reason?: string;
+      impact?: string;
+    }>;
+    retained_dissent_details?: Array<{
+      source_role?: string;
+      dissent?: string;
+      counter_risks?: string[];
+      handling?: string;
+      forbidden_actions?: string[];
+    }>;
+    round_details?: Array<{
+      round_no?: number;
+      issue?: string;
+      participants?: string[];
+      input_evidence?: string[];
+      outcome?: string;
+      unresolved_questions?: string[];
+    }>;
+    next_actions?: Array<{
+      action?: string;
+      owner?: string;
+      completion_signal?: string;
+      next_stage?: string;
+    }>;
   };
   optimizer_deviation?: {
     single_name_deviation?: string;
     portfolio_deviation?: string;
     recommendation?: string;
+  };
+  cio_decision?: {
+    decision?: string;
+    decision_rationale?: string;
+    deviation_reason?: string;
+    conditions?: string[];
+    monitoring_points?: string[];
+    risk_handoff_notes?: string;
+  };
+  decision_guard?: {
+    major_deviation?: boolean;
+    single_name_deviation_pp?: number | string;
+    portfolio_active_deviation?: number | string;
+    low_action_conviction?: boolean;
+    retained_hard_dissent?: boolean;
+    data_quality_blockers?: string[];
+    reason_codes?: string[];
   };
   risk_review?: {
     review_result?: string;
@@ -246,18 +363,41 @@ type ApiInvestmentDossierReadModel = {
     status?: string;
     pricing_method?: string;
     window?: string;
-    fees?: string;
+    fees?: unknown;
+    taxes?: unknown;
+    slippage?: unknown;
     t_plus_one?: string;
   };
   attribution?: {
     summary?: string;
     links?: string[];
+    market_result?: string;
+    decision_quality?: number | null;
+    execution_quality?: number | null;
+    risk_quality?: number | null;
+    data_quality?: number | null;
+    evidence_quality?: number | null;
+    condition_hit?: string;
+    improvement_items?: string[];
+    needs_cfo_interpretation?: boolean;
+  };
+  evidence_map?: {
+    artifact_refs?: string[];
+    data_refs?: string[];
+    source_quality?: Array<string | { source?: string; used_for?: string; usedFor?: string; quality?: string }>;
+    conflict_refs?: string[];
+    supporting_evidence_only_refs?: string[];
   };
 };
 
 export type RequestBriefApiReadModel = {
   briefId: string;
   routeType: string;
+  semanticLead?: string;
+  processAuthority?: string;
+  expectedArtifacts?: string[];
+  reasonCode?: string | null;
+  ownerConfirmationStatus?: string;
   version: number;
 };
 
@@ -299,6 +439,14 @@ export type FinanceAssetUpdateApiReadModel = {
   assetType: string;
 };
 
+export type FinanceAssetUpdateInput = {
+  assetId?: string;
+  assetType?: "a_share" | "fund" | "gold" | "real_estate" | "cash" | "liability" | "other";
+  amount?: number;
+  valuationDate?: string;
+  source?: string;
+};
+
 export class ApiRequestError extends Error {
   statusCode: number;
   code: string;
@@ -333,6 +481,54 @@ async function fetchEnvelope<T>(path: string, init?: RequestInit): Promise<T> {
   }
   const payload = await response.json() as ApiEnvelope<T>;
   return payload.data;
+}
+
+export function buildEmptyKnowledgeReadModel(): KnowledgeReadModel {
+  return {
+    dailyBrief: [],
+    researchPackages: [],
+    memoryCollections: [],
+    memoryResults: [],
+    relationGraph: [],
+    organizeSuggestions: [],
+    contextInjectionInspector: [],
+    proposals: [],
+    defaultContextProposalPath: "/governance?panel=changes",
+  };
+}
+
+export function buildUnavailableInvestmentDossierReadModel(workflowId: string): InvestmentDossierReadModel {
+  return {
+    workflow: { workflowId, title: "投资档案不可用", currentStage: "S0", state: "unavailable" },
+    stageRail: ["S0", "S1", "S2", "S3", "S4", "S5", "S6", "S7"].map((stage) => ({
+      stage,
+      nodeStatus: "not_started",
+      reasonCode: null,
+      artifactCount: 0,
+    })),
+    chairBrief: { decisionQuestion: "未读取到后端投资档案。", keyTensions: [], noPresetDecisionAttestation: true },
+    analystStanceMatrix: [],
+    dataReadiness: {
+      qualityBand: "unknown",
+      decisionCoreStatus: "unknown",
+      executionCoreStatus: "unknown",
+      issues: [],
+      lineageRefs: [],
+      ownerSummary: "未读取到后端 S1 数据准备结果。",
+      sourceStatus: [],
+      dataGaps: [],
+    },
+    rolePayloadDrilldowns: [],
+    consensus: { score: 0, actionConviction: 0, thresholdLabel: "不可用" },
+    debate: { roundsUsed: 0, retainedHardDissent: false, riskReviewRequired: false, issues: [] },
+    optimizerDeviation: { singleNameDeviation: "不可用", portfolioDeviation: "不可用", recommendation: "等待后端档案" },
+    riskReview: { reviewResult: "unknown", repairability: "unknown", ownerExceptionRequired: false, reasonCodes: [] },
+    paperExecution: { status: "not_started", pricingMethod: "not_released", window: "不可用", fees: "不可用", tPlusOne: "不可用" },
+    attribution: { summary: "暂无归因。", links: [] },
+    evidenceMap: { artifactRefs: [], dataRefs: [], sourceQuality: [], conflictRefs: [], supportingEvidenceOnlyRefs: [] },
+    forbiddenActions: {},
+    traceRoute: `/investment/${workflowId}/trace`,
+  };
 }
 
 export async function loadTeamReadModel(): Promise<TeamReadModel> {
@@ -395,6 +591,13 @@ function mergeAgentCards(
 export async function loadAgentProfileReadModel(agentId: string): Promise<AgentProfileReadModel> {
   const fallback = buildTeamReadModel().agentProfileReadModels.find((item) => item.agentId === agentId);
   const payload = await fetchEnvelope<ApiAgentProfileReadModel>(`/api/team/${agentId}`);
+  const fallbackPermissions = fallback?.toolPermissions ?? [];
+  const deniedActions = Array.isArray(payload.denied_actions)
+    ? payload.denied_actions.map((item) => ({ reasonCode: item.reason_code ?? "unknown" }))
+    : fallback?.deniedActions ?? [];
+  const failureRecords = Array.isArray(payload.failure_records)
+    ? payload.failure_records.map((item) => typeof item === "string" ? item : item.reason_code ?? "unknown")
+    : fallback?.failureRecords ?? [];
 
   return {
     agentId: payload.agent_id ?? fallback?.agentId ?? agentId,
@@ -404,22 +607,113 @@ export async function loadAgentProfileReadModel(agentId: string): Promise<AgentP
     cannotDo: payload.cannot_do ?? fallback?.cannotDo ?? [],
     versions: {
       profileVersion: payload.profile_version ?? fallback?.versions.profileVersion ?? "unknown",
-      skillPackageVersion: payload.skill_package_version ?? fallback?.versions.skillPackageVersion ?? "unknown",
+      skillPackageVersion: formatPermissionValue(payload.skill_package_version ?? fallback?.versions.skillPackageVersion ?? "unknown"),
       promptVersion: payload.prompt_version ?? fallback?.versions.promptVersion ?? "unknown",
-      contextSnapshotVersion: payload.context_snapshot_version ?? fallback?.versions.contextSnapshotVersion ?? "unknown",
+      contextSnapshotVersion: formatContextSnapshotVersion(payload.context_snapshot_version ?? fallback?.versions.contextSnapshotVersion ?? "unknown"),
     },
-    toolPermissions: payload.tool_permissions ?? fallback?.toolPermissions ?? [],
+    toolPermissions: normalizeAgentPermissionSummaries(payload, fallbackPermissions),
     weaknessTags: payload.weakness_tags ?? fallback?.weaknessTags ?? [],
     qualityMetrics: {
       schemaPassRate: payload.quality_metrics?.schema_pass_rate ?? fallback?.qualityMetrics.schemaPassRate ?? 0,
       evidenceQuality: payload.quality_metrics?.evidence_quality ?? fallback?.qualityMetrics.evidenceQuality ?? 0,
     },
     cfoAttributionRefs: payload.cfo_attribution_refs ?? fallback?.cfoAttributionRefs ?? [],
-    deniedActions: (payload.denied_actions ?? []).map((item) => ({ reasonCode: item.reason_code ?? "unknown" })),
-    failureRecords: (payload.failure_records ?? fallback?.failureRecords ?? []).map((item) =>
-      typeof item === "string" ? item : item.reason_code ?? "unknown",
-    ),
+    deniedActions,
+    failureRecords,
   };
+}
+
+function normalizeAgentPermissionSummaries(payload: ApiAgentProfileReadModel, fallback: string[]): string[] {
+  const permissionRows = [
+    ...formatPermissionInput("可读资料", payload.read_permissions),
+    ...formatPermissionInput("可写权限", payload.write_permissions),
+    ...formatPermissionInput("工具权限", payload.tool_permissions),
+    ...formatPermissionInput("可请求服务", payload.service_permissions),
+    ...formatPermissionInput("可提交协作命令", payload.collaboration_commands),
+  ];
+  return permissionRows.length ? permissionRows : fallback;
+}
+
+function formatPermissionInput(groupLabel: string, value: ApiPermissionInput): string[] {
+  if (Array.isArray(value)) {
+    return value
+      .filter((item) => item.trim().length > 0)
+      .map((item) => `${groupLabel}: ${formatPermissionValue(item)}`);
+  }
+  if (!isPermissionMap(value)) {
+    return [];
+  }
+  return Object.entries(value).flatMap(([field, fieldValue]) => {
+    const values = Array.isArray(fieldValue)
+      ? fieldValue
+      : typeof fieldValue === "string"
+        ? [fieldValue]
+        : [];
+    const formattedValues = values
+      .filter((item) => item.trim().length > 0)
+      .map(formatPermissionValue);
+    if (!formattedValues.length) {
+      return [];
+    }
+    return `${formatPermissionField(field)}: ${formattedValues.join(" / ")}`;
+  });
+}
+
+function isPermissionMap(value: ApiPermissionInput): value is ApiPermissionMap {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+function formatPermissionField(field: string): string {
+  const labels: Record<string, string> = {
+    artifact_types: "可写产物",
+    command_types: "可提交命令",
+    comment_types: "可写评论",
+    db_read_views: "可读业务视图",
+    file_scopes: "可读资料范围",
+    network_policy: "授权网络来源",
+    proposal_types: "可提方案",
+    skill_packages: "能力包",
+    terminal_policy: "诊断权限",
+  };
+  return labels[field] ?? field.replace(/_/g, " ");
+}
+
+function formatPermissionValue(value: string): string {
+  const labels: Record<string, string> = {
+    active_skill_packages: "生效能力包",
+    approved_public_sources: "授权公开来源",
+    artifact_read_model: "产物只读视图",
+    ask_question: "发起追问",
+    business_materials: "业务资料",
+    cio_decision_memo: "CIO 决策备忘",
+    "cio-decision-synthesis": "CIO 决策综合能力包",
+    "cfo-governance": "CFO 财务治理能力包",
+    data_readiness: "数据就绪服务",
+    "devops-incident-diagnostics": "系统事件诊断能力包",
+    "event-catalyst-assessment": "事件催化评估能力包",
+    "fundamental-quality-review": "基本面质量复核能力包",
+    ICChairBrief: "IC 主席摘要",
+    CIODecisionMemo: "CIO 决策备忘",
+    "macro-regime-analysis": "宏观环境分析能力包",
+    market_state: "市场状态服务",
+    "quant-signal-review": "量化信号复核能力包",
+    readonly_business_view: "只读业务视图",
+    readonly_diagnostics: "只读诊断",
+    "research-package-builder": "研究资料包构建能力包",
+    request_reopen: "建议重开",
+    request_view_update: "要求更新观点",
+    risk: "风控服务",
+    "risk-gate-review": "独立风控复核能力包",
+  };
+  return labels[value] ?? value.replace(/_/g, " ");
+}
+
+function formatContextSnapshotVersion(value: string): string {
+  const match = value.match(/^ctx-v(\d+)$/);
+  if (match) {
+    return `配置快照 v${match[1]}`;
+  }
+  return value.replace(/_/g, " ");
 }
 
 export async function loadAgentCapabilityConfigReadModel(agentId: string): Promise<CapabilityConfigReadModel> {
@@ -435,33 +729,28 @@ export async function loadAgentCapabilityConfigReadModel(agentId: string): Promi
 }
 
 export async function loadKnowledgeReadModel(): Promise<KnowledgeReadModel> {
-  const fallback = buildKnowledgeReadModel();
   const payload = await fetchEnvelope<ApiMemoryReadModel[]>("/api/knowledge/memory-items");
-  const firstMemoryId = payload[0]?.memory_id ?? fallback.memoryResults[0]?.memoryId ?? "memory";
+  const memoryResults = payload.map((item) => ({
+    memoryId: item.memory_id ?? "memory",
+    currentVersionId: item.current_version_id ?? "memory-version",
+    title: item.title ?? "未命名经验",
+    relationSummary: item.relations?.[0]
+      ? `${item.relations[0].relation_type ?? "related_to"} ${item.relations[0].target_ref ?? "unknown"}`
+      : "无关联",
+    sensitivity: item.sensitivity ?? "public_internal",
+    extractionStatus: item.extraction_status ?? item.status ?? "unknown",
+    promotionState: item.promotion_state ?? "candidate",
+    tags: item.tags ?? [],
+  }));
 
   return {
-    ...fallback,
-    memoryCollections: payload.length
-      ? payload.map((item) => ({
-          collectionId: item.memory_id ?? "memory",
-          title: item.title ?? "未命名记忆",
-          resultCount: Math.max(item.relations?.length ?? 0, 1),
-        }))
-      : fallback.memoryCollections,
-    memoryResults: payload.length
-      ? payload.map((item) => ({
-          memoryId: item.memory_id ?? "memory",
-          currentVersionId: item.current_version_id ?? "memory-version",
-          title: item.title ?? "未命名记忆",
-          relationSummary: item.relations?.[0]
-            ? `${item.relations[0].relation_type ?? "related_to"} ${item.relations[0].target_ref ?? "unknown"}`
-            : "无关联",
-          sensitivity: item.sensitivity ?? "public_internal",
-          extractionStatus: item.extraction_status ?? item.status ?? "unknown",
-          promotionState: item.promotion_state ?? "candidate",
-          tags: item.tags ?? [],
-        }))
-      : fallback.memoryResults,
+    ...buildEmptyKnowledgeReadModel(),
+    memoryCollections: payload.map((item) => ({
+      collectionId: item.memory_id ?? "memory",
+      title: item.title ?? "未命名经验",
+      resultCount: Math.max(item.relations?.length ?? 0, 1),
+    })),
+    memoryResults,
     relationGraph: payload.flatMap((item) =>
       (item.relations ?? []).map((relation) => ({
         sourceMemoryId: item.memory_id ?? "memory",
@@ -478,11 +767,7 @@ export async function loadKnowledgeReadModel(): Promise<KnowledgeReadModel> {
           redactionStatus: "applied",
           deniedRefs: [],
         }))
-      : fallback.contextInjectionInspector,
-    organizeSuggestions: fallback.organizeSuggestions.map((item) => ({
-      ...item,
-      targetMemoryRefs: [firstMemoryId],
-    })),
+      : [],
   };
 }
 
@@ -510,7 +795,7 @@ export async function createMemoryItem(contentMarkdown: string): Promise<MemoryW
 export async function applyMemoryOrganizeSuggestion(
   memoryId: string,
   currentVersionId: string,
-  _tags: string[],
+  tags: string[],
 ): Promise<MemoryRelationApiReadModel> {
   const payload = await fetchEnvelope<{
     relation_id?: string;
@@ -522,10 +807,10 @@ export async function applyMemoryOrganizeSuggestion(
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
-      target_ref: "knowledge-method-1",
+      target_ref: `memory-tag:${tags.join("/") || "owner-confirmed"}`,
       relation_type: "supports",
-      reason: "Owner applied organize suggestion from Knowledge workspace",
-      evidence_refs: ["knowledge_memory_workspace"],
+      reason: `Owner confirmed tags: ${tags.join("/") || "owner-confirmed"}`,
+      evidence_refs: [memoryId],
       client_seen_version_id: currentVersionId,
     }),
   });
@@ -539,7 +824,7 @@ export async function applyMemoryOrganizeSuggestion(
 }
 
 export async function loadTraceDebugReadModel(workflowId: string): Promise<TraceDebugReadModel> {
-  const fallback = buildTraceDebugReadModel();
+  const emptyTrace = buildUnavailableTraceDebugReadModel(workflowId);
   const [agentRuns, events, handoffs] = await Promise.all([
     fetchEnvelope<ApiAgentRunReadModel[]>(`/api/workflows/${workflowId}/agent-runs`),
     fetchEnvelope<ApiCollaborationEventReadModel[]>(`/api/workflows/${workflowId}/collaboration-events`),
@@ -547,36 +832,33 @@ export async function loadTraceDebugReadModel(workflowId: string): Promise<Trace
   ]);
 
   return {
-    ...fallback,
+    ...emptyTrace,
     workflowId,
-    agentRunTree: agentRuns.length
-      ? agentRuns.map((item) => ({
-          runId: item.agent_run_id ?? "run",
-          parentRunId: item.parent_run_id ?? null,
-          stage: item.stage ?? "unknown",
-          profileVersion: item.profile_version ?? "unknown",
-          contextSlice: item.context_snapshot_id ?? "ctx-api",
-        }))
-      : fallback.agentRunTree,
-    events: events.length
-      ? events.map((item) => ({
-          eventType: item.event_type ?? "event",
-          summary: item.summary ?? "无摘要",
-        }))
-      : fallback.events,
-    handoffs: handoffs.length
-      ? handoffs.map((item) => ({
-          from: item.from_stage ?? "unknown",
-          to: item.to_stage_or_agent ?? "unknown",
-          blockers: item.blockers ?? [],
-          openQuestions: item.open_questions ?? [],
-        }))
-      : fallback.handoffs,
+    agentRunTree: agentRuns.map((item) => ({
+      runId: item.agent_run_id ?? "run",
+      parentRunId: item.parent_run_id ?? null,
+      stage: item.stage ?? "unknown",
+      profileVersion: item.profile_version ?? "unknown",
+      contextSlice: item.context_slice_id ?? item.context_snapshot_id ?? "ctx-api",
+      businessSummary: item.run_goal ?? undefined,
+      agentId: item.agent_id ?? undefined,
+      status: item.status ?? undefined,
+    })),
+    events: events.map((item) => ({
+      eventType: item.event_type ?? "event",
+      summary: String(item.payload?.business_summary ?? item.summary ?? "无摘要"),
+    })),
+    handoffs: handoffs.map((item) => ({
+      from: item.from_stage ?? "unknown",
+      to: item.to_stage_or_agent ?? "unknown",
+      blockers: item.blockers ?? [],
+      openQuestions: item.open_questions ?? [],
+    })),
   };
 }
 
 export async function loadInvestmentDossierReadModel(workflowId: string): Promise<InvestmentDossierReadModel> {
-  const fallback = buildInvestmentDossierReadModel();
+  const fallback = buildUnavailableInvestmentDossierReadModel(workflowId);
   const payload = await fetchEnvelope<ApiInvestmentDossierReadModel>(`/api/workflows/${workflowId}/dossier`);
   const forbiddenActions = Object.fromEntries(
     Object.entries(payload.forbidden_actions ?? fallback.forbiddenActions).map(([key, value]) => [
@@ -613,7 +895,10 @@ export async function loadInvestmentDossierReadModel(workflowId: string): Promis
           role: row.role ?? "Analyst",
           direction: row.direction ?? String(row.direction_score ?? "待定"),
           confidence: row.confidence ?? 0,
+          evidenceQuality: row.evidence_quality ?? undefined,
           hardDissent: row.hard_dissent ?? false,
+          hardDissentReason: row.hard_dissent_reason ?? undefined,
+          thesis: row.thesis ?? undefined,
         }))
       : fallback.analystStanceMatrix,
     dataReadiness: {
@@ -621,11 +906,39 @@ export async function loadInvestmentDossierReadModel(workflowId: string): Promis
       decisionCoreStatus: payload.data_readiness?.decision_core_status ?? fallback.dataReadiness.decisionCoreStatus,
       executionCoreStatus: payload.data_readiness?.execution_core_status ?? fallback.dataReadiness.executionCoreStatus,
       issues: payload.data_readiness?.issues ?? fallback.dataReadiness.issues,
+      lineageRefs: payload.data_readiness?.lineage_refs ?? fallback.dataReadiness.lineageRefs,
+      ownerSummary: payload.data_readiness?.owner_summary ?? fallback.dataReadiness.ownerSummary,
+      sourceStatus: payload.data_readiness?.source_status?.map((item) => ({
+        sourceName: item.source_name ?? "未返回数据来源",
+        sourceRef: item.source_ref ?? "",
+        requiredUsage: item.required_usage ?? "research",
+        requestedFields: item.requested_fields ?? [],
+        obtainedFields: item.obtained_fields ?? [],
+        missingFields: item.missing_fields ?? [],
+        status: item.status ?? "missing",
+        qualityLabel: item.quality_label ?? "未返回状态",
+        evidenceRef: item.evidence_ref ?? item.source_ref ?? "",
+      })) ?? fallback.dataReadiness.sourceStatus,
+      dataGaps: payload.data_readiness?.data_gaps?.map((item) => ({
+        gap: item.gap ?? "未返回数据缺口",
+        affectsStage: item.affects_stage ?? "S1",
+        impact: item.impact ?? "无法判断影响",
+        nextAction: item.next_action ?? "重试数据采集并复核",
+      })) ?? fallback.dataReadiness.dataGaps,
     },
     rolePayloadDrilldowns: (payload.role_payload_drilldowns ?? []).length
       ? (payload.role_payload_drilldowns ?? []).map((item) => ({
           role: item.role ?? "Analyst",
           highlights: item.highlights ?? [],
+          hardDissentReason: item.hard_dissent_reason ?? undefined,
+          thesis: item.thesis ?? undefined,
+          supportingEvidenceRefs: item.supporting_evidence_refs ?? [],
+          counterEvidenceRefs: item.counter_evidence_refs ?? [],
+          keyRisks: item.key_risks ?? [],
+          applicableConditions: item.applicable_conditions ?? [],
+          invalidationConditions: item.invalidation_conditions ?? [],
+          suggestedActionImplication: item.suggested_action_implication ?? undefined,
+          rolePayload: item.role_payload ?? {},
         }))
       : fallback.rolePayloadDrilldowns,
     consensus: {
@@ -638,12 +951,82 @@ export async function loadInvestmentDossierReadModel(workflowId: string): Promis
       retainedHardDissent: payload.debate?.retained_hard_dissent ?? fallback.debate.retainedHardDissent,
       riskReviewRequired: payload.debate?.risk_review_required ?? fallback.debate.riskReviewRequired,
       issues: payload.debate?.issues ?? fallback.debate.issues,
+      viewChanges: payload.debate?.view_changes ?? fallback.debate.viewChanges,
+      cioSynthesis: payload.debate?.cio_synthesis ?? fallback.debate.cioSynthesis,
+      unresolvedDissent: payload.debate?.unresolved_dissent ?? fallback.debate.unresolvedDissent,
+      rounds: payload.debate?.rounds?.map((round) => ({
+        roundNo: round.round_no,
+        issue: round.issue,
+        outcome: round.outcome,
+      })) ?? fallback.debate.rounds,
+      ownerSummary: payload.debate?.owner_summary ?? fallback.debate.ownerSummary,
+      statusSummary: payload.debate?.status_summary
+        ? {
+            roundsUsed: payload.debate.status_summary.rounds_used ?? payload.debate.rounds_used ?? fallback.debate.roundsUsed,
+            retainedHardDissent: payload.debate.status_summary.retained_hard_dissent ?? payload.debate.retained_hard_dissent ?? fallback.debate.retainedHardDissent,
+            riskReviewRequired: payload.debate.status_summary.risk_review_required ?? payload.debate.risk_review_required ?? fallback.debate.riskReviewRequired,
+            consensusScore: payload.debate.status_summary.consensus_score,
+            actionConviction: payload.debate.status_summary.action_conviction,
+          }
+        : fallback.debate.statusSummary,
+      coreDisputes: payload.debate?.core_disputes?.map((item) => ({
+        title: item.title ?? "后端未返回分歧标题",
+        whyItMatters: item.why_it_matters ?? "后端未返回辩论详情",
+        involvedRoles: item.involved_roles ?? [],
+        currentConclusion: item.current_conclusion ?? "后端未返回辩论详情",
+        requiredEvidence: item.required_evidence ?? [],
+      })) ?? fallback.debate.coreDisputes,
+      viewChangeDetails: payload.debate?.view_change_details?.map((item) => ({
+        role: item.role ?? "未标明岗位",
+        before: item.before ?? "后端未返回辩论详情",
+        after: item.after ?? "后端未返回辩论详情",
+        reason: item.reason ?? "后端未返回辩论详情",
+        impact: item.impact ?? "后端未返回辩论详情",
+      })) ?? fallback.debate.viewChangeDetails,
+      retainedDissentDetails: payload.debate?.retained_dissent_details?.map((item) => ({
+        sourceRole: item.source_role ?? "未标明岗位",
+        dissent: item.dissent ?? "后端未返回辩论详情",
+        counterRisks: item.counter_risks ?? [],
+        handling: item.handling ?? "后端未返回辩论详情",
+        forbiddenActions: item.forbidden_actions ?? [],
+      })) ?? fallback.debate.retainedDissentDetails,
+      roundDetails: payload.debate?.round_details?.map((item) => ({
+        roundNo: item.round_no ?? 0,
+        issue: item.issue ?? "后端未返回辩论详情",
+        participants: item.participants ?? [],
+        inputEvidence: item.input_evidence ?? [],
+        outcome: item.outcome ?? "后端未返回辩论详情",
+        unresolvedQuestions: item.unresolved_questions ?? [],
+      })) ?? fallback.debate.roundDetails,
+      nextActions: payload.debate?.next_actions?.map((item) => ({
+        action: item.action ?? "后端未返回辩论详情",
+        owner: item.owner ?? "未标明负责人",
+        completionSignal: item.completion_signal ?? "后端未返回辩论详情",
+        nextStage: item.next_stage ?? "后端未返回辩论详情",
+      })) ?? fallback.debate.nextActions,
     },
     optimizerDeviation: {
       singleNameDeviation: payload.optimizer_deviation?.single_name_deviation ?? fallback.optimizerDeviation.singleNameDeviation,
       portfolioDeviation: payload.optimizer_deviation?.portfolio_deviation ?? fallback.optimizerDeviation.portfolioDeviation,
       recommendation: payload.optimizer_deviation?.recommendation ?? fallback.optimizerDeviation.recommendation,
     },
+    cioDecision: payload.cio_decision ? {
+      decision: payload.cio_decision.decision ?? "observe",
+      rationale: payload.cio_decision.decision_rationale,
+      deviationReason: payload.cio_decision.deviation_reason,
+      conditions: payload.cio_decision.conditions ?? [],
+      monitoringPoints: payload.cio_decision.monitoring_points ?? [],
+      riskHandoffNotes: payload.cio_decision.risk_handoff_notes,
+    } : fallback.cioDecision,
+    decisionGuard: payload.decision_guard ? {
+      majorDeviation: payload.decision_guard.major_deviation,
+      singleNameDeviationPp: payload.decision_guard.single_name_deviation_pp,
+      portfolioActiveDeviation: payload.decision_guard.portfolio_active_deviation,
+      lowActionConviction: payload.decision_guard.low_action_conviction,
+      retainedHardDissent: payload.decision_guard.retained_hard_dissent,
+      dataQualityBlockers: payload.decision_guard.data_quality_blockers ?? [],
+      reasonCodes: payload.decision_guard.reason_codes ?? [],
+    } : fallback.decisionGuard,
     riskReview: {
       reviewResult: payload.risk_review?.review_result ?? fallback.riskReview.reviewResult,
       repairability: payload.risk_review?.repairability ?? fallback.riskReview.repairability,
@@ -654,12 +1037,34 @@ export async function loadInvestmentDossierReadModel(workflowId: string): Promis
       status: payload.paper_execution?.status ?? fallback.paperExecution.status,
       pricingMethod: payload.paper_execution?.pricing_method ?? fallback.paperExecution.pricingMethod,
       window: payload.paper_execution?.window ?? fallback.paperExecution.window,
-      fees: payload.paper_execution?.fees ?? fallback.paperExecution.fees,
+      fees: formatApiFees(payload.paper_execution?.fees, fallback.paperExecution.fees),
+      taxes: formatApiFees(payload.paper_execution?.taxes, fallback.paperExecution.taxes ?? ""),
+      slippage: formatApiFees(payload.paper_execution?.slippage, fallback.paperExecution.slippage ?? ""),
       tPlusOne: payload.paper_execution?.t_plus_one ?? fallback.paperExecution.tPlusOne,
     },
     attribution: {
       summary: payload.attribution?.summary ?? fallback.attribution.summary,
       links: payload.attribution?.links ?? fallback.attribution.links,
+      marketResult: payload.attribution?.market_result ?? fallback.attribution.marketResult,
+      decisionQuality: payload.attribution?.decision_quality ?? fallback.attribution.decisionQuality,
+      executionQuality: payload.attribution?.execution_quality ?? fallback.attribution.executionQuality,
+      riskQuality: payload.attribution?.risk_quality ?? fallback.attribution.riskQuality,
+      dataQuality: payload.attribution?.data_quality ?? fallback.attribution.dataQuality,
+      evidenceQuality: payload.attribution?.evidence_quality ?? fallback.attribution.evidenceQuality,
+      conditionHit: payload.attribution?.condition_hit ?? fallback.attribution.conditionHit,
+      improvementItems: payload.attribution?.improvement_items ?? fallback.attribution.improvementItems,
+      needsCfoInterpretation: payload.attribution?.needs_cfo_interpretation ?? fallback.attribution.needsCfoInterpretation,
+    },
+    evidenceMap: {
+      artifactRefs: payload.evidence_map?.artifact_refs ?? fallback.evidenceMap.artifactRefs,
+      dataRefs: payload.evidence_map?.data_refs ?? fallback.evidenceMap.dataRefs,
+      sourceQuality: payload.evidence_map?.source_quality?.map((item) => typeof item === "string" ? item : ({
+        source: item.source,
+        usedFor: item.used_for ?? item.usedFor,
+        quality: item.quality,
+      })) ?? fallback.evidenceMap.sourceQuality,
+      conflictRefs: payload.evidence_map?.conflict_refs ?? fallback.evidenceMap.conflictRefs,
+      supportingEvidenceOnlyRefs: payload.evidence_map?.supporting_evidence_only_refs ?? fallback.evidenceMap.supportingEvidenceOnlyRefs,
     },
     forbiddenActions,
     traceRoute: `/investment/${workflowId}/trace`,
@@ -673,45 +1078,56 @@ export async function loadGovernanceReadModel(): Promise<GovernanceReadModel> {
     fetchEnvelope<ApiApprovalCenterReadModel>("/api/approvals"),
     fetchEnvelope<ApiGovernanceChangeReadModel[]>("/api/governance/changes"),
   ]);
+  const taskCenter = Array.isArray(tasks.task_center)
+    ? tasks.task_center.map((task) => ({
+        taskId: task.task_id ?? "task",
+        taskType: task.task_type ?? "system_task",
+        currentState: task.current_state ?? "ready",
+        reasonCode: task.reason_code ?? "unknown",
+        dueDate: task.due_date,
+        riskHint: task.risk_hint,
+        blockedReason: task.blocked_reason,
+      }))
+    : fallback.taskCenter;
+  const approvalCenter = Array.isArray(approvals.approval_center)
+    ? (cachedApprovalCenter = approvals.approval_center ?? [], cachedApprovalCenter).map((approval) => ({
+        approvalId: approval.approval_id ?? "approval",
+        kind: approval.approval_type ?? "approval",
+        triggerReason: approval.trigger_reason ?? "unknown",
+        subject: approval.subject,
+        deadline: approval.deadline,
+        packet: {
+          comparisonAnalysis: true,
+          impactScope: approval.effective_scope ?? "new_task",
+          alternatives: ["approved", "rejected", "request_changes"],
+          recommendation: approval.recommended_decision ?? approval.decision ?? "request_changes",
+        },
+      }))
+    : fallback.approvalCenter;
 
   return {
     ...fallback,
-    taskCenter: (tasks.task_center ?? []).length
-      ? (tasks.task_center ?? []).map((task) => ({
-          taskId: task.task_id ?? "task",
-          taskType: task.task_type ?? "system_task",
-          currentState: task.current_state ?? "ready",
-          reasonCode: task.reason_code ?? "unknown",
-        }))
-      : fallback.taskCenter,
-    approvalCenter: (approvals.approval_center ?? []).length
-      ? (approvals.approval_center ?? []).map((approval) => ({
-          approvalId: approval.approval_id ?? "approval",
-          kind: approval.approval_type ?? "approval",
-          triggerReason: approval.trigger_reason ?? "unknown",
-          packet: {
-            comparisonAnalysis: true,
-            impactScope: approval.effective_scope ?? "new_task",
-            alternatives: ["approved", "rejected", "request_changes"],
-            recommendation: approval.recommended_decision ?? approval.decision ?? "request_changes",
-          },
-        }))
-      : fallback.approvalCenter,
-    governanceChanges: changes.length
-      ? changes.map((change) => ({
+    taskCenter,
+    approvalCenter,
+    unifiedTodos: buildUnifiedTodoItems({ taskCenter, approvalCenter }),
+    governanceChanges: changes.map((change) => ({
           changeId: change.change_id ?? "change",
           changeType: change.change_type ?? "unknown",
           impactLevel: change.impact_level ?? "medium",
           state: change.state ?? "draft",
           effectiveScope: change.effective_scope ?? "new_task",
-        }))
-      : fallback.governanceChanges,
+        })),
   };
 }
 
 export async function loadApprovalRecordReadModel(approvalId: string): Promise<ApprovalRecordReadModel> {
   const fallback = buildApprovalRecordReadModel({ approvalId });
+  const cachedApproval = cachedApprovalCenter.find((item) => item.approval_id === approvalId);
+  if (cachedApproval) {
+    return buildApprovalRecordFromApi(cachedApproval, fallback);
+  }
   const payload = await fetchEnvelope<ApiApprovalCenterReadModel>("/api/approvals");
+  cachedApprovalCenter = payload.approval_center ?? cachedApprovalCenter;
   const approval = (payload.approval_center ?? []).find((item) => item.approval_id === approvalId);
 
   if (!approval) {
@@ -721,27 +1137,93 @@ export async function loadApprovalRecordReadModel(approvalId: string): Promise<A
       triggerReason: "approval_not_found",
       recommendation: "request_changes",
       comparisonOptions: ["等待服务端返回完整审批材料"],
-      riskAndImpact: ["当前审批记录未出现在审批中心 read model"],
+      riskAndImpact: ["当前审批记录未出现在审批列表"],
       evidenceRefs: [],
       allowedActions: [],
     });
   }
 
+  return buildApprovalRecordFromApi(approval, fallback);
+}
+
+function buildApprovalRecordFromApi(
+  approval: NonNullable<ApiApprovalCenterReadModel["approval_center"]>[number],
+  fallback: ApprovalRecordReadModel,
+) {
   return buildApprovalRecordReadModel({
     approvalId: approval.approval_id ?? fallback.approvalId,
     subject: approval.subject ?? fallback.subject,
     triggerReason: approval.trigger_reason ?? fallback.triggerReason,
     recommendation: approval.recommended_decision ?? approval.decision ?? fallback.recommendation,
-    alternatives: approval.alternatives ?? fallback.alternatives,
-    comparisonOptions: approval.comparison_options ?? fallback.comparisonOptions,
+    alternatives: normalizeApiTextList(approval.alternatives, fallback.alternatives),
+    comparisonOptions: normalizeApiTextList(approval.comparison_options, fallback.comparisonOptions),
     impactScope: approval.effective_scope ?? fallback.impactScope,
-    riskAndImpact: approval.risk_and_impact ?? fallback.riskAndImpact,
-    timeoutDisposition: approval.timeout_disposition ?? fallback.timeoutDisposition,
+    riskAndImpact: normalizeApiTextList(approval.risk_and_impact, fallback.riskAndImpact),
+    timeoutDisposition: approval.timeout_disposition ?? approval.timeout_policy ?? fallback.timeoutDisposition,
     rollbackRef: approval.rollback_ref ?? fallback.rollbackRef,
     evidenceRefs: approval.evidence_refs ?? fallback.evidenceRefs,
     traceRoute: approval.trace_route ?? fallback.traceRoute,
     allowedActions: approval.allowed_actions ?? fallback.allowedActions,
   });
+}
+
+function normalizeApiTextList(value: unknown, fallback: string[]) {
+  if (Array.isArray(value)) {
+    const normalized = value.map(formatApiTextValue).filter(Boolean);
+    return normalized.length ? normalized : fallback;
+  }
+  if (value && typeof value === "object") {
+    const normalized = Object.entries(value as Record<string, unknown>).map(([key, item]) => `${formatApiFieldName(key)} ${formatApiTextValue(item)}`);
+    return normalized.length ? normalized : fallback;
+  }
+  if (typeof value === "string" && value.trim()) {
+    return [value];
+  }
+  return fallback;
+}
+
+function formatApiFees(value: unknown, fallback: string): string {
+  if (value === null || value === undefined) {
+    return fallback;
+  }
+  if (typeof value === "string") {
+    return value;
+  }
+  if (typeof value === "number") {
+    return value === 0 ? "未产生" : String(value);
+  }
+  if (typeof value === "object") {
+    const entries = Object.entries(value as Record<string, unknown>).filter(([, item]) => item !== null && item !== undefined);
+    if (!entries.length) {
+      return "未产生";
+    }
+    return entries.map(([key, item]) => `${formatApiFieldName(key)} ${formatApiTextValue(item)}`).join(" · ");
+  }
+  return fallback;
+}
+
+function formatApiTextValue(value: unknown): string {
+  if (value === null || value === undefined) {
+    return "";
+  }
+  if (typeof value !== "object") {
+    return String(value);
+  }
+  return Object.entries(value as Record<string, unknown>)
+    .map(([key, item]) => `${formatApiFieldName(key)} ${formatApiTextValue(item)}`)
+    .join(" · ");
+}
+
+function formatApiFieldName(value: string) {
+  const labels: Record<string, string> = {
+    option: "方案",
+    target_weight: "目标权重",
+    risk: "风险",
+    single_name_deviation_pp: "单股偏离",
+    portfolio_active_deviation: "组合主动偏离",
+    scope: "适用范围",
+  };
+  return labels[value] ?? value;
 }
 
 export async function loadFinanceOverviewReadModel(): Promise<FinanceOverviewReadModel> {
@@ -765,7 +1247,9 @@ export async function loadFinanceOverviewReadModel(): Promise<FinanceOverviewRea
   };
 }
 
-export async function updateFinanceAsset(): Promise<FinanceAssetUpdateApiReadModel> {
+export async function updateFinanceAsset(input: FinanceAssetUpdateInput = {}): Promise<FinanceAssetUpdateApiReadModel> {
+  const assetType = input.assetType ?? "cash";
+  const amount = Number.isFinite(input.amount) ? Number(input.amount) : 1000000;
   const payload = await fetchEnvelope<{
     asset_id?: string;
     asset_type?: string;
@@ -773,17 +1257,18 @@ export async function updateFinanceAsset(): Promise<FinanceAssetUpdateApiReadMod
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
-      asset_type: "cash",
-      valuation: { amount: 1000000, currency: "CNY" },
-      valuation_date: "2026-05-04",
-      source: "owner_ui",
+      asset_id: input.assetId ?? "cash-owner-ui",
+      asset_type: assetType,
+      valuation: { amount, currency: "CNY" },
+      valuation_date: input.valuationDate ?? "2026-05-06",
+      source: input.source ?? "owner_ui",
       client_seen_version: 1,
     }),
   });
 
   return {
     assetId: payload.asset_id ?? "asset",
-    assetType: payload.asset_type ?? "cash",
+    assetType: payload.asset_type ?? assetType,
   };
 }
 
@@ -803,6 +1288,7 @@ export async function loadDevOpsHealthReadModel(): Promise<DevOpsHealthReadModel
     })),
     recovery: (payload.recovery ?? []).map((item) => ({
       planId: item.plan_id ?? "recovery",
+      technicalRecoveryStatus: item.technical_recovery_status ?? "unknown",
       investmentResumeAllowed: item.investment_resume_allowed ?? false,
     })),
   };
@@ -812,6 +1298,11 @@ export async function createRequestBrief(rawText: string): Promise<RequestBriefA
   const payload = await fetchEnvelope<{
     brief_id?: string;
     route_type?: string;
+    suggested_semantic_lead?: string;
+    process_authority?: string;
+    predicted_outputs?: string[];
+    forbidden_action_reason_code?: string | null;
+    owner_confirmation_status?: string;
     version?: number;
   }>("/api/requests/briefs", {
     method: "POST",
@@ -827,6 +1318,11 @@ export async function createRequestBrief(rawText: string): Promise<RequestBriefA
   return {
     briefId: payload.brief_id ?? "",
     routeType: payload.route_type ?? "manual_todo",
+    semanticLead: payload.suggested_semantic_lead,
+    processAuthority: payload.process_authority,
+    expectedArtifacts: payload.predicted_outputs,
+    reasonCode: payload.forbidden_action_reason_code,
+    ownerConfirmationStatus: payload.owner_confirmation_status,
     version: payload.version ?? 1,
   };
 }
@@ -877,7 +1373,7 @@ export async function createCapabilityDraft(agentId: string): Promise<Capability
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
       agent_id: agentId,
-      draft_title: "能力配置草案",
+      draft_title: "能力提升方案",
       change_set: { model_route: "balanced" },
       impact_level_hint: "high",
       validation_plan_refs: ["schema"],

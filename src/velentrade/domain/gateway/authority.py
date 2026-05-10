@@ -16,6 +16,11 @@ from velentrade.domain.memory.models import (
     MemoryRelation,
     MemoryVersion,
 )
+from velentrade.domain.knowledge.hygiene import (
+    memory_read_model_is_garbage,
+    relation_read_model_is_garbage,
+    relation_rejection_reason,
+)
 
 
 @dataclass(frozen=True)
@@ -437,6 +442,14 @@ class AuthorityGateway:
             raise KeyError(memory_id)
         if item.current_version_id != client_seen_version_id:
             raise ValueError("client_seen_version_mismatch")
+        rejection_reason = relation_rejection_reason(
+            target_ref=target_ref,
+            relation_type=relation_type,
+            reason=reason,
+            evidence_refs=evidence_refs,
+        )
+        if rejection_reason is not None:
+            raise ValueError(rejection_reason)
         relation = MemoryRelation(
             relation_id=new_id("memory-relation"),
             source_memory_id=memory_id,
@@ -451,6 +464,47 @@ class AuthorityGateway:
         if self.store is not None:
             self.store.mirror_memory_relation(relation)
         return relation
+
+    def cleanup_owner_knowledge_garbage(self) -> dict[str, int]:
+        read_models = [self.get_memory_read_model(item.memory_id) for item in self.memory_items]
+        dirty_memory_ids = {
+            item["memory_id"]
+            for item in read_models
+            if item is not None and memory_read_model_is_garbage(item)
+        }
+        dirty_relation_ids = {
+            relation["relation_id"]
+            for item in read_models
+            if item is not None
+            for relation in item["relations"]
+            if relation_read_model_is_garbage(relation)
+        }
+        removed_memory_count = len(dirty_memory_ids)
+        removed_relation_count = len(dirty_relation_ids) + sum(
+            1
+            for relation in self.memory_relations
+            if relation.source_memory_id in dirty_memory_ids and relation.relation_id not in dirty_relation_ids
+        )
+        self.memory_relations = [
+            relation
+            for relation in self.memory_relations
+            if relation.source_memory_id not in dirty_memory_ids and relation.relation_id not in dirty_relation_ids
+        ]
+        self.memory_extraction_results = [
+            extraction
+            for extraction in self.memory_extraction_results
+            if not any(
+                version.memory_id in dirty_memory_ids and version.version_id == extraction.memory_version_id
+                for version in self.memory_versions
+            )
+        ]
+        self.memory_versions = [
+            version for version in self.memory_versions if version.memory_id not in dirty_memory_ids
+        ]
+        self.memory_items = [
+            item for item in self.memory_items if item.memory_id not in dirty_memory_ids
+        ]
+        return {"memory_items": removed_memory_count, "memory_relations": removed_relation_count}
 
     def list_memory_read_models(self) -> list[dict[str, Any]]:
         return [self.get_memory_read_model(item.memory_id) for item in self.memory_items]

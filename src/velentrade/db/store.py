@@ -10,6 +10,7 @@ from velentrade.db.base import Base
 from velentrade.domain.collaboration.models import CollaborationCommand, CollaborationEvent, HandoffPacket
 from velentrade.domain.finance.boundary import FinanceProfile, ManualTodo
 from velentrade.domain.investment.owner_exception.approval import ApprovalRecord
+from velentrade.domain.knowledge.hygiene import memory_read_model_is_garbage, relation_read_model_is_garbage
 from velentrade.domain.memory.models import MemoryExtractionResult, MemoryItem, MemoryRelation, MemoryVersion
 
 
@@ -547,6 +548,47 @@ class SqlAlchemyGatewayMirror:
                     }
                 ],
             )
+
+    def cleanup_owner_knowledge_garbage(self) -> dict[str, int]:
+        memory_models = self.list_memory_read_models()
+        dirty_memory_ids = {
+            memory["memory_id"]
+            for memory in memory_models
+            if memory_read_model_is_garbage(memory)
+        }
+        dirty_relation_ids = {
+            relation["relation_id"]
+            for memory in memory_models
+            for relation in memory["relations"]
+            if relation_read_model_is_garbage(relation)
+        }
+        counts = {"memory_items": 0, "memory_versions": 0, "memory_relations": 0, "memory_extraction_results": 0}
+        memory_item_table = self.tables["memory_item"]
+        memory_version_table = self.tables["memory_version"]
+        extraction_table = self.tables["memory_extraction_result"]
+        relation_table = self.tables["memory_relation"]
+        with self.engine.begin() as connection:
+            version_ids: list[str] = []
+            if dirty_memory_ids:
+                version_rows = connection.execute(
+                    select(memory_version_table.c.version_id).where(memory_version_table.c.memory_id.in_(dirty_memory_ids))
+                ).mappings().all()
+                version_ids = [row["version_id"] for row in version_rows]
+            if dirty_relation_ids:
+                result = connection.execute(relation_table.delete().where(relation_table.c.relation_id.in_(dirty_relation_ids)))
+                counts["memory_relations"] += int(result.rowcount or 0)
+            if dirty_memory_ids:
+                result = connection.execute(relation_table.delete().where(relation_table.c.source_memory_id.in_(dirty_memory_ids)))
+                counts["memory_relations"] += int(result.rowcount or 0)
+            if version_ids:
+                result = connection.execute(extraction_table.delete().where(extraction_table.c.memory_version_id.in_(version_ids)))
+                counts["memory_extraction_results"] = int(result.rowcount or 0)
+            if dirty_memory_ids:
+                result = connection.execute(memory_version_table.delete().where(memory_version_table.c.memory_id.in_(dirty_memory_ids)))
+                counts["memory_versions"] = int(result.rowcount or 0)
+                result = connection.execute(memory_item_table.delete().where(memory_item_table.c.memory_id.in_(dirty_memory_ids)))
+                counts["memory_items"] = int(result.rowcount or 0)
+        return counts
 
     def get_artifact(self, artifact_id: str) -> dict[str, Any] | None:
         with self.engine.connect() as connection:

@@ -40,28 +40,29 @@ class ObservabilityCollector:
     def devops_health_read_model(self) -> dict[str, Any]:
         now = utc_now()
         runner_incident = next((event for event in self.metric_events if event["metric_name"] == "agent_run_duration_seconds" and event["payload"].get("status") == "timed_out"), None)
+        incidents = [
+            {
+                "incident_id": new_id("incident"),
+                "severity": "P1",
+                "incident_type": "runner",
+                "affected_workflows": ["wf-1"],
+                "status": "triaged",
+                "risk_notification_ref": new_id("risk-notification"),
+            }
+        ] if runner_incident else []
         return {
             "routine_checks": [
                 {"check_id": "metric-collection", "window": "intraday", "status": "observed", "last_success_at": now, "next_check_at": "next_probe"}
             ],
-            "incidents": [
-                {
-                    "incident_id": new_id("incident"),
-                    "severity": "P1",
-                    "incident_type": "runner",
-                    "affected_workflows": ["wf-1"],
-                    "status": "triaged",
-                    "risk_notification_ref": new_id("risk-notification"),
-                }
-            ] if runner_incident else [],
-            "recovery": [
+            "incidents": incidents,
+            "recovery": ([
                 {
                     "plan_id": new_id("recovery"),
                     "technical_recovery_status": "pending_validation",
                     "risk_review_required": True,
                     "investment_resume_allowed": False,
                 }
-            ],
+            ] if incidents else []),
             "audit_trail": self.sensitive_denials,
             "metrics": dict(self.metrics),
         }

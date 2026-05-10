@@ -1,0 +1,14 @@
+repair_id: REPAIR-20260506105512
+status: closed
+phase: Implementation
+gate: scope
+reason: WI-011 owner real-data repair requires preserving manual_todo route_reason in workflow runtime so governance todo can route to the real finance handling module without frontend fixture or hidden fallback.
+allowed_paths:
+  - work-items/WI-011.yaml
+opened_at: 2026-05-06T10:55:12Z
+opened_revision: b66c1291165de3252786f24bd102b96abd2feb91
+closed_at: 2026-05-06T11:00:00Z
+closed_revision: b66c1291165de3252786f24bd102b96abd2feb91
+evidence: "CODESPEC_SCOPE_MODE=changed-files CODESPEC_CHANGED_FILES=work-items/WI-011.yaml ../.codespec/scripts/check-gate.sh scope passed. env -u CODESPEC_CHANGED_FILES -u CODESPEC_CHANGED_FILES_FILE -u CODESPEC_SCOPE_MODE ../.codespec/scripts/smoke.sh passed. Direct authority-repair close is blocked by existing unrelated dirty authority repair files; close with CODESPEC_CHANGED_FILES leaks that env into smoke and makes smoke evaluate work-items/WI-011.yaml inside its temporary WI-001 fixture. WI-011 allowed_paths now includes src/velentrade/domain/workflow/** for preserving manual_todo route_reason at the source."
+gate_result: pass
+smoke_result: pass

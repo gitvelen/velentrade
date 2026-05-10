@@ -4,8 +4,8 @@ from pathlib import Path
 def test_frontend_source_contains_required_nav_and_no_top_level_team():
     source = Path("frontend/src/workbench.ts").read_text(encoding="utf-8")
     assert '"全景", "投资", "财务", "知识", "治理"' in source
-    assert "Agent 团队" in source
-    assert '"团队"' not in source
+    assert "governanceModules: [\"待办\", \"团队\", \"变更\", \"健康\", \"审计\"]" in source
+    assert "Agent 团队" not in source
 
 
 def test_frontend_reports_reference_design_previews_and_guard_denials():
@@ -66,6 +66,28 @@ def test_owner_default_view_removes_internal_terms_and_explanatory_subtitles():
     assert "只做研究，不进入审批或交易" in workbench_source
 
 
+def test_knowledge_and_investment_owner_copy_answers_validation_questions():
+    app_source = Path("frontend/src/main.tsx").read_text(encoding="utf-8")
+    frontend_source = app_source + Path("frontend/src/workbench.ts").read_text(encoding="utf-8")
+
+    for required in [
+        "健康接口未连接，不能判断真实降级原因。",
+        "恢复待验证",
+        "经验记录",
+        "保存经验",
+        "资料包来源：",
+        "资料关系",
+        "整理建议",
+        "应用整理建议",
+        "当前 S3：硬异议保留，需先补证并交风控复核",
+        "执行数据不足是 S6 成交门槛，不是当前 S3 阻断原因",
+    ]:
+        assert required in frontend_source
+
+    for forbidden in ["记忆工作区", "捕获记忆", "应用组织建议", "今日影响：", "关系图", "数据获取"]:
+        assert forbidden not in app_source
+
+
 def test_frontend_theme_uses_approved_premium_light_tokens():
     styles = Path("frontend/src/styles.css").read_text(encoding="utf-8")
 
@@ -75,6 +97,8 @@ def test_frontend_theme_uses_approved_premium_light_tokens():
     assert "position: sticky" in styles
     assert "backdrop-filter: blur(16px)" in styles
     assert "command-panel" in styles
+    assert ".compact-dossier-header" in styles
+    assert "max-height: 44px" in styles
 
 
 def test_vite_dev_server_proxies_api_calls_to_fastapi():

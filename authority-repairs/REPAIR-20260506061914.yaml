@@ -1,0 +1,15 @@
+repair_id: REPAIR-20260506061914
+status: closed
+phase: Implementation
+gate: design-quality
+reason: WI-011 owner acceptance refinement requires updating the current work item and test obligations for unified approval wording, governance-owned knowledge proposals, actionable-only governance tasks, team wording, and hidden machine ids
+allowed_paths:
+  - testing.md
+  - work-items/WI-011.yaml
+opened_at: 2026-05-06T06:19:14Z
+opened_revision: b66c1291165de3252786f24bd102b96abd2feb91
+closed_at: 2026-05-06T06:22:02Z
+closed_revision: b66c1291165de3252786f24bd102b96abd2feb91
+evidence: WI-011 authority wording updated for unified approval, governance-owned knowledge proposals, actionable tasks, team wording, and hidden machine ids
+gate_result: pass
+smoke_result: pass
