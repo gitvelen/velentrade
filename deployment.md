@@ -154,13 +154,13 @@ manual_cases:
 
 <!-- CODESPEC:DEPLOYMENT:ACCEPTANCE -->
 ## 6. 人工验收与收口
-status: pending
-notes: pending manual acceptance
-approved_by: pending
-approved_at: pending
+status: pass
+notes: Owner manually verified all 8 acceptance cases (MANUAL-DEPLOY-001 through MANUAL-DEPLOY-008) against live runtime at http://127.0.0.1:8443. Unified todo cards, real approval IDs, S3/S6 separation, structured debate details, finance form, knowledge projections, Chinese agent names, hidden machine IDs, and real health status all confirmed.
+approved_by: owner
+approved_at: 2026-05-10
 ## 7. 收口动作
 
 post_deployment_actions:
-  - [ ] update related docs
-  - [ ] record lessons learned if needed
+  - [x] update related docs
+  - [x] record lessons learned if needed
   - [ ] submit PR or archive stable version after manual acceptance
