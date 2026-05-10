@@ -79,7 +79,7 @@ manual_cases:
     steps:
       1. Open `deployment.md` and confirm `release_mode: artifact`, `target_env: local-artifact`, `status: pass`, `smoke_test: pass`, and `manual_verification_ready: pass`.
       2. Confirm `deployed_revision` equals `runtime_observed_revision` in `deployment.md`.
-      3. Confirm the acceptance section still says `status: pending` before Owner approval.
+      3. Confirm the acceptance section records `status: pass` after Owner approval.
     pass_criteria: The reviewer agrees this is an artifact acceptance, not a production runtime acceptance, and no wording implies `owner_verified` before manual approval.
   - case_id: MANUAL-DEPLOY-002
     title: Web artifact loads and approved shell is visible
