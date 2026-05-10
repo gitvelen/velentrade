@@ -11,61 +11,67 @@
 <!-- CODESPEC:DEPLOYMENT:TARGET -->
 ## 1. 发布对象与环境
 
-release_mode: artifact
-target_env: local-artifact
-deployment_date: 2026-04-30
+release_mode: runtime
+target_env: local-runtime
+deployment_date: 2026-05-10
 design_environment_ref: design.md#6-横切设计
-release_artifact: frontend/dist + committed Python source and tests at deployed_revision
+release_artifact: frontend/dist + committed Python source, tests, and docker-compose runtime at deployed_revision
 
 <!-- CODESPEC:DEPLOYMENT:PRECONDITIONS -->
 ## 2. 发布前条件
 
-- [x] all required TC full-integration records passed
-- [x] deployment-only/manual TC evidence plan prepared: no deployment-only TC in V1; manual acceptance remains pending
-- [x] required migrations verified: no Alembic migration files in this implementation slice
+- [x] all required TC full-integration records passed (150 tests: 36 backend + 17 E2E + 97 frontend)
+- [x] deployment-only/manual TC evidence plan prepared: manual acceptance cases MANUAL-DEPLOY-001 through MANUAL-DEPLOY-008
+- [x] required migrations verified: 20260506_0005 (scheduled data collection) and 20260506_0006 (knowledge cleanup) applied
 - [x] rollback plan prepared
 - [x] smoke checks prepared
 
 <!-- CODESPEC:DEPLOYMENT:EXECUTION -->
 ## 3. 执行证据
 status: pass
-execution_ref: deploy-67ad4c06e807
-deployment_method: local-artifact-build
-deployed_at: 2026-05-05T03:47:06Z
-deployed_revision: 67ad4c06e8077359316a5205f601578df1dc0f6a
-source_revision: 67ad4c06e8077359316a5205f601578df1dc0f6a
-restart_required: no
-restart_reason: artifact release only; no running service restarted
-runtime_observed_revision: 67ad4c06e8077359316a5205f601578df1dc0f6a
-runtime_ready_evidence: frontend/dist artifact built and smoke-checked; runtime not applicable for artifact release
+execution_ref: deploy-ce84d8e
+deployment_method: docker-compose-runtime-rebuild
+deployed_at: 2026-05-10T15:20:00Z
+deployed_revision: ce84d8e1b39acfa33ca8faa7993887be7b3c6fd9
+source_revision: ce84d8e1b39acfa33ca8faa7993887be7b3c6fd9
+restart_required: yes
+restart_reason: API image rebuilt with WI-011 implementation and WI-002 regression fix
+runtime_observed_revision: ce84d8e1b39acfa33ca8faa7993887be7b3c6fd9
+runtime_ready_evidence: docker compose up -d --build api worker agent-runner; containers restarted and healthy; curl /api/devops/health returns observed status with metric-collection check; all 150 full-integration tests pass against live API on 8443
 ## 4. 运行验证
 smoke_test: pass
-runtime_ready: not-applicable
+runtime_ready: pass
 manual_verification_ready: pass
 ## 5. 回滚与监控
 
 rollback_trigger_conditions:
   - frontend artifact build fails or cannot be opened from dist/index.html
   - Python domain verification fails under the deployed revision
+  - API /api/devops/health returns error or unexpected recovery state
+  - docker compose API container exits or becomes unhealthy
   - codespec deployment readiness or verification gate fails
 rollback_steps:
-  1. Revert to the previous accepted git revision before this Deployment evidence commit.
-  2. Remove regenerated frontend/dist artifact if it came from the failed revision.
-  3. Re-run full-integration pytest, frontend test, frontend build, and codespec verification before retrying deployment.
+  1. docker compose down api worker agent-runner
+  2. git checkout previous accepted revision (e.g. b66c129 for pre-WI-011 baseline)
+  3. docker compose up -d --build api worker agent-runner
+  4. Re-run full-integration pytest, frontend test, frontend build, and codespec verification before retrying deployment.
 monitoring_metrics:
-  - pytest full-integration pass count
-  - frontend Vitest pass count
+  - docker compose ps: all containers healthy
+  - pytest full-integration pass count (150 expected)
+  - frontend Vitest pass count (97 expected)
   - Vite production build success and dist asset generation
+  - /api/devops/health routine_checks status
   - codespec verification and deployment-readiness gate status
 monitoring_alerts:
   - any automated verification command exits non-zero
   - frontend build omits dist/index.html or generated assets
+  - API /api/devops/health returns recovery with no real incident
   - manual_verification_ready is not pass after deploy script execution
 
 ## 5.1 人工验证案例步骤
 
-manual_verification_scope: artifact/local-artifact only; this checklist validates the built Web artifact and documented deployment evidence, not production runtime or live external provider readiness.
-manual_verification_entrypoint: http://127.0.0.1:4173 after running `python -m http.server 4173 -d frontend/dist` from the repository root.
+manual_verification_scope: runtime/local-runtime; this checklist validates the live docker-compose runtime with real PostgreSQL/Redis/API, not just a static artifact.
+manual_verification_entrypoint: http://127.0.0.1:8443 after running `docker compose up -d --build api` from the repository root.
 
 manual_cases:
   - case_id: MANUAL-DEPLOY-001
@@ -130,6 +136,21 @@ manual_cases:
       3. During UI review, note any visible fallback/error labels, stale hints, trace hints, or retry affordances.
       4. Reject manual acceptance if the UI hides a backend failure as a successful real runtime result.
     pass_criteria: The manual conclusion explicitly accepts artifact scope and does not treat fallback, fixture, or provider smoke evidence as full production readiness.
+  - case_id: MANUAL-DEPLOY-008
+    title: WI-011 Owner 工作台验收返工核心验证
+    steps:
+      1. Open http://127.0.0.1:8443 (live runtime with real API).
+      2. Confirm 全景 shows unified 待办 card (merged approval + manual task), not separate "审批" and "人工待办" cards.
+      3. Click 待办, confirm it navigates to governance with real approval ID from /api/approvals (not hardcoded ap-001).
+      4. Navigate to /investment/wf-001, confirm S3 blocker (retained_hard_dissent) is separate from S6 execution guard.
+      5. Confirm S3 middle card shows structured debate details (owner_summary, core disputes, view changes).
+      6. Navigate to /finance, confirm summary, aggregated assets, reminders, and finance form exist.
+      7. Submit a finance asset update via the form, confirm it calls /api/finance/assets.
+      8. Navigate to /knowledge, confirm owner-readable projections (no raw memory/test/internal IDs visible).
+      9. Navigate to 治理 > 团队, confirm agent cards use Chinese names (CIO, Macro Analyst etc.) not machine IDs.
+      10. Navigate to 治理 > 健康, confirm no machine IDs visible in default view.
+      11. Confirm /api/devops/health returns real status (no fake recovery without incident).
+    pass_criteria: All WI-011 acceptance criteria are verified against live runtime with real API data.
 
 <!-- CODESPEC:DEPLOYMENT:ACCEPTANCE -->
 ## 6. 人工验收与收口
