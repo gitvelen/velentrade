@@ -3735,3 +3735,49 @@ Design approved 前，`reviews/design-review.yaml` 必须记录 R8 cold-start dr
   result: pass
   residual_risk: "`../.codespec/codespec check-gate scope` still fails on existing unrelated authority repair file `authority-repairs/REPAIR-20260506014730.yaml` outside active repair allowed_paths. Active authority repair REPAIR-20260508000435 remains open, and Owner manual acceptance for the latest S1 copy change is not recorded."
   reopen_required: false
+
+## Testing 阶段 HANDOFF
+
+### HANDOFF-TESTING-20260510
+
+- phase: Testing
+- focus_wi: all active WI-001 through WI-011
+- implementation_base_revision: 67262bb3812f39ebccde785d93c68cd47a7b201e
+- latest_revision: de2c9fd
+
+#### Full-integration 测试结果
+
+- 后端 pytest: 36 passed (WI-001 10 tests, WI-002 7 tests, WI-005 4 tests, WI-006 1 test, WI-011 12 tests, observability 2 tests)
+  - PostgreSQL/Redis: 真实连接，Celery worker 集成通过
+- E2E 浏览器测试: 17 passed (WI-004 live API + browser interaction)
+  - 真实 API on 8443，前端 SPA same-origin
+- 前端 Vitest: 97 passed (86 UI + 11 contract)
+- Vite build: 通过
+- Scope gate: 通过
+- Contract-boundary gate: 通过
+- Verification gate: 通过
+- Semantic-handoff gate: 通过
+
+#### 修复记录
+
+- `de2c9fd` fix(wi-011): 移除 wi002_reports.py 中误提交的 WI-002 独有 imports
+
+#### 最高完成等级: integrated_runtime
+
+- 所有 WI-001 到 WI-011 在真实运行时环境中集成运行通过
+- PostgreSQL migration、Redis/Celery、FastAPI endpoint、frontend browser interaction、跨 WI 数据流均已验证
+
+#### 未完成项
+
+| 项目 | 最高完成等级 | 阻塞原因 | 下一步 |
+|------|-------------|---------|--------|
+| Owner 人工验收 (owner_verified) | integrated_runtime | 需要 Owner 对工作台做端到端人工验收 | 人工操作 |
+| WI-002 build_intraday_monitor_templates / screen_all_market_candidates | not_implemented | WI-002 scope 功能未实现，quality.py 已还原 | 后续 WI-002 实现轮次 |
+| 外部数据 provider 生产可用性 | not_implemented | 公开 HTTP CSV adapter 仅连接 fixture/fallback，未验证真实外部 provider | 评估 provider 条款后接入 |
+| 非 A 股资产真实估值 | not_implemented | 仅 manual_todo 模式，无真实非 A 股数据接入 | 按需接入 |
+
+#### 残余风险
+
+- fixture/fallback 路径在开发环境仍然存在，但前端正式入口已不使用 fixture 冒充业务状态
+- WI-004 rich surfaces 已达 integrated_runtime，前端真实 API 链路完整
+- WI-010 为 authority repair WI，其数据持久化验证通过 WI-003/WI-008 的 IC context 和 position disposal 测试间接覆盖
