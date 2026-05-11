@@ -5,31 +5,20 @@ change_id: baseline # 变更唯一标识
 base_version: null # 基线版本
 created_at: 2026-04-26 # 创建时间
 phase: Deployment # 当前阶段：Requirement | Design | Implementation | Testing | Deployment
-status: active # 当前状态：active | blocked | completed
+status: completed # 当前状态：active | blocked | completed
 # status 语义：
 # - active: 当前阶段正常推进
 # - blocked: 当前阶段被阻塞（需要外部输入或依赖）
 # - completed: 整个变更已完成（只在 Deployment 阶段后使用）
 
-stable_version: null # 稳定版本号（complete-change 时设置，用于归档和 reopen 定位）
+stable_version: v1.0.0 # 稳定版本号（complete-change 时设置，用于归档和 reopen 定位）
 # 工作项执行上下文
 # 单分支工作流：feature_branch 指向当前主执行分支，execution_group / execution_branch 为 null
 # 多分支并行：feature_branch 指向父 feature 分支，execution_group 非 null，execution_branch 记录当前 dossier 所在分支
 focus_work_item: null # 当前执行分支关注的 WI ID（如 "WI-001"），Implementation 阶段必须非 null
 execution_group: null # 并行执行组名（如 "parallel-impl"），由 `codespec set-execution-context` 写入
 execution_branch: null # 当前 dossier 所在 git 分支名（如 "group/sanguoA"），由 `codespec set-execution-context` 写入
-active_work_items:
-  - WI-001
-  - WI-002
-  - WI-003
-  - WI-004
-  - WI-005
-  - WI-006
-  - WI-007
-  - WI-008
-  - WI-009
-  - WI-010
-  - WI-011
+active_work_items: []
 implementation_base_revision: 67262bb3812f39ebccde785d93c68cd47a7b201e # 当前 Implementation 回路的 git 基线；进入 Testing 前按此基线检查累计变更
 # active_work_items 语义：
 # - Implementation 阶段：正在执行的 WI（单分支串行时累积，多分支并行时各分支独立）
@@ -45,7 +34,7 @@ feature_branch: master # 主执行分支 / parent feature 分支名（如 "featu
 # 阻塞信息（仅当 status=blocked 时填写）
 blocked_reason: null # 阻塞原因描述
 blocked_by: null # 阻塞依赖（如 "WI-001" 或外部因素）
-updated_at: 2026-05-10 # 最后更新时间
+updated_at: 2026-05-11 # 最后更新时间
 updated_by: codespec-cli # 最后更新人
 gate_evidence:
   implementation_entry:
