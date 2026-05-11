@@ -3781,3 +3781,41 @@ Design approved 前，`reviews/design-review.yaml` 必须记录 R8 cold-start dr
 - fixture/fallback 路径在开发环境仍然存在，但前端正式入口已不使用 fixture 冒充业务状态
 - WI-004 rich surfaces 已达 integrated_runtime，前端真实 API 链路完整
 - WI-010 为 authority repair WI，其数据持久化验证通过 WI-003/WI-008 的 IC context 和 position disposal 测试间接覆盖
+
+### HANDOFF-DEPLOYMENT-20260510
+
+- handoff_id: HANDOFF-DEPLOYMENT-20260510
+  phase: Deployment
+  work_item_refs: [WI-001, WI-002, WI-003, WI-004, WI-005, WI-006, WI-007, WI-008, WI-009, WI-010, WI-011]
+  highest_completion_level: owner_verified
+  evidence_refs:
+    - deployment.md#3-执行证据
+    - deployment.md#4-运行验证
+    - deployment.md#6-人工验收与收口
+    - testing.md#HANDOFF-TESTING-20260510
+  unfinished_items:
+    - source_ref: WI-002 scope
+      priority: P2
+      current_completion_level: not_implemented
+      target_completion_level: integrated_runtime
+      blocker: build_intraday_monitor_templates / screen_all_market_candidates 未实现
+      next_step: 后续 WI-002 实现轮次
+    - source_ref: external data provider
+      priority: P2
+      current_completion_level: not_implemented
+      target_completion_level: production_ready
+      blocker: 公开 HTTP CSV adapter 仅连接 fixture/fallback
+      next_step: 评估 provider 条款后接入
+    - source_ref: non-A-share real valuation
+      priority: P2
+      current_completion_level: not_implemented
+      target_completion_level: manual_todo_with_real_data
+      blocker: 无真实非 A 股数据接入
+      next_step: 按需接入
+  fixture_or_fallback_paths:
+    - surface: local runtime deployment
+      completion_level: owner_verified
+      real_api_verified: true
+      visible_failure_state: true
+      trace_retry_verified: true
+  wording_guard: "Deployment 已通过 Owner 人工验收（所有 8 个人工案例在 runtime 上确认通过）。WI-002 独有功能、外部 provider 和非 A 股估值标记为 P2 未完成，不阻塞本次收口。"
