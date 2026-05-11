@@ -1,0 +1,16 @@
+repair_id: REPAIR-20260505031840
+status: closed
+phase: Implementation
+gate: contract-boundary
+reason: WI-010 repaired frozen contract gaps for ICContextPackage, ICChairBrief and PositionDisposalTask; active WI explicitly owns these contract paths and no new product scope is introduced
+allowed_paths:
+  - contracts/api-read-models.md
+  - contracts/domain-artifact-schemas.md
+  - contracts/verification-report-schemas.md
+opened_at: 2026-05-05T03:18:40Z
+opened_revision: fead82951aee3b1090fe42953c66ca91b312f7b1
+closed_at: 2026-05-05T03:20:21Z
+closed_revision: fead82951aee3b1090fe42953c66ca91b312f7b1
+evidence: contract-boundary repair record for WI-010 frozen contract updates; .codespec smoke includes implementation-span frozen contract repair positive/negative regression
+gate_result: pass
+smoke_result: pass

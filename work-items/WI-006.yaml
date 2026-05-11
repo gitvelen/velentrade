@@ -1,0 +1,82 @@
+wi_id: WI-006
+phase_scope: Implementation
+completion_level: integrated_runtime
+
+goal: "交付 DevOps incident、health、degradation、recovery 和 Risk notification。"
+derived_from: design.md#7
+design_refs:
+  - design-appendices/devops-observability-design.md
+  - design-appendices/agent-capability-profiles.md
+  - contracts/api-read-models.md
+  - contracts/domain-artifact-schemas.md
+  - contracts/verification-report-schemas.md
+
+requirement_refs:
+  - REQ-029
+acceptance_refs:
+  - ACC-029
+verification_refs:
+  - VO-029
+test_case_refs:
+  - TC-ACC-029-01
+
+r8_runbook_scope:
+  owns:
+    - "DevOps daily operating runbook: pre-open, intraday, post-close, and daily ops checks for data source, service, runner, execution environment, logs, cost, and token health."
+    - "Incident runbook from detection through triage, severity, degradation, Risk handoff, recovery validation, communication, and post-incident evidence."
+    - "DevOps read model and report evidence for `devops_incident_report`, including `investment_resume_allowed=false` until Risk/workflow guard accepts resume."
+  must_prove:
+    - "DevOps can repair technical health but cannot approve business risk or resume investment execution by itself."
+    - "Severity, affected domains, degradation plan, recovery plan, and sensitive-log findings are captured as artifacts/events."
+    - "Routine checks are observable and failures produce traceable incident or degradation outputs."
+  does_not_own:
+    - "Business Risk Review decision, investment workflow override, finance workflows, production frontend implementation, or high-impact config hot edits."
+
+scope:
+  - "实现 Incident Report、Degradation Plan、Recovery Plan、Risk Officer Notification、Source Health、Service Health、Runner/Execution Health、Cost/Token Observability 和敏感日志发现。"
+  - "固化 incident 状态机、health check contract、Risk handoff、敏感日志审计和恢复不直接放行业务执行的 guard。"
+  - "覆盖数据源故障、服务超时、纸面执行环境异常和 Token 成本观测 fixture。"
+  - "生成 devops_incident_report。"
+out_of_scope:
+  - "不替代 Risk Officer 做业务风险判断，不直接放行投资执行，不热改高影响配置。"
+
+allowed_paths:
+  - src/velentrade/domain/devops/**
+  - src/velentrade/domain/observability/**
+  - tests/domain/devops/**
+  - tests/domain/observability/**
+forbidden_paths:
+  - versions/**
+  - spec.md
+  - design.md
+  - work-items/**
+  - contracts/**
+  - deployment.md
+  - src/velentrade/domain/investment/**
+  - src/velentrade/domain/decision/**
+  - src/velentrade/domain/finance/**
+  - src/velentrade/domain/attribution/**
+  - src/velentrade/domain/knowledge/**
+  - frontend/**
+  - Dockerfile
+
+dependency_refs:
+  - WI-001
+  - WI-002
+dependency_type: strong
+contract_refs:
+  - contracts/api-read-models.md
+  - contracts/domain-artifact-schemas.md
+  - contracts/verification-report-schemas.md
+
+required_verification:
+  - "pytest tests/domain/devops tests/domain/observability -q"
+  - "python -m compileall src/velentrade"
+
+stop_conditions:
+  - "目标、边界、验收或测试用例不清楚"
+  - "需要修改 forbidden_paths 或超出 allowed_paths"
+  - "实现需要改变 spec.md / design.md 的产品或架构口径"
+  - "需要 DevOps 直接做业务风险放行或未批准配置热改"
+reopen_triggers:
+  - "DevOps 与 Risk 职责边界、incident 状态机、降级恢复策略或成本 Token 验收口径变化"

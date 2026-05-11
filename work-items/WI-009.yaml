@@ -1,0 +1,104 @@
+wi_id: WI-009
+phase_scope: Implementation
+completion_level: integrated_runtime
+
+goal: "交付纸面执行链，从 Paper Account 初始化、Paper Order/Execution 到 execution_core 阻断和持仓监控处置。"
+derived_from: design.md#7
+design_refs:
+  - design-appendices/investment-chain-design.md
+  - contracts/api-read-models.md
+  - contracts/domain-artifact-schemas.md
+  - contracts/verification-report-schemas.md
+
+requirement_refs:
+  - REQ-020
+  - REQ-021
+  - REQ-022
+acceptance_refs:
+  - ACC-020
+  - ACC-021
+  - ACC-022
+verification_refs:
+  - VO-020
+  - VO-021
+  - VO-022
+test_case_refs:
+  - TC-ACC-020-01
+  - TC-ACC-021-01
+  - TC-ACC-022-01
+
+r8_runbook_scope:
+  owns:
+    - "S6-S7 paper account/execution/position runbook: 1,000,000 CNY empty-account initialization, PaperOrder, execution_core guard, simulated fill, receipt, T+1, unfilled/expired outcomes, and position disposal trigger."
+    - "Medium-realism execution contract using execution window, 1-minute VWAP/TWAP, price range, deterministic slippage, fees, stamp tax, and audit evidence."
+    - "Position monitor runbook that routes abnormal holdings back through Risk/workflow guards instead of direct execution."
+  must_prove:
+    - "No paper execution occurs when execution_core freshness/quality is below the active ContextSnapshot threshold."
+    - "Paper execution never touches real broker APIs, real orders, real account sync, non-A assets, or backtest engines."
+    - "Unfilled, partial, expired, T+1, and disposal-required states are explicit results/events, not hidden failures."
+  does_not_own:
+    - "Opportunity intake, Analyst Memo, debate, CIO Decision, Risk Review verdict production, Owner exception approval, finance workflows, or frontend rendering."
+
+scope:
+  - "实现 Paper Account 初始化、Paper Order、Paper Execution、分钟线 VWAP/TWAP、价格区间命中、费用/税费/确定性滑点/T+1、未成交/过期处理和 Position Monitor 处置流程。"
+  - "覆盖 100 万 CNY 空仓初始化、execution_core freshness/quality 阻断、VWAP/TWAP/执行窗口、价格区间、成交状态、持仓异常触发处置且不跳过 Risk Review。"
+  - "固化 PaperAccount、PaperOrder、PaperExecutionReceipt 和 Position Disposal 的 schema/guard。"
+  - "生成 paper_account_report、paper_execution_report 和 position_disposal_report。"
+out_of_scope:
+  - "不实现机会准入、Analyst Memo、S3 辩论、CIO Decision、Risk Review 或 Owner exception。"
+  - "不接真实券商、不真实下单、不实现非 A 股交易、不做回测、不做前端页面。"
+
+allowed_paths:
+  - src/velentrade/domain/investment/paper_account/**
+  - src/velentrade/domain/investment/execution/**
+  - src/velentrade/domain/investment/position/**
+  - tests/domain/investment/paper_account/**
+  - tests/domain/investment/execution/**
+  - tests/domain/investment/position/**
+forbidden_paths:
+  - versions/**
+  - spec.md
+  - design.md
+  - work-items/**
+  - contracts/**
+  - deployment.md
+  - src/velentrade/domain/investment/intake/**
+  - src/velentrade/domain/investment/topic_queue/**
+  - src/velentrade/domain/investment/context/**
+  - src/velentrade/domain/investment/analysis/**
+  - src/velentrade/domain/investment/debate/**
+  - src/velentrade/domain/decision/**
+  - src/velentrade/domain/investment/risk/**
+  - src/velentrade/domain/investment/owner_exception/**
+  - src/velentrade/domain/finance/**
+  - src/velentrade/domain/attribution/**
+  - src/velentrade/domain/knowledge/**
+  - src/velentrade/domain/devops/**
+  - src/velentrade/domain/observability/**
+  - frontend/**
+  - Dockerfile
+
+dependency_refs:
+  - WI-001
+  - WI-002
+  - WI-003
+  - WI-007
+  - WI-008
+dependency_type: strong
+contract_refs:
+  - contracts/api-read-models.md
+  - contracts/domain-artifact-schemas.md
+  - contracts/verification-report-schemas.md
+
+required_verification:
+  - "pytest tests/domain/investment/paper_account tests/domain/investment/execution tests/domain/investment/position -q"
+  - "python -m compileall src/velentrade"
+
+stop_conditions:
+  - "目标、边界、验收或测试用例不清楚"
+  - "需要修改 forbidden_paths 或超出 allowed_paths"
+  - "实现需要改变 spec.md / design.md 的产品或架构口径"
+  - "需要真实券商、真实下单、回测、非 A 股交易或绕过 execution_core/Risk Review"
+reopen_triggers:
+  - "Paper Account、execution_core 阈值/freshness、纸面执行中等拟真算法、费用/滑点、成交状态、T+1 或持仓处置规则变化"
+  - "任何真实交易、真实券商或回测能力被要求进入本 WI"

@@ -1,0 +1,119 @@
+wi_id: WI-002
+phase_scope: Implementation
+completion_level: integrated_runtime
+
+goal: "交付 workflow/data/service/governance runtime，让 S0-S7、数据质量、服务边界、市场状态、Decision Service 编排入口、ContextSnapshot、DefaultContextBinding/MemoryCollection/AgentCapability 版本和配置/Prompt/Skill 治理可被 fixture 自动验证。"
+derived_from: design.md#7
+design_refs:
+  - design-appendices/workflow-data-service-design.md
+  - design-appendices/decision-service-design.md
+  - design-appendices/runtime-storage-architecture.md
+  - contracts/domain-artifact-schemas.md
+  - contracts/verification-report-schemas.md
+
+requirement_refs:
+  - REQ-008
+  - REQ-009
+  - REQ-010
+  - REQ-011
+  - REQ-030
+acceptance_refs:
+  - ACC-008
+  - ACC-009
+  - ACC-010
+  - ACC-011
+  - ACC-030
+verification_refs:
+  - VO-008
+  - VO-009
+  - VO-010
+  - VO-011
+  - VO-030
+test_case_refs:
+  - TC-ACC-008-01
+  - TC-ACC-009-01
+  - TC-ACC-010-01
+  - TC-ACC-011-01
+  - TC-ACC-030-01
+
+r8_runbook_scope:
+  owns:
+    - "Generic workflow spine from Request Brief to TaskEnvelope, stage guard, service/AgentRun admission, artifact, handoff, read model projection, and verification report."
+    - "Data/service/governance runbooks including quality scoring, fallback/cache/conflict, service failure, ContextSnapshot activation, and DefaultContextBinding/MemoryCollection version activation."
+    - "Generic service orchestration call path for Decision Service, without implementing S4 decision semantics owned by WI-008."
+    - "Celery worker scheduling for `start_agent_run`, including runner unavailable, timeout, idempotency and no fabricated Agent artifact."
+  must_prove:
+    - "Stage state changes only through domain command handlers and guards."
+    - "Service failures do not fabricate results and execution_core blocked cannot be overridden."
+    - "Governance changes, including MemoryCollection/KnowledgeItem/DefaultContextBinding and AgentCapability changes, affect only new task/new attempt snapshots."
+    - "Worker can dispatch accepted AgentRun records to agent-runner and persist only runner results that pass Authority Gateway/domain guard validation."
+  does_not_own:
+    - "Role-specific investment Agent memo content, Decision Service domain semantics, frontend production UI, or finance/reflection business workflows."
+
+scope:
+  - "实现 Request Brief confirmation、Task Envelope、S0-S7 阶段节点、Reopen Event、ContextSnapshot、DefaultContextBinding/MemoryCollection/AgentCapability 版本纳入快照、高影响治理状态机、低/中影响自动验证生效链、transition guard、incident 状态机和 Celery `start_agent_run` 调度。"
+  - "实现 Data Domain Registry、Source Registry、Data Request、Data Readiness Report、completeness/accuracy/timeliness quality gate、fallback、cache、conflict report、execution_core freshness gate、service orchestration 和 market state 默认生效。"
+  - "实现许可安全的公开 HTTP CSV 行情 adapter、真实源 Source Registry 元数据、字段归一化、限频/许可声明、fallback/cache 降级和 execution_core 阻断；自动化验证使用本地 HTTP/假传输，不把外网 live provider 可用性伪装成 pass。"
+  - "固化 workflow command guard、Data Request/Readiness schema、服务输出无治理权、Decision Service 调用不越权、ContextSnapshot hash/immutability、Memory/Knowledge/DefaultContext/AgentCapability 新版本绑定和新任务/新 attempt 生效边界。"
+  - "生成 s0_s7_workflow_report、data_quality_degradation_report、service_boundary_report、market_state_report、config_governance_report，并在相关报告中记录 runner 调度失败不会伪造 Agent artifact。"
+out_of_scope:
+  - "不实现具体 A 股 IC 决策、DecisionPacket/偏离守卫语义、前端页面、财务知识链、DevOps health 页面、付费/需密钥供应商 adapter、真实券商或真实下单 adapter。"
+  - "不修改 WI-001 已交付核心 schema 的语义，除非回到 Design。"
+
+allowed_paths:
+  - work-items/WI-002.yaml
+  - design-appendices/workflow-data-service-design.md
+  - src/velentrade/db/seed.py
+  - src/velentrade/domain/workflow/**
+  - src/velentrade/domain/data/**
+  - src/velentrade/domain/services/**
+  - src/velentrade/domain/governance/**
+  - src/velentrade/worker/**
+  - tests/domain/workflow/**
+  - tests/domain/data/**
+  - tests/domain/services/**
+  - tests/domain/governance/**
+  - tests/worker/**
+forbidden_paths:
+  - versions/**
+  - spec.md
+  - design.md
+  - work-items/WI-001.yaml
+  - work-items/WI-003.yaml
+  - work-items/WI-004.yaml
+  - work-items/WI-005.yaml
+  - work-items/WI-006.yaml
+  - work-items/WI-007.yaml
+  - work-items/WI-008.yaml
+  - work-items/WI-009.yaml
+  - contracts/**
+  - deployment.md
+  - src/velentrade/domain/investment/**
+  - src/velentrade/domain/finance/**
+  - src/velentrade/domain/attribution/**
+  - src/velentrade/domain/knowledge/**
+  - src/velentrade/domain/devops/**
+  - src/velentrade/domain/observability/**
+  - frontend/**
+  - Dockerfile
+
+dependency_refs:
+  - WI-001
+dependency_type: strong
+contract_refs:
+  - contracts/api-read-models.md
+  - contracts/domain-artifact-schemas.md
+  - contracts/verification-report-schemas.md
+
+required_verification:
+  - "pytest tests/domain/workflow tests/domain/data tests/domain/services tests/domain/governance tests/worker -q"
+  - "python -m compileall src/velentrade"
+
+stop_conditions:
+  - "目标、边界、验收或测试用例不清楚"
+  - "需要修改 forbidden_paths 或超出 allowed_paths"
+  - "实现需要改变 spec.md / design.md 的产品或架构口径"
+  - "需要服务层拥有投资判断、审批、否决或真实交易权限"
+reopen_triggers:
+  - "S0-S7 状态机、数据质量算法/阈值、execution_core freshness gate、服务边界、Decision Service 编排入口、市场状态生效、ContextSnapshot、DefaultContextBinding/MemoryCollection/AgentCapability 或配置/Prompt/Skill 治理状态机变化"
+  - "第三方数据源许可、限频、字段或可用性要求改变 Source Registry 语义"

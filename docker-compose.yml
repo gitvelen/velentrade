@@ -1,0 +1,102 @@
+x-velentrade-runtime: &velentrade-runtime
+  build:
+    context: .
+    dockerfile: Dockerfile
+  image: velentrade-runtime:local
+  working_dir: /app
+  environment:
+    VELENTRADE_DATABASE_URL: postgresql+psycopg://velentrade:velentrade@postgres:5432/velentrade
+    VELENTRADE_REDIS_URL: redis://redis:6379/0
+    VELENTRADE_AGENT_RUNNER_URL: http://agent-runner:8100
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: velentrade
+      POSTGRES_PASSWORD: velentrade
+      POSTGRES_DB: velentrade
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U velentrade -d velentrade"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+
+  redis:
+    image: redis:7-alpine
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+    ports:
+      - "6379:6379"
+
+  migrate:
+    <<: *velentrade-runtime
+    depends_on:
+      postgres:
+        condition: service_healthy
+    command: >
+      bash -lc "alembic upgrade head"
+
+  api:
+    <<: *velentrade-runtime
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+      agent-runner:
+        condition: service_started
+    command: >
+      bash -lc "uvicorn --factory velentrade.api.app:build_app --host 0.0.0.0 --port 8000"
+    ports:
+      - "8000:8000"
+
+  agent-runner:
+    <<: *velentrade-runtime
+    depends_on:
+      postgres:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+    command: >
+      bash -lc "uvicorn --factory velentrade.agent_runner.service:build_agent_runner_app --host 0.0.0.0 --port 8100"
+    ports:
+      - "8100:8100"
+
+  worker:
+    <<: *velentrade-runtime
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+      agent-runner:
+        condition: service_started
+    command: >
+      bash -lc "celery -A velentrade.worker.celery_runtime:celery_app worker --loglevel=INFO"
+
+  beat:
+    <<: *velentrade-runtime
+    depends_on:
+      redis:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+      worker:
+        condition: service_started
+    command: >
+      bash -lc "celery -A velentrade.worker.celery_runtime:celery_app beat --loglevel=INFO"
+
+volumes:
+  postgres-data:

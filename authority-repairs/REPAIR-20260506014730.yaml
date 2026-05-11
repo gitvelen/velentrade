@@ -1,0 +1,15 @@
+repair_id: REPAIR-20260506014730
+status: closed
+phase: Implementation
+gate: design-quality
+reason: WI-002 需要承接 inputs 中定时数据采集和规范化落库修复，当前 allowed_paths 缺少数据库 schema/migration 路径且 TC 未覆盖 schedule 非空与运行落库
+allowed_paths:
+  - work-items/WI-002.yaml
+  - testing.md
+opened_at: 2026-05-06T01:47:30Z
+opened_revision: b66c1291165de3252786f24bd102b96abd2feb91
+closed_at: 2026-05-06T01:49:46Z
+closed_revision: b66c1291165de3252786f24bd102b96abd2feb91
+evidence: WI-002 scope and TC-ACC-009 updated to cover scheduled data collection, DataCollectionRun, normalized daily quote persistence, all-market screening fixture, and intraday monitor fixture
+gate_result: pass
+smoke_result: pass

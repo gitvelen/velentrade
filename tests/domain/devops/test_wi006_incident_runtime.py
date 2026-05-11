@@ -1,0 +1,181 @@
+from velentrade.domain.devops.incident import DevOpsIncidentRuntime, HealthSignal, _report_envelope
+
+
+def test_devops_incident_runtime_classifies_health_and_never_resumes_investment():
+    runtime = DevOpsIncidentRuntime()
+
+    source = runtime.handle_signal(
+        HealthSignal(
+            check_type="source_health",
+            subject="market-primary",
+            usage="execution_core",
+            metrics={"critical_field_missing": True, "primary_failed": True, "fallback_failed": True},
+            affected_workflows=["wf-1"],
+            evidence_refs=["data-request-1"],
+        )
+    )
+    service = runtime.handle_signal(
+        HealthSignal(
+            check_type="service_health",
+            subject="risk-engine",
+            usage="decision_core",
+            metrics={"timeout_rate": 0.12, "p95_latency_seconds": 12},
+            affected_workflows=["wf-2"],
+            evidence_refs=["service-call-1"],
+        )
+    )
+    execution = runtime.handle_signal(
+        HealthSignal(
+            check_type="execution_environment",
+            subject="minute-bars",
+            usage="execution_core",
+            metrics={"minute_delay_minutes": 7},
+            affected_workflows=["wf-3"],
+            evidence_refs=["execution-precheck-1"],
+        )
+    )
+
+    assert source.severity == "P0"
+    assert source.status == "triaged"
+    assert service.incident_type == "service"
+    assert execution.severity == "P1"
+    assert runtime.recovery_plans[source.incident_id].investment_resume_allowed is False
+    assert runtime.risk_notifications[source.incident_id].recommended_hold_or_reopen in {"hold", "reopen"}
+    assert runtime.block_risk_relaxation_attempt("risk_hard_blocker") == "blocked:risk_relaxation_requires_risk_or_governance"
+
+
+def test_execution_core_source_failure_degradation_is_not_auto_allowed():
+    runtime = DevOpsIncidentRuntime()
+
+    incident = runtime.handle_signal(
+        HealthSignal(
+            check_type="source_health",
+            subject="market-primary",
+            usage="execution_core",
+            metrics={"critical_field_missing": True, "primary_failed": True, "fallback_failed": True},
+            affected_workflows=["wf-1"],
+            evidence_refs=["data-request-1"],
+        )
+    )
+
+    plan = runtime.degradation_plans[incident.incident_id]
+    assert plan.auto_allowed is False
+    assert plan.business_risk_requires_risk_review is True
+    assert plan.decision_or_execution_blocking_effect == "blocked"
+
+
+def test_sensitive_log_and_cost_token_paths_have_separate_severity_semantics():
+    runtime = DevOpsIncidentRuntime()
+
+    security = runtime.handle_signal(
+        HealthSignal(
+            check_type="log_security",
+            subject="trace-log",
+            usage="security",
+            metrics={"finance_raw_plaintext": True},
+            affected_workflows=["wf-sec"],
+            evidence_refs=["log-line-1"],
+        )
+    )
+    cost = runtime.handle_signal(
+        HealthSignal(
+            check_type="cost_token",
+            subject="model-route",
+            usage="observability",
+            metrics={"daily_cost_multiple": 2.1},
+            affected_workflows=[],
+            evidence_refs=["cost-window-1"],
+        )
+    )
+
+    assert security.incident_type == "security"
+    assert security.severity == "P0"
+    assert runtime.sensitive_log_findings[0]["audit_event_ref"].startswith("audit-")
+    assert cost.incident_type == "cost_token"
+    assert cost.severity == "P1"
+    assert runtime.cost_observations[0]["p0_pass_fail_relevant"] is False
+
+
+def test_recovery_validation_moves_incident_to_monitoring_but_keeps_resume_blocked():
+    runtime = DevOpsIncidentRuntime()
+    incident = runtime.handle_signal(
+        HealthSignal(
+            check_type="source_health",
+            subject="market-primary",
+            usage="execution_core",
+            metrics={"critical_field_missing": True, "primary_failed": True, "fallback_failed": True},
+            affected_workflows=["wf-1"],
+            evidence_refs=["data-request-1"],
+        )
+    )
+
+    runtime.mark_recovery_validated(incident.incident_id)
+
+    assert runtime.incidents[incident.incident_id].status == "monitoring"
+    assert runtime.recovery_plans[incident.incident_id].technical_recovery_status == "validated"
+    assert runtime.recovery_plans[incident.incident_id].investment_resume_allowed is False
+
+
+def test_incident_cannot_close_before_recovery_validation():
+    runtime = DevOpsIncidentRuntime()
+    incident = runtime.handle_signal(
+        HealthSignal(
+            check_type="service_health",
+            subject="risk-engine",
+            usage="decision_core",
+            metrics={"timeout_rate": 0.12, "p95_latency_seconds": 12},
+            affected_workflows=["wf-2"],
+            evidence_refs=["service-call-1"],
+        )
+    )
+
+    try:
+        runtime.close_incident(incident.incident_id)
+    except ValueError as exc:
+        assert str(exc) == "recovery_validation_required"
+    else:
+        raise AssertionError("expected recovery_validation_required")
+
+
+def test_devops_incident_report_has_contract_and_tc_fields():
+    report = DevOpsIncidentRuntime().build_devops_incident_report()
+
+    assert report["result"] == "pass"
+    assert report["work_item_refs"] == ["WI-006"]
+    assert report["test_case_refs"] == ["TC-ACC-029-01"]
+    assert set(report) >= {
+        "routine_checks",
+        "incidents",
+        "health_signals",
+        "severity_classification",
+        "degradation_actions",
+        "recovery_plan",
+        "risk_reports",
+        "investment_resume_denied_until_guard",
+        "cost_observability_only",
+        "health_threshold_results",
+        "safe_degradation_allowlist_checks",
+        "blocked_risk_relaxation_attempts",
+        "recovery_validation_checklist",
+    }
+    assert report["investment_resume_denied_until_guard"] is True
+    assert report["cost_observability_only"] is True
+
+
+def test_devops_report_fails_when_guard_or_failure_fails():
+    report = _report_envelope(
+        {"probe": "negative"},
+        guard_results=[
+            {
+                "guard": "investment_resume_allowed_false",
+                "input_ref": "recovery_plan",
+                "expected": "false",
+                "actual": "true",
+                "result": "fail",
+            }
+        ],
+        failures=[{"code": "devops_resumed_investment", "message": "DevOps recovery directly resumed execution"}],
+    )
+
+    assert report["result"] == "fail"
+    assert report["failures"][0]["code"] == "devops_resumed_investment"

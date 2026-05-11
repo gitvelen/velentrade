@@ -1,0 +1,19 @@
+contract_ref: CONTRACT-DOMAIN-ARTIFACT-SCHEMAS
+action: freeze
+verdict: approved
+reviewed_by: Codex
+reviewed_at: 2026-04-29
+supersedes:
+  - reviews/contract-freeze-domain-artifact-schemas-2026-04-29.yaml
+scope:
+  - contracts/domain-artifact-schemas.md
+reason:
+  - "Design memory repair refroze domain schemas after adding MemoryItem, MemoryVersion, MemoryExtractionResult, MemoryRelation, MemoryCollection, KnowledgeItem and DefaultContextBinding boundaries."
+  - "The repair selectively borrows Markdown capture, payload extraction, tags, relations, filters and review/digest/organize flows from /home/admin/memos, while excluding public/share/reaction/social visibility semantics and direct overwrite/delete behavior."
+  - "Memory/Knowledge are explicitly context, evidence and reusable experience, not business fact sources; formal facts remain artifacts, workflow state, data readiness and guard decisions."
+checks:
+  - "ContextSnapshot now versions knowledge items, memory collections and default context bindings with new task/new attempt scope."
+  - "MemoryVersion is append-only; relation and collection updates go through Gateway-governed records instead of direct mutation."
+  - "Finance-sensitive memory carries sensitivity labels and must follow CFO/service-only raw access rules."
+  - "Reflection and Researcher artifacts can refer to memory/knowledge promotion evidence without hot-editing in-flight context."
+  - "Stage guard errors include memory_not_fact_source, memory_sensitive_denied and memory_snapshot_mismatch."

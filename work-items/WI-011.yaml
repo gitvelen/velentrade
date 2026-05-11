@@ -1,0 +1,149 @@
+wi_id: WI-011
+phase_scope: Implementation
+
+goal: "Owner 工作台验收返工：修复全景真实审批入口、人工待办模块办理路径、投资/财务/知识/治理默认视图的信息密度与老板可读性，并排查修复默认页真实 API/DB/read model 数据链路。"
+derived_from: design.md#7
+
+requirement_refs:
+  - REQ-006
+  - REQ-007
+  - REQ-023
+  - REQ-027
+  - REQ-028
+acceptance_refs:
+  - ACC-006
+  - ACC-007
+  - ACC-023
+  - ACC-027
+  - ACC-028
+verification_refs:
+  - VO-006
+  - VO-007
+  - VO-023
+  - VO-027
+  - VO-028
+test_case_refs:
+  - TC-ACC-006-01
+  - TC-ACC-007-01
+  - TC-ACC-023-01
+  - TC-ACC-027-01
+  - TC-ACC-028-01
+
+scope:
+  - "全景必须把 pending approval 与 actionable/manual task 合并为一个 Owner-facing “待办”卡片，不再同时展示独立“审批”卡片和“人工待办”卡片；审批项仍必须从真实 `/api/approvals` 或治理 read model 取得 pending approval ID，不得硬编码 `ap-001`；审批详情找不到记录时只显示错误、重试和返回待办，不渲染假审批包或假动作。"
+  - "治理页默认以“待办”模块合并展示可处理审批和待补充、待办理或受阻任务；UI 层不再暴露独立“任务/审批”二级模块，但 API/read model 层继续保持 `/api/tasks` 与 `/api/approvals` 分离；`manual_todo` 必须展示人工动作、原因、截止时间、风险提示和模块办理入口；财务类人工待办跳转 `/finance?todo=<taskId>`，由财务页通过现有 `/api/finance/assets` 表单提交。"
+  - "压缩全局页头和投资详情头部；S0-S7 阶段卡展示短名；财务页改为摘要、聚合资产、待办和办理表单；知识页默认转为老板可读投影并隐藏 raw memory/test/internal id。"
+  - "知识页只展示每日简报、研究资料包、经验记录、资料关系和整理建议；必须说明资料包来源、保存经验/应用整理建议会发生什么，且不得暴露“记忆工作区/捕获记忆/组织建议/关系图”等老板不可读术语。Knowledge/Prompt/Skill 或默认上下文提案归治理的“变更/审批”模块处理，不在知识页提供提案办理入口。"
+  - "投资档案必须把当前 S3 受阻原因与 S6 执行成交门槛分开展示；执行数据不足只能解释 S6 不成交，不得被写成当前 S3 阻断原因。"
+  - "治理团队相关文案从老板视角转译为“团队”“能力提升”“能力提升方案”“提交提升方案”；Owner 默认页面不使用 `Agent/Agents/AgentRun/ContextSnapshot` 等技术词，专业术语只保留在配置或审计详情。"
+  - "治理变更、健康、审计默认不展示 `ap-*`、`gov-*`、`incident-*`、`trace-*`、`ctx-*` 等机器 ID；默认卡片只展示业务标题、状态、影响和下一步，ID 只能进入折叠详情或审计追踪层。"
+  - "Owner 默认业务卡必须来自真实 API/DB/read model；前端正式入口不得使用 fixture 冒充业务状态，fixture 只能用于测试、storybook/design preview 或明确标注的 preview 页面；API 失败必须显示无法判断/不可用，不得 fallback 成系统降级或假业务结论。"
+  - "`/api/devops/health` 必须真实反映 incident/recovery/check 状态；无 incident 且无待恢复信号时不得生成 `pending_validation` recovery；全景系统卡只读该 API 并展示 Owner 可读摘要，审计层保留 trace/id。"
+  - "Knowledge 历史脏数据必须通过受控 migration 或维护脚本清理，覆盖 `test`、`测试`、`Untitled Memory`、`invalid_value`、无来源/无摘要垃圾 Memory 和重复测试关系；写入端必须拒绝空标题/测试内容/invalid sensitivity，relation append 必须要求明确 target/source/reason。"
+  - "知识页 owner read model 只返回真实可解释资料、经验、资料包、整理建议；没有真实资料包时显示空状态，不展示前端 fallback 半导体资料包或 `memory-relation-*`、`validated_context` 等内部值。"
+  - "投资档案 `/investment/:workflowId` 必须调用 `/api/workflows/{workflowId}/dossier`；未知 workflow 显示真实不可用/404，不展示 preview S3 结论；如展示 `wf-001` / 浦发银行 A 股研究，必须由后端真实 workflow/stage/risk/debate/data readiness/dossier 数据支撑。"
+  - "在 authority repair 下扩展 `InvestmentDossierReadModel.debate` 的结构化 S3 字段；S3 中间卡片和点击详情必须消费后端投影的 owner_summary、status_summary、core_disputes、view_change_details、retained_dissent_details、round_details 和 next_actions，字段缺失时不得由前端编造。"
+  - "回写 `../lessons_learned.md`，新增 R17 和审批/人工待办入口链路复盘。"
+out_of_scope:
+  - "不新增通用任务关闭 API；任务中心不伪造 `complete manual_todo` 写路径。"
+  - "除当前打开的 authority repair 覆盖 `InvestmentDossierReadModel.debate` 结构化 S3 字段外，不修改 frozen contract、spec 或 design 主文档的产品/架构口径；design.md 仅允许补充 WI-011 工作项派生条目；若发现必须新增通用任务提交契约或改变 `/api/tasks`、`/api/approvals`、`/api/approvals/{id}/decision`、`/api/finance/assets`、`/api/workflows/{id}/dossier`、`/api/devops/health`、`/api/knowledge/memory-items*` 的其他 frozen contract，停止实现并先补 Design/Contract/API。"
+  - "不接真实交易、非 A 股自动交易、飞书、移动端、邮件或短信入口。"
+
+required_surfaces:
+  - "../lessons_learned.md"
+  - "work-items/WI-011.yaml"
+  - "meta.yaml"
+  - "design-appendices/frontend-workbench-design.md"
+  - "testing.md"
+  - "frontend/**"
+  - "src/velentrade/api/**"
+  - "src/velentrade/db/**"
+  - "src/velentrade/domain/devops/**"
+  - "src/velentrade/domain/gateway/**"
+  - "src/velentrade/domain/knowledge/**"
+  - "src/velentrade/domain/memory/**"
+  - "src/velentrade/domain/observability/**"
+  - "src/velentrade/domain/workflow/**"
+  - "migrations/versions/**"
+  - "authority-repairs/**"
+  - "tests/api/**"
+  - "tests/frontend/**"
+  - "tests/domain/devops/**"
+  - "tests/domain/knowledge/**"
+  - "tests/domain/observability/**"
+  - "tests/e2e/**"
+
+# allowed_paths must cover all required_surfaces (checked at implementation-start gate)
+allowed_paths:
+  - ../lessons_learned.md
+  - meta.yaml
+  - work-items/WI-011.yaml
+  - design.md
+  - design-appendices/frontend-workbench-design.md
+  - testing.md
+  - frontend/**
+  - src/velentrade/api/**
+  - src/velentrade/db/**
+  - src/velentrade/domain/devops/**
+  - src/velentrade/domain/gateway/**
+  - src/velentrade/domain/knowledge/**
+  - src/velentrade/domain/memory/**
+  - src/velentrade/domain/observability/**
+  - src/velentrade/domain/workflow/**
+  - migrations/versions/**
+  - authority-repairs/**
+  - tests/api/**
+  - tests/frontend/**
+  - tests/domain/devops/**
+  - tests/domain/knowledge/**
+  - tests/domain/observability/**
+  - tests/e2e/**
+forbidden_paths:
+  - versions/**
+  - spec.md
+  - work-items/WI-001.yaml
+  - work-items/WI-002.yaml
+  - work-items/WI-003.yaml
+  - work-items/WI-004.yaml
+  - work-items/WI-005.yaml
+  - work-items/WI-006.yaml
+  - work-items/WI-007.yaml
+  - work-items/WI-008.yaml
+  - work-items/WI-009.yaml
+  - work-items/WI-010.yaml
+  - contracts/**
+  - deployment.md
+
+dependency_refs:
+  - WI-001
+  - WI-002
+  - WI-004
+dependency_type: strong
+contract_refs:
+  - contracts/api-read-models.md
+
+required_verification:
+  - "pytest tests/api/test_wi011_owner_real_data.py -q"
+  - "pytest tests/domain/observability tests/domain/knowledge -q"
+  - "npm --prefix frontend test"
+  - "npm --prefix frontend run build"
+  - "pytest tests/e2e -q"
+  - "../.codespec/codespec check-gate scope"
+
+completion_level: integrated_runtime
+# 允许值（由浅到深，必须声明当前 WI 的实际完成深度）：
+# - fixture_contract: fixture / mock / 空壳接口通过，核心逻辑未实现
+# - in_memory_domain: 内存中领域逻辑可运行，未连接外部依赖
+# - api_connected: 已连接真实外部依赖，但未持久化
+# - db_persistent: 数据已持久化，但未在真实运行时集成
+# - integrated_runtime: 在真实运行时环境中集成运行通过
+# - owner_verified: 产品/需求方已验证确认
+
+stop_conditions:
+  - "目标、边界、验收或测试用例不清楚"
+  - "需要修改 forbidden_paths 或超出 allowed_paths"
+  - "实现需要改变 spec.md / design.md 的产品或架构口径"
+  - "阶段性收口前无法在 testing.md 写清 HANDOFF-* 的未完成项、最高完成等级、阻塞原因和下一步"
+reopen_triggers:
+  - "Owner 工作台入口、待办合并口径、审批动作、manual_todo 模块办理路径、财务写路径、知识默认投影、页头布局、团队文案、机器 ID 可见性或能力文案验收标准变化"
+  - "前端必须依赖未设计 API 或需要改变 frozen contract"

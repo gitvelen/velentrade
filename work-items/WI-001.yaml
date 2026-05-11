@@ -1,0 +1,148 @@
+wi_id: WI-001
+phase_scope: Implementation
+completion_level: integrated_runtime
+
+goal: "交付核心 PostgreSQL domain schema、scope/role/service registry、Agent CapabilityProfile、团队页 Agent 画像 API 基础、组织透明读受控写、Memory/Knowledge 基础、Authority Gateway、artifact/collaboration ledger、财务安全和 Requirement 结构报告基础。"
+derived_from: design.md#7
+design_refs:
+  - design-appendices/agent-capability-profiles.md
+  - design-appendices/agent-collaboration-protocol.md
+  - design-appendices/frontend-workbench-design.md
+  - design-appendices/runtime-storage-architecture.md
+  - contracts/api-read-models.md
+  - contracts/domain-artifact-schemas.md
+  - contracts/verification-report-schemas.md
+
+requirement_refs:
+  - REQ-001
+  - REQ-002
+  - REQ-003
+  - REQ-004
+  - REQ-005
+  - REQ-031
+  - REQ-032
+acceptance_refs:
+  - ACC-001
+  - ACC-002
+  - ACC-003
+  - ACC-004
+  - ACC-005
+  - ACC-031
+  - ACC-032
+verification_refs:
+  - VO-001
+  - VO-002
+  - VO-003
+  - VO-004
+  - VO-005
+  - VO-031
+  - VO-032
+test_case_refs:
+  - TC-ACC-001-01
+  - TC-ACC-002-01
+  - TC-ACC-003-01
+  - TC-ACC-004-01
+  - TC-ACC-005-01
+  - TC-ACC-031-01
+  - TC-ACC-032-01
+
+r8_runbook_scope:
+  owns:
+    - "Agent collaboration foundation objects: CollaborationSession, AgentRun, CollaborationCommand, CollaborationEvent, HandoffPacket."
+    - "Memory/context foundation objects under `domain.memory`: ProcessArchiveEntry, MemoryItem, MemoryVersion, MemoryExtractionResult, MemoryRelation, MemoryCollection, KnowledgeItem schema reference and DefaultContextBinding references."
+    - "Agent capability read model foundations for TeamReadModel and AgentProfileReadModel, sourced from official Agent registry, CapabilityProfile, version registry and quality/failure counters."
+    - "Authority Gateway append-only artifact/event/handoff writes and direct-write denials."
+    - "Authority Gateway append-only memory/version/relation writes, memory_not_fact_source guard, ContextSlice injection/denial audit foundations."
+    - "Trace/debug persistence foundations needed by FX-AGENT-COLLABORATION-PROTOCOL."
+    - "Agent runner foundation service and ModelGateway fake_test profile for deterministic AgentRun execution in P0 automation."
+  must_prove:
+    - "Collaboration objects are not just schema fields; they can represent requested/accepted/rejected command flow and handoff lineage."
+    - "Memory/Knowledge foundation objects can be captured, extracted, related, collected and recalled as context from `domain.memory`, but cannot replace formal artifacts or advance workflow state."
+    - "Team read model covers exactly the nine official Agents and exposes profile/version/quality/denied-action data without creating hot-edit authority."
+    - "Runner cannot write business DB directly and sensitive finance reads are allow/deny audited."
+    - "Agent runner can accept an AgentRun input envelope, execute a deterministic fake_test path, and return payload/proposal/diagnostic output without creating business facts directly."
+  does_not_own:
+    - "S0-S7 stage semantics, investment analysis/debate, frontend rendering, Agent capability draft workflow, finance workflows, or DevOps incident handling."
+
+scope:
+  - "创建 Python 项目基础、PostgreSQL/Alembic 核心 domain schema、scope registry、Agent/Service registry、artifact ledger、collaboration 基础表、`domain.memory` 下的 memory/context/KnowledgeItem 基础表、agent-runner 基础服务、ModelGateway fake_test profile、session/auth 基础和 verification report writer。"
+  - "实现 Agent CapabilityProfile schema、seed SkillPackage manifest schema、TeamReadModel/AgentProfileReadModel 后端聚合基础、AgentRun/Command/Event/Handoff 基础 schema、MemoryItem/MemoryVersion/MemoryExtractionResult/MemoryRelation/MemoryCollection/KnowledgeItem/DefaultContextBinding 基础 schema、AgentRun 输入/输出 envelope、deterministic fake_test runner 路径、组织透明读受控写策略、Authority Gateway typed artifact/event/handoff/memory 写入、runner 直接业务写入拒绝、财务字段加密和日志脱敏基础；KnowledgeItem 基础 schema 放在 `domain.memory`，不进入 `domain.knowledge` 业务包。"
+  - "固化 `contracts/domain-artifact-schemas.md` 中 artifact envelope、TaskEnvelope、collaboration 对象、Memory/Knowledge 对象、ContextSnapshot、GovernanceChange 和安全事件的基础模型。"
+  - "补齐本地 runtime foundation：提供 `docker-compose.yml` 串联 postgres/redis/api/worker/beat/agent-runner，并让 deploy hook 至少能对该 compose runtime 做最小 smoke；允许 Dockerfile、预构建本地镜像或 `wheelhouse/` 离线依赖目录，禁止 api/worker/beat/agent-runner 在容器启动命令中临时 `pip install -e .`。`Dockerfile`、`.dockerignore`、`docker-compose.yml` 和 `wheelhouse/**` 是 WI-001 拥有的 runtime packaging artifact；后续 WI 若未显式扩 scope，只是不允许改这些文件，不代表项目禁止引入 Dockerfile。"
+  - "生成 scope_boundary_report、registry_validation_report、agent_capability_contract_report、memory_boundary_report、collaboration_trace_report、security_privacy_report、requirement_structure_report。"
+out_of_scope:
+  - "不实现 S0-S7 workflow、投资主链、前端页面、真实数据源 adapter、财务业务 workflow、知识晋升/检索业务 workflow、纸面执行或 live LLM provider。"
+  - "不修改 spec.md、contracts 或其他 work-items；design.md、testing.md 与 work-items/WI-001.yaml 只允许在用户明确要求的 authority repair 下做最小修复，不改变产品口径。"
+
+allowed_paths:
+  - design.md
+  - .dockerignore
+  - Dockerfile
+  - meta.yaml
+  - pyproject.toml
+  - alembic.ini
+  - docker-compose.yml
+  - wheelhouse/**
+  - migrations/**
+  - scripts/codespec-deploy
+  - work-items/WI-001.yaml
+  - src/velentrade/agent_runner/**
+  - src/velentrade/api/**
+  - src/velentrade/core/**
+  - src/velentrade/db/**
+  - src/velentrade/domain/**
+  - src/velentrade/model_gateway/**
+  - src/velentrade/security/**
+  - tests/agent_runner/**
+  - tests/api/**
+  - tests/core/**
+  - tests/domain/**
+  - tests/model_gateway/**
+  - tests/security/**
+  - tests/requirements/**
+  - testing.md
+  - reviews/implementation-review.yaml
+forbidden_paths:
+  - versions/**
+  - spec.md
+  - work-items/WI-002.yaml
+  - work-items/WI-003.yaml
+  - work-items/WI-004.yaml
+  - work-items/WI-005.yaml
+  - work-items/WI-006.yaml
+  - work-items/WI-007.yaml
+  - work-items/WI-008.yaml
+  - work-items/WI-009.yaml
+  - contracts/**
+  - deployment.md
+  - src/velentrade/domain/workflow/**
+  - src/velentrade/domain/data/**
+  - src/velentrade/domain/services/**
+  - src/velentrade/domain/governance/**
+  - src/velentrade/domain/investment/**
+  - src/velentrade/domain/finance/**
+  - src/velentrade/domain/attribution/**
+  - src/velentrade/domain/knowledge/**
+  - src/velentrade/domain/devops/**
+  - src/velentrade/domain/observability/**
+  - frontend/**
+
+dependency_refs: []
+dependency_type: none
+contract_refs:
+  - contracts/api-read-models.md
+  - contracts/domain-artifact-schemas.md
+  - contracts/verification-report-schemas.md
+
+required_verification:
+  - "pytest tests/core tests/domain tests/security tests/requirements tests/agent_runner tests/model_gateway -q"
+  - "python -m compileall src/velentrade"
+
+stop_conditions:
+  - "目标、边界、验收或测试用例不清楚"
+  - "需要修改 forbidden_paths 或超出 allowed_paths"
+  - "实现需要改变 spec.md / design.md 的产品或架构口径"
+  - "需要引入真实券商、飞书、移动端、回测、规则路径、策略经理或 Performance Analyst Agent"
+reopen_triggers:
+  - "Agent/Service registry、artifact/collaboration schema、Memory/Knowledge schema、ContextSnapshot、DefaultContextBinding、seed SkillPackage、agent-runner foundation、ModelGateway fake_test profile、组织透明读受控写、Authority Gateway、财务安全或 requirement structure 口径变化"
+  - "P0 自动化验证不可行或需要人工例外"

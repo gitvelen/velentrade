@@ -1,0 +1,104 @@
+wi_id: WI-008
+phase_scope: Implementation
+completion_level: integrated_runtime
+
+goal: "交付 IC 决策链，从 Decision Service、CIO Decision 到优化器偏离、Risk Review、Owner 例外审批和 reopen/timeout 规则。"
+derived_from: design.md#7
+design_refs:
+  - design-appendices/decision-service-design.md
+  - design-appendices/investment-chain-design.md
+  - design-appendices/agent-collaboration-protocol.md
+  - contracts/api-read-models.md
+  - contracts/domain-artifact-schemas.md
+  - contracts/verification-report-schemas.md
+
+requirement_refs:
+  - REQ-018
+  - REQ-019
+acceptance_refs:
+  - ACC-018
+  - ACC-019
+verification_refs:
+  - VO-018
+  - VO-019
+test_case_refs:
+  - TC-ACC-018-01
+  - TC-ACC-019-01
+
+r8_runbook_scope:
+  owns:
+    - "S4-S6 decision/risk/exception runbook: CIO Decision Memo, optimizer deviation, Risk Review approved/conditional_pass/rejected, Owner exception packet, timeout, and reopen/terminate result."
+    - "Decision Service domain semantics: DecisionPacket assembly, S4 input completeness, DecisionGuardResult, major deviation exception candidate, and reopen recommendation."
+    - "Risk rejected hard-block guard and conditional_pass Owner exception flow, including read model states and UI/API denial reasons consumed by WI-004."
+    - "CIO semantic synthesis boundary: CIO may explain and decide within S4 but cannot operate services, override Risk, or mutate prior Analyst artifacts."
+    - "Decision Service boundary: deterministic assembly/guard/suggestion only; no semantic decision, Risk verdict, Owner approval, workflow transition, or paper execution release."
+  must_prove:
+    - "Risk rejected cannot be bypassed by Owner, UI, API, workflow command, or direct transition."
+    - "conditional_pass produces a high-quality Owner packet with comparison, impact scope, alternatives, recommendation, and timeout no-execute semantics."
+    - "CIO major optimizer deviation is reason-coded and can trigger Owner exception or reopen according to guard rules."
+    - "DecisionPacket and DecisionGuardResult are visible to Dossier/Trace read models and report fixtures."
+  does_not_own:
+    - "S0-S3 intake/analysis/debate internals, paper account/execution, position disposal, production frontend rendering, or finance/reflection workflows."
+
+scope:
+  - "实现 Decision Service、DecisionPacket、DecisionGuardResult、DecisionExceptionCandidate/ReopenRecommendation、CIO Decision Memo、Portfolio Optimization 偏离计算、Risk Review 三状态、Owner exception 审批材料、审批超时和 Risk rejected reopen/终止路径。"
+  - "覆盖 CIO 综合但不覆盖专业 Agent 独立意见、重大偏离说明、Risk rejected 当前 attempt 硬阻断、conditional_pass Owner 例外、Owner timeout 不执行。"
+  - "固化 DecisionPacket、DecisionGuardResult、DecisionExceptionCandidate、ReopenRecommendation、CIODecisionMemo、RiskReviewReport 和 ApprovalRecord 的 schema/guard。"
+  - "生成 decision_service_report、cio_optimizer_report 和 risk_owner_exception_report。"
+out_of_scope:
+  - "不实现机会准入、Analyst Memo、S3 辩论、纸面账户、纸面执行或持仓处置。"
+  - "不接真实券商、不真实下单、不实现非 A 股交易、不做回测、不做前端页面。"
+
+allowed_paths:
+  - src/velentrade/domain/decision/**
+  - src/velentrade/domain/investment/risk/**
+  - src/velentrade/domain/investment/owner_exception/**
+  - tests/domain/decision/**
+  - tests/domain/investment/risk/**
+  - tests/domain/investment/owner_exception/**
+forbidden_paths:
+  - versions/**
+  - spec.md
+  - design.md
+  - work-items/**
+  - contracts/**
+  - deployment.md
+  - src/velentrade/domain/investment/intake/**
+  - src/velentrade/domain/investment/topic_queue/**
+  - src/velentrade/domain/investment/context/**
+  - src/velentrade/domain/investment/analysis/**
+  - src/velentrade/domain/investment/debate/**
+  - src/velentrade/domain/investment/paper_account/**
+  - src/velentrade/domain/investment/execution/**
+  - src/velentrade/domain/investment/position/**
+  - src/velentrade/domain/finance/**
+  - src/velentrade/domain/attribution/**
+  - src/velentrade/domain/knowledge/**
+  - src/velentrade/domain/devops/**
+  - src/velentrade/domain/observability/**
+  - frontend/**
+  - Dockerfile
+
+dependency_refs:
+  - WI-001
+  - WI-002
+  - WI-003
+  - WI-007
+dependency_type: strong
+contract_refs:
+  - contracts/api-read-models.md
+  - contracts/domain-artifact-schemas.md
+  - contracts/verification-report-schemas.md
+
+required_verification:
+  - "pytest tests/domain/decision tests/domain/investment/risk tests/domain/investment/owner_exception -q"
+  - "python -m compileall src/velentrade"
+
+stop_conditions:
+  - "目标、边界、验收或测试用例不清楚"
+  - "需要修改 forbidden_paths 或超出 allowed_paths"
+  - "实现需要改变 spec.md / design.md 的产品或架构口径"
+  - "需要绕过 Risk rejected、Owner timeout、Risk Review 或进入纸面执行范围"
+reopen_triggers:
+  - "Decision Service、CIO Decision、优化器偏离、Risk Review 三状态、Owner 例外审批、超时或 reopen 目标阶段规则变化"
+  - "任何真实交易、真实券商或回测能力被要求进入本 WI"

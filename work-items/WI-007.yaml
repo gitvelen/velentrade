@@ -1,0 +1,103 @@
+wi_id: WI-007
+phase_scope: Implementation
+completion_level: integrated_runtime
+
+goal: "交付 IC 分析链，从四 Analyst 独立 Memo 到共识/行动强度计算、S3 辩论和 hard dissent 风控交接。"
+derived_from: design.md#7
+design_refs:
+  - design-appendices/investment-chain-design.md
+  - design-appendices/agent-capability-profiles.md
+  - design-appendices/agent-collaboration-protocol.md
+  - contracts/api-read-models.md
+  - contracts/domain-artifact-schemas.md
+  - contracts/verification-report-schemas.md
+
+requirement_refs:
+  - REQ-015
+  - REQ-016
+  - REQ-017
+acceptance_refs:
+  - ACC-015
+  - ACC-016
+  - ACC-017
+verification_refs:
+  - VO-015
+  - VO-016
+  - VO-017
+test_case_refs:
+  - TC-ACC-015-01
+  - TC-ACC-016-01
+  - TC-ACC-017-01
+
+r8_runbook_scope:
+  owns:
+    - "S2-S3 IC analysis/debate runbook: four independent Analyst AgentRuns, role-specific Memo payloads, consensus/action_conviction calculation, CIO agenda input, Debate Manager rounds, and DebateSummary handoff."
+    - "CollaborationCommand loop for IC debate, including view_update, comment, request_evidence, accepted/rejected/expired command outcomes, and hard dissent handling."
+    - "Read model and verification evidence for Analyst Memo quality, consensus/action thresholds, debate skipped/required decisions, and Risk handoff when hard dissent remains."
+  must_prove:
+    - "Macro, Fundamental, Quant, and Event Analysts are not a single prompt template with role names swapped."
+    - "High consensus without hard dissent skips debate with an auditable reason; hard dissent triggers bounded debate even under high consensus."
+    - "Low consensus or insufficient action_conviction cannot produce execution authorization."
+  does_not_own:
+    - "Opportunity intake, IC Context assembly, CIO Decision Memo, Risk Review verdict, Owner exception, paper execution, position monitoring, or frontend rendering."
+
+scope:
+  - "实现四位 Analyst 独立 role_payload Memo、memo schema 校验、Consensus Calculator、action_conviction 计算和 S3 Debate Manager 单轮/最多两轮流程。"
+  - "覆盖高共识跳过辩论、行动强度不足不授权执行、0.7-0.8 中等共识有界辩论、每轮输入输出、hard dissent 保留进入 Risk Review、低共识阻断执行。"
+  - "固化 AnalystMemo、ConsensusAction 和 DebateSummary 的 schema/guard。"
+  - "生成 analyst_memo_report、consensus_action_report 和 debate_dissent_report。"
+out_of_scope:
+  - "不实现机会准入、IC Context 组装、CIO Decision、Risk Review、Owner exception、纸面账户、纸面执行或持仓处置。"
+  - "不接真实券商、不真实下单、不实现非 A 股交易、不做回测、不做前端页面。"
+
+allowed_paths:
+  - src/velentrade/domain/investment/analysis/**
+  - src/velentrade/domain/investment/debate/**
+  - tests/domain/investment/analysis/**
+  - tests/domain/investment/debate/**
+forbidden_paths:
+  - versions/**
+  - spec.md
+  - design.md
+  - work-items/**
+  - contracts/**
+  - deployment.md
+  - src/velentrade/domain/investment/intake/**
+  - src/velentrade/domain/investment/topic_queue/**
+  - src/velentrade/domain/investment/context/**
+  - src/velentrade/domain/decision/**
+  - src/velentrade/domain/investment/risk/**
+  - src/velentrade/domain/investment/owner_exception/**
+  - src/velentrade/domain/investment/paper_account/**
+  - src/velentrade/domain/investment/execution/**
+  - src/velentrade/domain/investment/position/**
+  - src/velentrade/domain/finance/**
+  - src/velentrade/domain/attribution/**
+  - src/velentrade/domain/knowledge/**
+  - src/velentrade/domain/devops/**
+  - src/velentrade/domain/observability/**
+  - frontend/**
+  - Dockerfile
+
+dependency_refs:
+  - WI-001
+  - WI-002
+  - WI-003
+dependency_type: strong
+contract_refs:
+  - contracts/api-read-models.md
+  - contracts/domain-artifact-schemas.md
+  - contracts/verification-report-schemas.md
+
+required_verification:
+  - "pytest tests/domain/investment/analysis tests/domain/investment/debate -q"
+  - "python -m compileall src/velentrade"
+
+stop_conditions:
+  - "目标、边界、验收或测试用例不清楚"
+  - "需要修改 forbidden_paths 或超出 allowed_paths"
+  - "实现需要改变 spec.md / design.md 的产品或架构口径"
+  - "需要绕过 hard dissent、行动强度阈值、低共识阻断或进入 CIO/Risk/Owner/执行范围"
+reopen_triggers:
+  - "Analyst role_payload schema、共识公式、action_conviction 阈值、辩论轮次/输入输出规则或 hard dissent 风控交接口径变化"
+  - "任何真实交易、真实券商或回测能力被要求进入本 WI"

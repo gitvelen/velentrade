@@ -1,0 +1,309 @@
+phase: Design
+target_phase: Implementation
+verdict: approved
+reviewed_by: Codex
+reviewed_at: 2026-04-30
+scope:
+  - design.md
+  - testing.md
+  - contracts/*.md
+  - design-appendices/*.md
+  - design-previews/frontend-workbench/**
+  - work-items/*.yaml
+  - reviews/contract-freeze-*.yaml
+  - ../phase-review-policy.md
+  - ../lessons_learned.md hard rules R1-R8
+gate_results:
+  machine_gates:
+    design-structure-complete: passed
+    design-quality: passed
+    contract-boundary: passed
+    review-quality: passed
+    implementation-ready: "blocked until `start-implementation <WI-ID>` sets focus_work_item; current Design phase intentionally keeps focus_work_item null."
+  semantic_gate: passed
+  design_preview_evidence:
+    markdown_review_pack: design-previews/frontend-workbench/
+    files:
+      - design-previews/frontend-workbench/README.md
+      - design-previews/frontend-workbench/00-shell-and-navigation.md
+      - design-previews/frontend-workbench/01-overview.md
+      - design-previews/frontend-workbench/02-investment.md
+      - design-previews/frontend-workbench/03-finance.md
+      - design-previews/frontend-workbench/04-knowledge.md
+      - design-previews/frontend-workbench/05-team.md
+      - design-previews/frontend-workbench/06-governance.md
+      - design-previews/frontend-workbench/07-states-and-guards.md
+  semantic_review:
+    severity_counts:
+      P0: 0
+      P1: 0
+      P2: 0
+  conclusion: "Design repair satisfies R8 at semantic review level after the 2026-04-30 follow-up fixes: core domains now provide Runbook / Contract / View / Verification inputs, memory/knowledge has explicit context-not-fact-source boundaries, Decision Service is a first-class deterministic S4 service, frontend preview and verification contracts now consistently use a Chinese premium light workbench with five top-level menus and Agent team under Governance, and contracts/work items were updated to prevent Implementation from receiving object lists, stale report schemas, or conflicting source paths."
+  repaired_findings:
+    - id: DR-R8-001
+      status: fixed
+      evidence:
+        - design-appendices/agent-collaboration-protocol.md
+        - contracts/domain-artifact-schemas.md
+        - contracts/api-read-models.md
+        - contracts/verification-report-schemas.md
+      note: "CollaborationSession, AgentRun, CollaborationCommand, CollaborationEvent and HandoffPacket now have lifecycle/runbook semantics for IC debate, cross-Agent evidence, DevOps handoff and finance reflection."
+    - id: DR-R8-002
+      status: fixed
+      evidence:
+        - design-appendices/frontend-workbench-design.md
+        - design-previews/frontend-workbench/README.md
+        - design-previews/frontend-workbench/00-shell-and-navigation.md
+        - design-previews/frontend-workbench/01-overview.md
+        - design-previews/frontend-workbench/02-investment.md
+        - design-previews/frontend-workbench/05-team.md
+        - design-previews/frontend-workbench/06-governance.md
+      note: "Owner Decision View, Investment Dossier, Trace/Debug, Finance, Knowledge and Governance/Approval states are available as Markdown Design review artifacts with route ownership and guard behavior."
+    - id: DR-R8-003
+      status: fixed
+      evidence:
+        - design-appendices/investment-chain-design.md
+        - work-items/WI-003.yaml
+        - work-items/WI-007.yaml
+        - work-items/WI-008.yaml
+        - work-items/WI-009.yaml
+      note: "Investment chain now has scenario runbooks for happy path, hard dissent, low consensus, Risk rejected, execution_core blocked and P0 position risk."
+    - id: DR-R8-004
+      status: fixed
+      evidence:
+        - design-appendices/devops-observability-design.md
+        - work-items/WI-006.yaml
+      note: "DevOps now includes routine checks, severity defaults, incident handling, recovery validation and Risk handoff rules."
+    - id: DR-R8-005
+      status: fixed
+      evidence:
+        - design-appendices/finance-knowledge-reflection-design.md
+        - work-items/WI-005.yaml
+      note: "Finance, attribution, CFO interpretation, reflection, Researcher promotion and Prompt/Skill/Knowledge effective-scope flows are runbooked."
+    - id: DR-R8-006
+      status: fixed
+      evidence:
+        - contracts/api-read-models.md
+        - contracts/domain-artifact-schemas.md
+        - contracts/verification-report-schemas.md
+        - reviews/contract-freeze-api-read-models-2026-04-29.yaml
+        - reviews/contract-freeze-domain-artifact-schemas-2026-04-29.yaml
+        - reviews/contract-freeze-verification-report-schemas-2026-04-29.yaml
+      note: "Contracts were refrozen after R8 read model, collaboration object, finance/reflection, DevOps and report evidence additions."
+    - id: DR-R8-007
+      status: fixed
+      evidence:
+        - testing.md
+        - contracts/verification-report-schemas.md
+      note: "TC evidence expectations now require runbook traces, guard behavior, view projection, UI denials and frontend preview references."
+    - id: DR-R8-008
+      status: fixed
+      evidence:
+        - work-items/WI-001.yaml
+        - work-items/WI-002.yaml
+        - work-items/WI-003.yaml
+        - work-items/WI-004.yaml
+        - work-items/WI-005.yaml
+        - work-items/WI-006.yaml
+        - work-items/WI-007.yaml
+        - work-items/WI-008.yaml
+        - work-items/WI-009.yaml
+      note: "Every WI now declares r8_runbook_scope with owns / must_prove / does_not_own boundaries. WI-004 and WI-005 additionally declare execution_slices so frontend and finance/researcher work can start from foundation/read-model fixtures instead of waiting for the full investment execution chain."
+    - id: DR-WI-CONSISTENCY-001
+      status: fixed
+      evidence:
+        - design.md
+        - design-appendices/runtime-storage-architecture.md
+        - work-items/WI-001.yaml
+        - work-items/WI-004.yaml
+        - work-items/WI-005.yaml
+      note: "Post-review repair resolved WI-001 KnowledgeItem path ambiguity by assigning foundation schema to domain.memory, added missing Authority Gateway endpoints to design.md, and reduced WI-004/WI-005 startup dependencies without modifying frozen contracts."
+    - id: DR-R8-009
+      status: fixed
+      evidence:
+        - reviews/contract-freeze-api-read-models-2026-04-29.yaml
+        - reviews/contract-freeze-domain-artifact-schemas-2026-04-29.yaml
+        - reviews/contract-freeze-verification-report-schemas-2026-04-29.yaml
+      note: "Freeze reviews now explain the R8 refreeze basis rather than the stale pre-repair basis."
+    - id: DR-MEMORY-001
+      status: fixed
+      evidence:
+        - design.md
+        - design-appendices/runtime-storage-architecture.md
+        - design-appendices/finance-knowledge-reflection-design.md
+        - design-appendices/agent-capability-profiles.md
+        - design-appendices/frontend-workbench-design.md
+        - contracts/domain-artifact-schemas.md
+        - contracts/api-read-models.md
+        - contracts/verification-report-schemas.md
+        - testing.md
+        - work-items/WI-001.yaml
+        - work-items/WI-002.yaml
+        - work-items/WI-004.yaml
+        - work-items/WI-005.yaml
+        - reviews/contract-freeze-api-read-models-memory-2026-04-29.yaml
+        - reviews/contract-freeze-domain-artifact-schemas-memory-2026-04-29.yaml
+        - reviews/contract-freeze-verification-report-schemas-memory-2026-04-29.yaml
+      note: "Memory mechanism now selectively borrows capture/extraction/tag/relation/filter/review-digest-organize flows from /home/admin/memos, but excludes social/share/reaction/direct-overwrite semantics; Memory/Knowledge remain context/evidence/reusable experience and never formal business fact source."
+    - id: DR-TEAM-DECISION-001
+      status: fixed
+      evidence:
+        - spec.md
+        - spec-appendices/frontend-workbench-map.md
+        - design.md
+        - design-appendices/frontend-workbench-design.md
+        - design-appendices/decision-service-design.md
+        - design-appendices/workflow-data-service-design.md
+        - contracts/api-read-models.md
+        - contracts/domain-artifact-schemas.md
+        - contracts/verification-report-schemas.md
+        - testing.md
+        - work-items/WI-001.yaml
+        - work-items/WI-002.yaml
+        - work-items/WI-004.yaml
+        - work-items/WI-008.yaml
+        - design-previews/frontend-workbench/README.md
+        - design-previews/frontend-workbench/00-shell-and-navigation.md
+        - design-previews/frontend-workbench/05-team.md
+        - reviews/contract-freeze-api-read-models-team-decision-2026-04-29.yaml
+        - reviews/contract-freeze-domain-artifact-schemas-team-decision-2026-04-29.yaml
+        - reviews/contract-freeze-verification-report-schemas-team-decision-2026-04-29.yaml
+      note: "Owner feedback is reflected as a Chinese premium light workbench with main nav 全景/投资/财务/知识/治理; route ownership distinguishes menus from details such as Dossier, Trace, Agent profile and Approval Packet; Agent team is under Governance and shows nine Agent profiles, versions, capability score, CFO attribution references, shortfalls and capability drafts; capability edits create governance change drafts only. Decision Service now owns DecisionPacket assembly, S4 input guards, optimizer deviation guard, exception candidate/reopen recommendation and Dossier/Trace projection without replacing CIO/Risk/Owner/workflow authority."
+    - id: DR-FOLLOWUP-20260430-001
+      status: fixed
+      evidence:
+        - work-items/WI-004.yaml
+        - contracts/verification-report-schemas.md
+        - reviews/contract-freeze-verification-report-schemas-design-fix-2026-04-30.yaml
+        - design-previews/frontend-workbench/README.md
+        - design-previews/frontend-workbench/07-states-and-guards.md
+      note: "Resolved stale frontend Implementation input: WI-004 and verification report schemas now require five top-level menus, premium light theme assertions and Governance Agent team assertions; preview confirmation state now says Design semantic review passed while phase switch still requires human confirmation."
+    - id: DR-FOLLOWUP-20260430-002
+      status: fixed
+      evidence:
+        - design.md
+        - work-items/WI-001.yaml
+        - work-items/WI-002.yaml
+        - work-items/WI-003.yaml
+        - work-items/WI-005.yaml
+        - work-items/WI-006.yaml
+        - work-items/WI-007.yaml
+        - work-items/WI-008.yaml
+        - work-items/WI-009.yaml
+      note: "Resolved package/scope conflict by making `src/velentrade/domain/<domain>/**` the implementation path for domain packages and by updating WI allowed_paths, forbidden_paths and verification commands accordingly."
+    - id: DR-FOLLOWUP-20260430-003
+      status: fixed
+      evidence:
+        - design.md
+        - design-appendices/runtime-storage-architecture.md
+        - work-items/WI-001.yaml
+        - work-items/WI-002.yaml
+      note: "Assigned agent-runner foundation and ModelGateway fake_test profile to WI-001, and assigned Celery start_agent_run scheduling and runner failure handling to WI-002."
+    - id: DR-FOLLOWUP-20260430-004
+      status: fixed
+      evidence:
+        - contracts/domain-artifact-schemas.md
+        - reviews/contract-freeze-domain-artifact-schemas-design-fix-2026-04-30.yaml
+      note: "Added missing REQ-025/REQ-026 metadata trace to the frozen domain artifact contract and refroze the contract with metadata-only review evidence."
+    - id: DR-FOLLOWUP-20260430-005
+      status: fixed
+      evidence:
+        - design-appendices/devops-observability-design.md
+        - design-appendices/finance-knowledge-reflection-design.md
+      note: "Fresh Design walk-through aligned stale appendix reading-contract implementation paths with the canonical `src/velentrade/domain/<domain>/**` package layout already used by design.md and work-items/*.yaml."
+  claude_followup_review:
+    reviewed_at: 2026-04-29
+    status: superseded_by_memory_refreeze
+    contract_boundary: "This earlier follow-up was completed without contract changes. It is now superseded by DR-MEMORY-001, which intentionally reopened and refroze the memory-related shared contracts after user approval."
+    fixed_findings:
+      - id: F1-F3
+        evidence:
+          - design-appendices/finance-knowledge-reflection-design.md
+          - testing.md
+        note: "Attribution quality formulas, anomaly thresholds, periodic windows and sustained low-quality triggers are now explicit."
+      - id: F4
+        evidence:
+          - design-appendices/finance-knowledge-reflection-design.md
+          - testing.md
+        note: "CFO classification, responsible_agent priority and questions_to_answer templates are now defined."
+      - id: F5-F6
+        evidence:
+          - design-appendices/finance-knowledge-reflection-design.md
+          - testing.md
+        note: "Factor governance and knowledge conflict handling now include required fields, monitoring thresholds and write targets."
+      - id: D1-D4
+        evidence:
+          - design-appendices/devops-observability-design.md
+          - testing.md
+        note: "Health thresholds, safe degradation allowlist, recovery validation checklist and cost/token observability guidance are now explicit."
+      - id: FE1-FE4
+        evidence:
+          - design-appendices/frontend-workbench-design.md
+          - testing.md
+        note: "Three-layer navigation, StageRail selection, approval action feedback and finance sensitive redaction behavior are now specified."
+      - id: AP1-AP2
+        evidence:
+          - design-appendices/agent-capability-profiles.md
+        note: "Seed skill prompt skeleton structure and Macro SOP steps are now more implementation-ready."
+      - id: WS2-T2
+        evidence:
+          - design-appendices/workflow-data-service-design.md
+          - testing.md
+        note: "MarketState enum and classification rules are now defined under REQ-011 / TC-ACC-011, correcting the reviewer's REQ-026 numbering confusion."
+    intentionally_not_changed:
+      - id: X1-X2
+        reason: "Not a design defect: REQ-026 is already traced under WI-005 and covers factor research; Market State belongs to REQ-011."
+      - id: frozen-contracts
+        reason: "Superseded by the memory refreeze review files dated 2026-04-29."
+  r8_cold_start_drill:
+    method: "For each WI, assume an implementer reads only codespec readset, the WI, referenced contracts, referenced design appendices and matching TC. The review checks whether they can identify runbook steps, contracts, view projection, failure path and verification evidence."
+    result: pass
+    work_items:
+    - wi_id: WI-001
+      runbook: "Agent collaboration foundation, Team Agent profile read model, Memory capture/recall boundary and Authority Gateway write flow."
+      contract: "collaboration objects, artifact envelope, TeamReadModel/AgentProfileReadModel foundations, Memory/Knowledge schemas, security/privacy report schemas."
+      view: "Team cards, TraceDebugReadModel collaboration lineage, context injection records and denial records."
+      verification: "TC-ACC-001/002/003/004/005/031/032."
+    - wi_id: WI-002
+      runbook: "Generic workflow spine, data/service guard, Decision Service orchestration entry, MarketState classification, ContextSnapshot, AgentCapability/DefaultContextBinding and governance activation."
+      contract: "TaskEnvelope, WorkflowStage, DataRequest, DataReadinessReport, ServiceResult, ContextSnapshot, AgentCapabilityChangeDraft, DefaultContextBinding."
+      view: "Workflow/Dossier projections and governance health projections."
+      verification: "TC-ACC-008/009/010/011/030."
+    - wi_id: WI-003
+      runbook: "Opportunity/TopicProposal to Topic Queue, P0 preemption and IC Context Package."
+      contract: "TopicQueueEntry, ICContextPackage and Chair Brief artifacts."
+      view: "Investment queue and IC context sections."
+      verification: "TC-ACC-012/013/014."
+    - wi_id: WI-004
+      runbook: "Frontend Chinese premium-light Owner/Dossier/Trace/Governance Agent Team/Governance/Knowledge-Memory surfaces, drilldown routes, StageRail selection, approval feedback and blocked states; implementation starts from frozen read model fixtures after WI-001/WI-002 and switches to real domain read models during downstream integration."
+      contract: "OwnerDecisionReadModel, InvestmentDossierReadModel, TraceDebugReadModel, TeamReadModel, AgentProfileReadModel, AgentCapabilityConfigReadModel, KnowledgeSearchReadModel, GovernanceReadModel."
+      view: "design-previews/frontend-workbench Markdown review pack including README.md, 00-shell-and-navigation.md and 05-team.md."
+      verification: "TC-ACC-006/007."
+    - wi_id: WI-005
+      runbook: "Finance profile, attribution scoring/anomaly triggers, CFO classification, Memory capture/organize, reflection and knowledge/prompt/skill promotion, split into finance_boundary, researcher_knowledge_proposals and attribution_cfo_reflection execution slices."
+      contract: "FinanceProfile, AttributionReport, CFOInterpretation, GovernanceProposal, ReflectionAssignment, MemoryCapture, MemoryOrganizeSuggestion."
+      view: "FinanceOverviewReadModel and KnowledgeSearchReadModel."
+      verification: "TC-ACC-023/024/025/026/027/028."
+    - wi_id: WI-006
+      runbook: "DevOps routine checks, health thresholds, safe degradation, recovery validation and Risk handoff."
+      contract: "IncidentReport, DegradationPlan, RecoveryPlan, RiskNotification."
+      view: "DevOpsHealthReadModel and governance health panels."
+      verification: "TC-ACC-029."
+    - wi_id: WI-007
+      runbook: "S2-S3 Analyst memo, consensus/action calculation, bounded debate and hard dissent handoff."
+      contract: "AnalystMemo, DebateSummary and CollaborationCommand/Event/Handoff objects."
+      view: "Investment Dossier stance matrix, debate timeline and Trace/Debug commands."
+      verification: "TC-ACC-015/016/017."
+    - wi_id: WI-008
+      runbook: "S4-S6 Decision Service, CIO decision, optimizer deviation, Risk Review, Owner exception, timeout and reopen."
+      contract: "DecisionPacket, DecisionGuardResult, DecisionExceptionCandidate, ReopenRecommendation, CIODecisionMemo, RiskReviewReport, ApprovalRecord and guard reason codes."
+      view: "Dossier Decision Service card, Risk Gate, Approval Packet and forbidden action UI states."
+      verification: "TC-ACC-018/019."
+    - wi_id: WI-009
+      runbook: "Paper account, order, execution_core guard, simulated fill, receipt and position disposal."
+      contract: "PaperAccount, PaperOrder, PaperExecutionReceipt and position disposal report payloads."
+      view: "Dossier execution status and Owner paper account summary."
+      verification: "TC-ACC-020/021/022."
+human_review:
+  required_before_start_implementation: true
+  note: "This semantic review approves the repaired Design content. Per phase policy, Design->Implementation still requires fresh machine gate evidence and explicit human phase-switch confirmation."

@@ -1,0 +1,18 @@
+contract_ref: CONTRACT-VERIFICATION-REPORT-SCHEMAS
+action: freeze
+verdict: approved
+reviewed_by: Codex
+reviewed_at: 2026-04-29
+scope:
+  - contracts/verification-report-schemas.md
+reason:
+  - "R8 Design repair refroze report schemas after adding common runbook_trace and view_projection_results evidence to prove trigger -> command/service/AgentRun -> artifact/event/handoff -> read model paths."
+  - "Frontend reports now require design_preview_refs and screenshot_refs where applicable, so TC-ACC-006/007 cannot pass on placeholder UI assertions."
+  - "Collaboration, debate, CFO/reflection and DevOps reports now require concrete command, handoff, routine-check, trigger and effective-scope evidence."
+checks:
+  - "Consumers are existing work items."
+  - "Each remapped report points to the work item that owns the corresponding behavior."
+  - "Report assertions remain P0 verification evidence, not new acceptance criteria."
+  - "Each report now has required payload fields beyond assertion labels, including fixture_inputs, actual_outputs, guard_results, runbook_trace where relevant and view_projection_results where relevant."
+  - "R8 failure_evidence_rules forbid field-existence-only reports and require UI/read model/API guard evidence for forbidden-entry tests."
+  - "A pass report cannot contain failures or failed guard_results."

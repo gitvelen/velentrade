@@ -1,0 +1,18 @@
+contract_ref: CONTRACT-API-READ-MODELS
+action: freeze
+verdict: approved
+reviewed_by: Codex
+reviewed_at: 2026-04-29
+supersedes:
+  - reviews/contract-freeze-api-read-models-memory-2026-04-29.yaml
+scope:
+  - contracts/api-read-models.md
+reason:
+  - "Refreeze after Owner requested high-quality Chinese card UI and a Team menu for Agent profile and capability configuration."
+  - "Refreeze after Decision Service was promoted to first-class S4 read-model projection."
+checks:
+  - "ShellReadModel navigation includes team and keeps forbidden channels out."
+  - "TeamReadModel, AgentProfileReadModel, AgentCapabilityConfigReadModel and AgentCapabilityDraftReadModel expose profile/version/quality/draft data without hot-edit authority."
+  - "Agent capability draft submission creates Governance Change only and maps hot patch attempts to agent_capability_hot_patch_denied."
+  - "InvestmentDossierReadModel exposes Decision Service, Decision Packet and Decision Guard projections without granting service decision authority."
+  - "Verification mapping ties TC-ACC-003/006/007/018/030 to Team and Decision Service read models."

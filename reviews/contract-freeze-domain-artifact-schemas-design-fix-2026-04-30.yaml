@@ -1,0 +1,15 @@
+contract_ref: CONTRACT-DOMAIN-ARTIFACT-SCHEMAS
+action: freeze
+verdict: approved
+reviewed_by: Codex
+reviewed_at: 2026-04-30
+supersedes:
+  - reviews/contract-freeze-domain-artifact-schemas-team-decision-2026-04-29.yaml
+scope:
+  - contracts/domain-artifact-schemas.md
+reason:
+  - "Refreeze after Design re-review found metadata omitted REQ-025 and REQ-026 while the contract already defined CFOInterpretation, GovernanceProposal, ReflectionAssignment and factor-related finance/knowledge artifacts."
+checks:
+  - "Only requirement_refs metadata changed; schema fields and frozen business semantics are unchanged."
+  - "REQ-025 and REQ-026 now trace to finance_knowledge_artifacts and WI-005 verification reports."
+  - "The change aligns domain artifact metadata with design.md WI-005 and testing.md TC-ACC-025-01 / TC-ACC-026-01."

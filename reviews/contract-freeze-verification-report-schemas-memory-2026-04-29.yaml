@@ -1,0 +1,19 @@
+contract_ref: CONTRACT-VERIFICATION-REPORT-SCHEMAS
+action: freeze
+verdict: approved
+reviewed_by: Codex
+reviewed_at: 2026-04-29
+supersedes:
+  - reviews/contract-freeze-verification-report-schemas-2026-04-29.yaml
+scope:
+  - contracts/verification-report-schemas.md
+reason:
+  - "Design memory repair refroze report schemas so memory tests must prove capture, extraction, relation, collection, recall, denial and promotion behavior instead of field existence only."
+  - "Researcher and reflection reports now require Memory capture/organize and Knowledge promotion evidence."
+  - "Config governance reports now require DefaultContextBinding and MemoryCollection version evidence."
+checks:
+  - "FX-MEMORY-CAPTURE-ORGANIZE-PROMOTE covers capture -> organize -> promotion -> governance snapshot."
+  - "FX-MEMORY-RECALL-NOT-AUTHORITY proves recalled memory is fenced context and cannot override artifacts."
+  - "FX-MEMORY-FINANCE-RESTRICTED proves sensitive raw memory denial/redaction and audit evidence."
+  - "failure_evidence_rules forbid ProcessArchive direct DefaultContext injection."
+  - "Report payload contracts require non-empty memory objects, extraction results, injection decisions and guard outcomes."

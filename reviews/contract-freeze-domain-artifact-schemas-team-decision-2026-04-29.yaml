@@ -1,0 +1,17 @@
+contract_ref: CONTRACT-DOMAIN-ARTIFACT-SCHEMAS
+action: freeze
+verdict: approved
+reviewed_by: Codex
+reviewed_at: 2026-04-29
+supersedes:
+  - reviews/contract-freeze-domain-artifact-schemas-memory-2026-04-29.yaml
+scope:
+  - contracts/domain-artifact-schemas.md
+reason:
+  - "Refreeze after adding Team capability draft governance and Decision Service S4 artifacts."
+checks:
+  - "DecisionPacket, DecisionGuardResult, DecisionExceptionCandidate and ReopenRecommendation are supporting artifacts/service results, not workflow state owners."
+  - "CIODecisionMemo now references DecisionPacket while preserving CIO semantic boundary."
+  - "AgentCapabilityChangeDraft and GovernanceChange change types cover agent capability, tool permission and model route changes."
+  - "TaskEnvelope and guard errors distinguish agent capability change drafts from manual_todo and investment workflow."
+  - "Schema catalog version records the team/decision refreeze."

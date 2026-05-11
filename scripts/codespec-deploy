@@ -1,24 +1,447 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-cat >&2 <<'EOF'
-Edit scripts/codespec-deploy for this project before running `codespec deploy`.
-The script must write YAML result data to $CODESPEC_DEPLOY_RESULT_FILE.
-EOF
+project_root="${CODESPEC_PROJECT_ROOT:?}"
+result_file="${CODESPEC_DEPLOY_RESULT_FILE:?}"
+cd "$project_root"
 
-cat > "${CODESPEC_DEPLOY_RESULT_FILE:?}" <<'EOF'
-status: fail
-execution_ref: pending
-deployment_method: pending
-deployed_at: pending
-deployed_revision: pending
-restart_required: pending
-restart_reason: pending
-smoke_test: fail
-runtime_ready: fail
-runtime_observed_revision: pending
-runtime_ready_evidence: pending
-manual_verification_ready: fail
-EOF
+revision="$(git rev-parse HEAD)"
+deployed_at="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+execution_ref="deploy-${revision:0:12}"
+deployment_file="$project_root/deployment.md"
+release_mode="$(awk '/^release_mode:/ {print $2; exit}' "$deployment_file" 2>/dev/null || true)"
+[ -n "$release_mode" ] || release_mode="artifact"
+if [ "${VELENTRADE_RUN_COMPOSE_SMOKE:-0}" = "1" ]; then
+  release_mode="runtime"
+fi
 
-exit 1
+python -m pytest tests/core tests/domain tests/security tests/requirements tests/agent_runner tests/model_gateway tests/worker tests/e2e -q
+python -m compileall src/velentrade >/dev/null
+npm --prefix frontend test
+npm --prefix frontend run build
+test -f frontend/dist/index.html
+test -n "$(find frontend/dist/assets -type f -name '*.js' -print -quit)"
+test -n "$(find frontend/dist/assets -type f -name '*.css' -print -quit)"
+
+if [ "$release_mode" = "runtime" ]; then
+  docker compose down -v --remove-orphans >/dev/null 2>&1 || true
+  docker compose build migrate api agent-runner worker beat
+  docker compose up -d postgres redis migrate agent-runner api worker beat
+
+  python - <<'PY'
+import json
+import socket
+import subprocess
+import tempfile
+import time
+from urllib import error, parse, request
+
+import websocket
+
+API_BASE = "http://127.0.0.1:8000"
+RUNNER_BASE = "http://127.0.0.1:8100"
+
+
+def api_json(method, path, payload=None, base_url=API_BASE):
+    data = None if payload is None else json.dumps(payload).encode("utf-8")
+    http_request = request.Request(
+        url=f"{base_url}{path}",
+        data=data,
+        headers={"Content-Type": "application/json"},
+        method=method,
+    )
+    with request.urlopen(http_request, timeout=10) as response:
+        return json.loads(response.read().decode("utf-8"))
+
+
+def http_text(path, base_url=API_BASE):
+    with request.urlopen(f"{base_url}{path}", timeout=10) as response:
+        return response.read().decode("utf-8")
+
+
+def wait_api_ready():
+    deadline = time.time() + 180
+    last_error = None
+    while time.time() < deadline:
+        try:
+            body = api_json("GET", "/api/team")
+            if "data" in body:
+                return
+        except (error.URLError, TimeoutError, ConnectionError) as exc:
+            last_error = exc
+            time.sleep(2)
+    raise SystemExit(f"api runtime did not become ready: {last_error}")
+
+
+def free_port():
+    with socket.socket() as sock:
+        sock.bind(("127.0.0.1", 0))
+        return int(sock.getsockname()[1])
+
+
+def wait_http(url, timeout_seconds=30):
+    deadline = time.time() + timeout_seconds
+    last_error = None
+    while time.time() < deadline:
+        try:
+            with request.urlopen(url, timeout=2) as response:
+                if response.status < 500:
+                    return
+        except (error.URLError, TimeoutError, ConnectionError) as exc:
+            last_error = exc
+            time.sleep(0.5)
+    raise SystemExit(f"{url} did not become ready: {last_error}")
+
+
+class ChromePage:
+    def __init__(self, ws_url):
+        self.ws = websocket.create_connection(ws_url, timeout=5, suppress_origin=True)
+        self.next_id = 0
+
+    def close(self):
+        self.ws.close()
+
+    def command(self, method, params=None):
+        self.next_id += 1
+        message_id = self.next_id
+        self.ws.send(json.dumps({"id": message_id, "method": method, "params": params or {}}))
+        while True:
+            payload = json.loads(self.ws.recv())
+            if payload.get("id") == message_id:
+                if "error" in payload:
+                    raise RuntimeError(payload["error"])
+                return payload.get("result", {})
+
+    def evaluate(self, expression):
+        result = self.command(
+            "Runtime.evaluate",
+            {"expression": expression, "awaitPromise": True, "returnByValue": True},
+        )
+        return result.get("result", {}).get("value")
+
+
+def open_chrome_page(chrome_debug_port, url):
+    wait_http(f"http://127.0.0.1:{chrome_debug_port}/json/version")
+    new_tab = request.Request(
+        f"http://127.0.0.1:{chrome_debug_port}/json/new?{parse.quote(url, safe='')}",
+        method="PUT",
+    )
+    with request.urlopen(new_tab, timeout=5) as response:
+        payload = json.loads(response.read().decode("utf-8"))
+    return ChromePage(payload["webSocketDebuggerUrl"])
+
+
+def wait_for_expression(page, expression, timeout_seconds=30):
+    deadline = time.time() + timeout_seconds
+    last_value = None
+    while time.time() < deadline:
+        last_value = page.evaluate(expression)
+        if last_value:
+            return last_value
+        time.sleep(0.25)
+    raise SystemExit(f"expression did not become truthy: {expression}; last={last_value!r}")
+
+
+def run_browser_smoke(existing_task_count):
+    chrome_debug_port = free_port()
+    with tempfile.TemporaryDirectory(prefix="velentrade-chrome-") as profile_dir:
+        chrome_process = subprocess.Popen(
+            [
+                "chromium-browser",
+                "--headless",
+                "--disable-gpu",
+                "--disable-dev-shm-usage",
+                "--no-sandbox",
+                f"--remote-debugging-port={chrome_debug_port}",
+                f"--user-data-dir={profile_dir}",
+                "about:blank",
+            ],
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+            text=True,
+        )
+        page = None
+        try:
+            page = open_chrome_page(chrome_debug_port, API_BASE)
+            wait_for_expression(page, "document.body && document.body.innerText.includes('自由对话')")
+            page.evaluate("[...document.querySelectorAll('button')].find((item) => item.innerText.includes('自由对话')).click()")
+            wait_for_expression(page, "document.body.innerText.includes('输入一句话后生成预览')")
+            page.evaluate(
+                """
+                const input = document.querySelector('input[aria-label="自然语言请求"]');
+                const setter = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, 'value').set;
+                setter.call(input, '学习热点事件');
+                input.dispatchEvent(new Event('input', { bubbles: true }));
+                """
+            )
+            page.evaluate("[...document.querySelectorAll('button')].find((item) => item.innerText.includes('生成请求预览')).click()")
+            wait_for_expression(page, "document.body.innerText.includes('确认生成任务卡')")
+            wait_for_expression(
+                page,
+                "(() => { const button = [...document.querySelectorAll('button')].find((item) => item.innerText.includes('确认生成任务卡')); return button && !button.disabled; })()",
+            )
+            page.evaluate("[...document.querySelectorAll('button')].find((item) => item.innerText.includes('确认生成任务卡')).click()")
+            wait_for_expression(page, "document.body.innerText.includes('任务卡已生成：')")
+            task_count = wait_for_expression(
+                page,
+                "fetch('/api/tasks').then((response) => response.json()).then((payload) => payload.data.task_center.length)",
+            )
+            if int(task_count) <= existing_task_count:
+                raise SystemExit("browser_click_confirmed_task did not create a new persisted task")
+            return task_count
+        finally:
+            if page is not None:
+                page.close()
+            chrome_process.terminate()
+            try:
+                chrome_process.wait(timeout=10)
+            except subprocess.TimeoutExpired:
+                chrome_process.kill()
+                chrome_process.wait(timeout=10)
+
+
+def write_agent_artifact(workflow_id, stage, run_id, artifact_type, payload):
+    result = api_json("POST", "/api/gateway/artifacts", {
+        "workflow_id": workflow_id,
+        "attempt_no": 1,
+        "stage": stage,
+        "source_agent_run_id": run_id,
+        "context_snapshot_id": "ctx-v1",
+        "artifact_type": artifact_type,
+        "schema_version": "1.0.0",
+        "payload": payload,
+        "source_refs": payload.get("evidence_refs", []),
+        "idempotency_key": f"{workflow_id}-{stage}-{run_id}-{artifact_type}",
+    })["data"]
+    return result["object_id"]
+
+
+def write_service_artifact(workflow_id, stage, producer_service, artifact_type, payload):
+    result = api_json("POST", "/api/gateway/artifacts", {
+        "workflow_id": workflow_id,
+        "attempt_no": 1,
+        "stage": stage,
+        "producer_service": producer_service,
+        "context_snapshot_id": "ctx-v1",
+        "artifact_type": artifact_type,
+        "schema_version": "1.0.0",
+        "payload": payload,
+        "source_refs": payload.get("evidence_refs", []),
+        "idempotency_key": f"{workflow_id}-{stage}-{producer_service}-{artifact_type}",
+    })["data"]
+    return result["object_id"]
+
+
+def current_stage_version(workflow_id, stage):
+    workflow = api_json("GET", f"/api/workflows/{workflow_id}")["data"]
+    for item in workflow["stages"]:
+        if item["stage"] == stage:
+            return item["stage_version"]
+    raise SystemExit(f"missing workflow stage: {stage}")
+
+
+def complete_stage(workflow_id, stage, artifact_refs):
+    api_json("POST", f"/api/workflows/{workflow_id}/commands", {
+        "command_type": "start_stage",
+        "payload": {"stage": stage},
+        "client_seen_stage_version": current_stage_version(workflow_id, stage),
+    })
+    api_json("POST", f"/api/workflows/{workflow_id}/commands", {
+        "command_type": "complete_stage",
+        "payload": {"stage": stage, "artifact_refs": artifact_refs},
+        "client_seen_stage_version": current_stage_version(workflow_id, stage),
+    })
+
+
+def memo(role, direction_score):
+    return {
+        "role": role,
+        "direction": "positive",
+        "direction_score": direction_score,
+        "confidence": 0.82,
+        "hard_dissent": False,
+        "summary": f"{role} memo",
+        "evidence_refs": [f"evidence-{role}"],
+    }
+
+
+def run_full_investment_runtime(workflow_id, task_id):
+    data_readiness_ref = write_service_artifact(workflow_id, "S1", "data_collection_quality", "DataReadinessReport", {
+        "quality_band": "normal",
+        "decision_core_status": "pass",
+        "execution_core_status": "pass",
+        "lineage_refs": ["lineage-runtime-600000"],
+        "risk_constraints": ["risk-budget-runtime"],
+    })
+    macro_ref = write_agent_artifact(workflow_id, "S2", "run-macro_analyst", "AnalystMemo", memo("macro", 2))
+    fundamental_ref = write_agent_artifact(workflow_id, "S2", "run-fundamental_analyst", "AnalystMemo", memo("fundamental", 3))
+    quant_ref = write_agent_artifact(workflow_id, "S2", "run-quant_analyst", "AnalystMemo", memo("quant", 2))
+    event_ref = write_agent_artifact(workflow_id, "S2", "run-event_analyst", "AnalystMemo", memo("event", 1))
+    cio_ref = write_agent_artifact(workflow_id, "S4", "run-cio", "CIODecisionMemo", {
+        "decision": "buy",
+        "target_symbol": "600000.SH",
+        "target_weight": 0.10,
+        "decision_rationale": "four analyst memos converged and execution core is available",
+        "deviation_reason": "",
+    })
+    guard_ref = write_service_artifact(workflow_id, "S4", "risk_engine", "DecisionGuardResult", {
+        "major_deviation": False,
+        "low_action_conviction": False,
+        "retained_hard_dissent": False,
+        "reason_codes": [],
+        "owner_exception_candidate_ref": None,
+        "reopen_recommendation_ref": None,
+    })
+    risk_ref = write_agent_artifact(workflow_id, "S5", "run-risk_officer", "RiskReviewReport", {
+        "review_result": "approved",
+        "owner_exception_required": False,
+        "reason_codes": [],
+        "risk_summary": "risk accepted",
+    })
+    execution_ref = write_service_artifact(workflow_id, "S6", "trade_execution", "PaperExecutionReceipt", {
+        "paper_order_id": "paper-order-runtime-smoke",
+        "decision_memo_ref": cio_ref,
+        "pricing_method": "minute_vwap",
+        "fill_status": "filled",
+        "fill_price": 10.2,
+        "fill_quantity": 1000,
+        "fees": {"commission": 5},
+        "taxes": {"stamp_tax": 0},
+        "slippage": {"policy_bps": 5},
+        "t_plus_one_state": "locked_until_next_trading_day",
+    })
+    attribution_ref = write_service_artifact(workflow_id, "S7", "performance_attribution_evaluation", "AttributionReport", {
+        "status": "completed",
+        "period": "runtime-smoke",
+        "decision_quality": "pass",
+        "execution_quality": "pass",
+        "needs_cfo_interpretation": False,
+    })
+    cfo_ref = write_agent_artifact(workflow_id, "S7", "run-cfo", "CFOInterpretation", {
+        "summary_for_owner": "paper execution and attribution completed",
+        "attribution_ref": attribution_ref,
+        "recommended_followups": [],
+    })
+    debate_handoff_ref = api_json("POST", "/api/gateway/handoffs", {
+        "workflow_id": workflow_id,
+        "attempt_no": 1,
+        "from_stage": "S3",
+        "to_stage_or_agent": "S4",
+        "producer_agent_id_or_service": "cio",
+        "source_artifact_refs": [macro_ref, fundamental_ref, quant_ref, event_ref],
+        "summary": "debate converged without retained hard dissent",
+        "open_questions": [],
+        "blockers": [],
+        "decisions_made": ["enter_s4"],
+        "invalidated_artifacts": [],
+        "preserved_artifacts": [macro_ref, fundamental_ref, quant_ref, event_ref],
+        "idempotency_key": f"{workflow_id}-handoff-s3-s4",
+    })["data"]["object_id"]
+
+    complete_stage(workflow_id, "S0", [task_id])
+    complete_stage(workflow_id, "S1", [data_readiness_ref])
+    complete_stage(workflow_id, "S2", [macro_ref, fundamental_ref, quant_ref, event_ref])
+    complete_stage(workflow_id, "S3", [debate_handoff_ref])
+    complete_stage(workflow_id, "S4", [cio_ref, guard_ref])
+    complete_stage(workflow_id, "S5", [risk_ref])
+    complete_stage(workflow_id, "S6", [execution_ref])
+    complete_stage(workflow_id, "S7", [attribution_ref, cfo_ref])
+    return execution_ref
+
+
+wait_api_ready()
+frontend_html = http_text("/")
+if "<html" not in frontend_html or "root" not in frontend_html:
+    raise SystemExit("same_origin_frontend_served failed")
+
+brief = api_json("POST", "/api/requests/briefs", {
+    "raw_text": "runtime smoke formal investment workflow",
+    "source": "runtime_smoke",
+    "requested_scope": {
+        "intent": "formal_investment_decision",
+        "asset_scope": "a_share_common_stock",
+        "target_action": "approve_trade"
+    },
+    "authorization_boundary": "research_only_until_owner_approval"
+})["data"]
+task = api_json("POST", f"/api/requests/briefs/{brief['brief_id']}/confirmation", {
+    "decision": "confirm",
+    "client_seen_version": 1
+})["data"]
+task_id = task["task_id"]
+workflow_id = task["workflow_id"]
+
+runner = api_json("POST", "/internal/agent-runner/runs/runtime-smoke-run/start", {
+    "agent_run_id": "runtime-smoke-run",
+    "workflow_id": "runtime-smoke-workflow",
+    "attempt_no": 1,
+    "stage": "S1",
+    "agent_id": "investment_researcher",
+    "profile_version": "1.0.0",
+    "context_snapshot_id": "ctx-v1",
+    "context_slice_id": "slice-runtime-smoke",
+    "tool_profile_id": "readonly-basic",
+    "skill_package_versions": ["research-pack@1.0.0"],
+    "model_profile_id": "fake_test",
+    "run_goal": "runtime smoke deterministic proposal",
+    "output_artifact_schema": "ResearchPackage",
+    "allowed_command_types": ["request_evidence"],
+    "budget_tokens": 1000,
+    "timeout_seconds": 30
+}, base_url=RUNNER_BASE)["data"]
+if runner["status"] != "completed" or runner["business_fact_created"]:
+    raise SystemExit(f"agent-runner smoke failed: {runner}")
+
+execution_ref = run_full_investment_runtime(workflow_id, task_id)
+
+subprocess.run(["docker", "compose", "restart", "api"], check=True, capture_output=True, text=True)
+wait_api_ready()
+persisted_tasks = api_json("GET", "/api/tasks")["data"]["task_center"]
+if task_id not in {item["task_id"] for item in persisted_tasks}:
+    raise SystemExit("persisted_task_after_restart missing from /api/tasks")
+persisted_dossier = api_json("GET", f"/api/workflows/{workflow_id}/dossier")["data"]
+if persisted_dossier["stage_rail"][-1]["node_status"] != "completed":
+    raise SystemExit("full_investment_runtime_persisted missing completed S7")
+if persisted_dossier["paper_execution"]["status"] != "filled" or execution_ref not in persisted_dossier["evidence_map"]["artifact_refs"]:
+    raise SystemExit("full_investment_runtime_persisted missing PaperExecutionReceipt")
+if persisted_dossier["attribution"]["status"] != "completed":
+    raise SystemExit("full_investment_runtime_persisted missing attribution")
+browser_task_count = run_browser_smoke(len(persisted_tasks))
+PY
+
+  running_services="$(docker compose ps --status running --services)"
+  for service in postgres redis agent-runner api worker beat; do
+    printf '%s\n' "$running_services" | grep -qx "$service"
+  done
+
+  cat > "$result_file" <<EOF
+status: pass
+execution_ref: ${execution_ref}
+deployment_method: docker-compose-runtime
+deployed_at: ${deployed_at}
+deployed_revision: ${revision}
+restart_required: yes
+restart_reason: docker compose services launched for local runtime release
+smoke_test: pass
+runtime_ready: pass
+runtime_observed_revision: ${revision}
+runtime_ready_evidence: docker compose services are running; same_origin_frontend_served returned frontend index; /api/requests/briefs created a task; run_full_investment_runtime completed S0-S7 with DataReadinessReport, four AnalystMemo artifacts, RiskReviewReport, PaperExecutionReceipt and AttributionReport; full_investment_runtime_persisted survived docker compose restart api; agent-runner internal endpoint returned completed fake_test result; browser_click_confirmed_task clicked 自由对话 -> 生成请求预览 -> 确认生成任务卡 in Chromium against the same compose API/static frontend runtime
+manual_verification_ready: pass
+EOF
+  exit 0
+fi
+
+cat > "$result_file" <<EOF
+status: pass
+execution_ref: ${execution_ref}
+deployment_method: local-artifact-build
+deployed_at: ${deployed_at}
+deployed_revision: ${revision}
+restart_required: no
+restart_reason: artifact release only; no running service restarted
+smoke_test: pass
+runtime_ready: not-applicable
+runtime_observed_revision: ${revision}
+runtime_ready_evidence: frontend/dist artifact built and smoke-checked; runtime not applicable for artifact release
+manual_verification_ready: pass
+EOF

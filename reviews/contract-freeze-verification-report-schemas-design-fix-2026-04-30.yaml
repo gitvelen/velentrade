@@ -1,0 +1,16 @@
+contract_ref: CONTRACT-VERIFICATION-REPORT-SCHEMAS
+action: freeze
+verdict: approved
+reviewed_by: Codex
+reviewed_at: 2026-04-30
+supersedes:
+  - reviews/contract-freeze-verification-report-schemas-team-decision-2026-04-29.yaml
+scope:
+  - contracts/verification-report-schemas.md
+reason:
+  - "Refreeze after Design re-review found the report contract still required obsolete Agent-team placement evidence and obsolete visual-theme assertions."
+checks:
+  - "web_command_routing_report.json now asserts five top-level menus: 全景 / 投资 / 财务 / 知识 / 治理."
+  - "The report contract now requires premium_light_theme_assertions for the Owner-approved premium light workbench."
+  - "The report contract now requires governance_agent_team_assertions because Agent team is under Governance, not a top-level menu."
+  - "The change aligns verification contract with spec.md REQ-006, testing.md TC-ACC-006-01, design.md and design-appendices/frontend-workbench-design.md."

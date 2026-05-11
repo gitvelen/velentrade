@@ -1,0 +1,15 @@
+repair_id: REPAIR-20260506082825
+status: closed
+phase: Implementation
+gate: design-quality
+reason: Owner验收确认审批与人工待办在全景和治理页合并为统一待办入口，需要同步WI-011与测试口径
+allowed_paths:
+  - work-items/WI-011.yaml
+  - testing.md
+opened_at: 2026-05-06T08:28:25Z
+opened_revision: b66c1291165de3252786f24bd102b96abd2feb91
+closed_at: 2026-05-06T08:31:12Z
+closed_revision: b66c1291165de3252786f24bd102b96abd2feb91
+evidence: WI-011/testing synchronized Owner-facing unified todo wording; contracts unchanged
+gate_result: pass
+smoke_result: pass

@@ -1,0 +1,19 @@
+[project]
+name = "velentrade"
+version = "0.1.0"
+description = "Single-owner investment workbench foundations"
+requires-python = ">=3.10"
+dependencies = [
+  "pydantic>=2",
+  "fastapi>=0.104",
+  "uvicorn>=0.30",
+  "sqlalchemy>=2",
+  "alembic>=1.13",
+  "celery[redis]>=5.4",
+  "psycopg[binary]>=3.1",
+  "cryptography>=42",
+]
+
+[tool.pytest.ini_options]
+pythonpath = ["src"]
+testpaths = ["tests"]

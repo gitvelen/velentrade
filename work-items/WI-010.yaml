@@ -1,0 +1,107 @@
+wi_id: WI-010
+phase_scope: Implementation
+completion_level: db_persistent
+
+goal: "执行 Design/contract authority repair，将已批准需求中的 ICContextPackage、ICChairBrief 和 PositionDisposalTask 补成当前版本一等 artifact/read model 契约，并实现对应 API/DB/Gateway 持久化验证。"
+derived_from: design.md#7
+repair_reason: "Deployment 复查确认不能把 foundation/runtime 证据当作完全实现；当前 frozen contract 缺少 ICChairBrief、PositionDisposalTask 一等 schema，ICContextPackage 缺少 topic_id，导致实现只能用 ResearchPackage payload 或 HandoffPacket 旁路表达。"
+
+requirement_refs:
+  - REQ-014
+  - REQ-022
+acceptance_refs:
+  - ACC-014
+  - ACC-022
+verification_refs:
+  - VO-014
+  - VO-022
+test_case_refs:
+  - TC-ACC-014-01
+  - TC-ACC-022-01
+
+r8_runbook_scope:
+  owns:
+    - "Authority repair for existing IC context/chair and position-disposal artifact contracts; this WI may update frozen Design/contracts only to make already-approved behavior implementable."
+    - "Gateway/API/PostgreSQL persistence for first-class ICContextPackage, ICChairBrief and PositionDisposalTask artifacts without changing investment decisions or risk rules."
+  must_prove:
+    - "ICContextPackage and ICChairBrief are accepted as first-class artifact types, persisted through Gateway/PostgreSQL, and visible through existing artifact/Dossier read paths."
+    - "PositionDisposalTask is accepted as a first-class artifact type, persisted with schema/read model fields, and still routes back through Risk Review rather than direct execution."
+    - "Contract repair does not introduce real broker, real order, backtest, non-A trade, or Owner override behavior."
+  does_not_own:
+    - "New product scope, new trading capability, new frontend design, live external data provider production guarantees, or manual owner_verified acceptance."
+
+scope:
+  - "Update `contracts/domain-artifact-schemas.md` and `contracts/api-read-models.md` with the minimum schema/read model additions for ICContextPackage, ICChairBrief and PositionDisposalTask."
+  - "Update `design.md` work-item derivation and relevant implementation notes so WI-010 is the explicit repair path for these frozen contract gaps."
+  - "Update Gateway/service artifact allowlists and Agent write policy only as needed to accept these already-approved artifact types."
+  - "Implement API/PostgreSQL persistence checks for the three artifact types through existing Authority Gateway and artifact read APIs; add dedicated DB mirror only where a dedicated table already exists or this WI explicitly adds one."
+  - "Repair `.codespec` R14 gate support only as needed so explicitly owned `contracts/*.md` authority repair is allowed while unowned frozen contract edits remain blocked."
+  - "Append `testing.md` RUN evidence showing RED/GREEN tests and remaining residual risk."
+out_of_scope:
+  - "不新增真实券商、真实下单、回测、非 A 股交易、移动端、飞书或邮件能力。"
+  - "不改变 Risk rejected、Owner timeout、execution_core 阻断、S0-S7 状态机或 CIO/Risk/Owner 职责边界。"
+  - "不把 PositionDisposalTask 变成直接执行授权；它只能形成风险复核/处置任务输入。"
+  - "不做 owner_verified 人工验收或完整前端重设计。"
+
+allowed_paths:
+  - design.md
+  - work-items/WI-010.yaml
+  - contracts/api-read-models.md
+  - contracts/domain-artifact-schemas.md
+  - contracts/verification-report-schemas.md
+  - src/velentrade/api/**
+  - src/velentrade/db/**
+  - src/velentrade/domain/agents/**
+  - src/velentrade/domain/gateway/**
+  - src/velentrade/domain/investment/context/**
+  - src/velentrade/domain/investment/position/**
+  - tests/api/**
+  - tests/domain/investment/context/**
+  - tests/domain/investment/position/**
+  - testing.md
+  - migrations/**
+  - ../.codespec/scripts/check-gate.sh
+  - ../.codespec/scripts/smoke.sh
+forbidden_paths:
+  - versions/**
+  - spec.md
+  - deployment.md
+  - frontend/**
+  - Dockerfile
+  - src/velentrade/domain/investment/execution/**
+  - src/velentrade/domain/investment/paper_account/**
+  - src/velentrade/domain/investment/risk/**
+  - src/velentrade/domain/investment/owner_exception/**
+  - src/velentrade/domain/finance/**
+  - src/velentrade/domain/attribution/**
+  - src/velentrade/domain/knowledge/**
+  - src/velentrade/domain/devops/**
+
+dependency_refs:
+  - WI-001
+  - WI-003
+  - WI-009
+dependency_type: strong
+contract_refs:
+  - contracts/api-read-models.md
+  - contracts/domain-artifact-schemas.md
+  - contracts/verification-report-schemas.md
+
+required_verification:
+  - "python -m pytest tests/domain/investment/context tests/domain/investment/position -q"
+  - "python -m pytest tests/api/test_wi001_api_foundation.py tests/api/test_wi001_api_db_persistence.py -q"
+  - "python -m compileall src/velentrade"
+  - "../.codespec/codespec check-gate scope"
+  - "../.codespec/codespec check-gate contract-boundary"
+  - "bash ../.codespec/scripts/smoke.sh"
+
+stop_conditions:
+  - "目标、边界、验收或测试用例不清楚"
+  - "需要修改 forbidden_paths 或超出 allowed_paths"
+  - "需要改变 spec.md 的产品口径或新增正式 REQ/ACC/VO"
+  - "需要让未被 active WI 显式拥有的 frozen contract edit 通过 contract-boundary"
+  - "需要真实券商、真实下单、回测、非 A 股交易或绕过 Risk/Owner/execution_core"
+  - "P0 自动化验证不可行且没有 accepted automation_exception_reason"
+reopen_triggers:
+  - "ICContextPackage、ICChairBrief、PositionDisposalTask schema/read model/API/Gateway 写入边界变化"
+  - "任何需要新增正式需求、真实交易能力或 Owner 人工验收标准变化"
