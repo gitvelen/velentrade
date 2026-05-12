@@ -112,6 +112,8 @@ node_modules/
 
 frontend/build/
 
+.vite/
+
 
 
 
