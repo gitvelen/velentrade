@@ -1,0 +1,14 @@
+repair_id: REPAIR-20260512140939
+status: open
+phase: Deployment
+gate: trace-consistency
+reason: Add missing CODESPEC:DESIGN:SLICES markers for trace-consistency gate
+allowed_paths:
+  - design.md
+opened_at: 2026-05-12T14:09:39Z
+opened_revision: 410d125969dd482f7b3bd5d7d6ce73c3cb1e1a56
+closed_at: null
+closed_revision: null
+evidence: null
+gate_result: null
+smoke_result: null

@@ -34,7 +34,7 @@ feature_branch: master # 主执行分支 / parent feature 分支名（如 "featu
 # 阻塞信息（仅当 status=blocked 时填写）
 blocked_reason: null # 阻塞原因描述
 blocked_by: null # 阻塞依赖（如 "WI-001" 或外部因素）
-updated_at: 2026-05-11 # 最后更新时间
+updated_at: 2026-05-12 # 最后更新时间
 updated_by: codespec-cli # 最后更新人
 gate_evidence:
   implementation_entry:
@@ -43,4 +43,4 @@ gate_evidence:
     checked_at: "2026-05-06T01:46:55Z"
     checked_revision: b66c1291165de3252786f24bd102b96abd2feb91
     focus_work_item: WI-002
-active_authority_repair: null
+active_authority_repair: REPAIR-20260512140939

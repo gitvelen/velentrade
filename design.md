@@ -441,6 +441,8 @@ runtime_packaging:
 
 派生到当前 `work-items/*.yaml`：
 
+<!-- CODESPEC:DESIGN:SLICES -->
+
 - wi_id: WI-001
   requirement_refs: [REQ-001, REQ-002, REQ-003, REQ-004, REQ-005, REQ-031, REQ-032]
   covered_acceptance_refs: [ACC-001, ACC-002, ACC-003, ACC-004, ACC-005, ACC-031, ACC-032]
@@ -521,6 +523,8 @@ runtime_packaging:
   summary: Owner 工作台验收返工，修复全景真实审批入口、人工待办模块办理路径、投资/财务/知识/治理默认视图信息密度与老板可读性，排查修复默认页真实 API/DB/read model 数据链路，清理 Knowledge 历史脏数据，扩展 InvestmentDossierReadModel.debate 结构化 S3 字段。
 
 每个 WI 必须明确 `allowed_paths`、`test_case_refs` 和 `required_verification`；若实现发现 WI 口径与本文或 `testing.md` 不一致，必须先回写 Design/WI。
+
+<!-- CODESPEC:DESIGN:SLICES_END -->
 
 ### 验证策略
 
