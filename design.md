@@ -435,7 +435,7 @@ runtime_packaging:
 - `design-previews/frontend-workbench/01-overview.md` 至 `06-governance.md`: 各菜单和详情页的首屏线框、字段、交互、状态和验收关联。
 - `design-previews/frontend-workbench/07-states-and-guards.md`: 通用 loading/empty/error/stale/blocked 和全局禁用入口。
 
-## 7. 工作项与验证
+## 7. 实现计划与验证
 
 ### 工作项派生
 
@@ -443,86 +443,97 @@ runtime_packaging:
 
 <!-- CODESPEC:DESIGN:SLICES -->
 
-- wi_id: WI-001
+- slice_id: SLICE-001
+  work_item_id: WI-001
   requirement_refs: [REQ-001, REQ-002, REQ-003, REQ-004, REQ-005, REQ-031, REQ-032]
-  covered_acceptance_refs: [ACC-001, ACC-002, ACC-003, ACC-004, ACC-005, ACC-031, ACC-032]
+  acceptance_refs: [ACC-001, ACC-002, ACC-003, ACC-004, ACC-005, ACC-031, ACC-032]
   verification_refs: [VO-001, VO-002, VO-003, VO-004, VO-005, VO-031, VO-032]
   test_case_refs: [TC-ACC-001-01, TC-ACC-002-01, TC-ACC-003-01, TC-ACC-004-01, TC-ACC-005-01, TC-ACC-031-01, TC-ACC-032-01]
   design_refs: [agent-capability-profiles, agent-collaboration-protocol, frontend-workbench-design, runtime-storage-architecture, api-read-models, domain-artifact-schemas, verification-report-schemas]
-  summary: 基础 PostgreSQL/Alembic、scope registry、Agent/Service registry、Team Agent 画像 read model 基础、Agent collaboration 基础、Authority Gateway typed write、artifact ledger、agent-runner 基础执行壳、ModelGateway fake_test profile、安全/session 骨架和 Requirement 结构报告。
-- wi_id: WI-002
+  goal: 基础 PostgreSQL/Alembic、scope registry、Agent/Service registry、Team Agent 画像 read model 基础、Agent collaboration 基础、Authority Gateway typed write、artifact ledger、agent-runner 基础执行壳、ModelGateway fake_test profile、安全/session 骨架和 Requirement 结构报告。
+- slice_id: SLICE-002
+  work_item_id: WI-002
   requirement_refs: [REQ-008, REQ-009, REQ-010, REQ-011, REQ-030]
-  covered_acceptance_refs: [ACC-008, ACC-009, ACC-010, ACC-011, ACC-030]
+  acceptance_refs: [ACC-008, ACC-009, ACC-010, ACC-011, ACC-030]
   verification_refs: [VO-008, VO-009, VO-010, VO-011, VO-030]
   test_case_refs: [TC-ACC-008-01, TC-ACC-009-01, TC-ACC-010-01, TC-ACC-011-01, TC-ACC-030-01]
   design_refs: [workflow-data-service-design, decision-service-design, domain-artifact-schemas, verification-report-schemas]
-  summary: Workflow/data/service/governance runtime，覆盖 S0-S7、数据质量算法、服务边界、市场状态、Decision Service 编排、Celery start_agent_run 调度、ContextSnapshot hash/immutability 和配置/Prompt/Skill/Agent 能力治理。
-- wi_id: WI-003
+  goal: Workflow/data/service/governance runtime，覆盖 S0-S7、数据质量算法、服务边界、市场状态、Decision Service 编排、Celery start_agent_run 调度、ContextSnapshot hash/immutability 和配置/Prompt/Skill/Agent 能力治理。
+- slice_id: SLICE-003
+  work_item_id: WI-003
   requirement_refs: [REQ-012, REQ-013, REQ-014]
-  covered_acceptance_refs: [ACC-012, ACC-013, ACC-014]
+  acceptance_refs: [ACC-012, ACC-013, ACC-014]
   verification_refs: [VO-012, VO-013, VO-014]
   test_case_refs: [TC-ACC-012-01, TC-ACC-013-01, TC-ACC-014-01]
   design_refs: [investment-chain-design, domain-artifact-schemas, verification-report-schemas]
-  summary: A 股投资准入链，覆盖机会注册、Topic Queue 加权评分/P0 抢占、IC Context Package 和 CIO IC Chair Brief。
-- wi_id: WI-007
+  goal: A 股投资准入链，覆盖机会注册、Topic Queue 加权评分/P0 抢占、IC Context Package 和 CIO IC Chair Brief。
+- slice_id: SLICE-007
+  work_item_id: WI-007
   requirement_refs: [REQ-015, REQ-016, REQ-017]
-  covered_acceptance_refs: [ACC-015, ACC-016, ACC-017]
+  acceptance_refs: [ACC-015, ACC-016, ACC-017]
   verification_refs: [VO-015, VO-016, VO-017]
   test_case_refs: [TC-ACC-015-01, TC-ACC-016-01, TC-ACC-017-01]
   design_refs: [investment-chain-design, agent-capability-profiles, agent-collaboration-protocol, domain-artifact-schemas, api-read-models, verification-report-schemas]
-  summary: IC 分析链，覆盖四 Analyst 独立 Memo、共识/行动强度计算、S3 最多两轮辩论和 hard dissent 风控交接。
-- wi_id: WI-008
+  goal: IC 分析链，覆盖四 Analyst 独立 Memo、共识/行动强度计算、S3 最多两轮辩论和 hard dissent 风控交接。
+- slice_id: SLICE-008
+  work_item_id: WI-008
   requirement_refs: [REQ-018, REQ-019]
-  covered_acceptance_refs: [ACC-018, ACC-019]
+  acceptance_refs: [ACC-018, ACC-019]
   verification_refs: [VO-018, VO-019]
   test_case_refs: [TC-ACC-018-01, TC-ACC-019-01]
   design_refs: [decision-service-design, investment-chain-design, agent-collaboration-protocol, domain-artifact-schemas, api-read-models, verification-report-schemas]
-  summary: IC 决策链，覆盖 Decision Service、CIO Decision Packet、CIO Decision、优化器偏离、Risk Review、Owner 例外和 reopen/timeout 规则。
-- wi_id: WI-009
+  goal: IC 决策链，覆盖 Decision Service、CIO Decision Packet、CIO Decision、优化器偏离、Risk Review、Owner 例外和 reopen/timeout 规则。
+- slice_id: SLICE-009
+  work_item_id: WI-009
   requirement_refs: [REQ-020, REQ-021, REQ-022]
-  covered_acceptance_refs: [ACC-020, ACC-021, ACC-022]
+  acceptance_refs: [ACC-020, ACC-021, ACC-022]
   verification_refs: [VO-020, VO-021, VO-022]
   test_case_refs: [TC-ACC-020-01, TC-ACC-021-01, TC-ACC-022-01]
   design_refs: [investment-chain-design, domain-artifact-schemas, api-read-models, verification-report-schemas]
-  summary: 纸面执行链，覆盖纸面账户、Paper Order/Execution、分钟线 VWAP/TWAP、execution_core 阻断和持仓监控处置。
-- wi_id: WI-010
+  goal: 纸面执行链，覆盖纸面账户、Paper Order/Execution、分钟线 VWAP/TWAP、execution_core 阻断和持仓监控处置。
+- slice_id: SLICE-010
+  work_item_id: WI-010
   requirement_refs: [REQ-014, REQ-022]
-  covered_acceptance_refs: [ACC-014, ACC-022]
+  acceptance_refs: [ACC-014, ACC-022]
   verification_refs: [VO-014, VO-022]
   test_case_refs: [TC-ACC-014-01, TC-ACC-022-01]
   design_refs: [domain-artifact-schemas, api-read-models, verification-report-schemas]
-  summary: Design/contract authority repair，最小补齐 ICContextPackage、ICChairBrief、PositionDisposalTask 的一等 artifact/read model/API/Gateway/PostgreSQL 持久化闭环，不新增交易、风控绕过、前端重设计或人工验收口径。
-- wi_id: WI-004
+  goal: Design/contract authority repair，最小补齐 ICContextPackage、ICChairBrief、PositionDisposalTask 的一等 artifact/read model/API/Gateway/PostgreSQL 持久化闭环，不新增交易、风控绕过、前端重设计或人工验收口径。
+- slice_id: SLICE-004
+  work_item_id: WI-004
   requirement_refs: [REQ-006, REQ-007]
-  covered_acceptance_refs: [ACC-006, ACC-007]
+  acceptance_refs: [ACC-006, ACC-007]
   verification_refs: [VO-006, VO-007]
   test_case_refs: [TC-ACC-006-01, TC-ACC-007-01]
   design_refs: [frontend-workbench-design, api-read-models, domain-artifact-schemas, verification-report-schemas]
-  summary: Web 工作台，覆盖简体中文高审美浅色主题、`全景 / 投资 / 财务 / 知识 / 治理` 一级主导航、治理下 Agent 团队工作区、全局命令层、Owner Decision View、Investment Dossier、Trace/Debug、任务中心、审批中心、能力配置草案治理和禁止入口；前端可先基于 frozen read model fixture 实现，真实后端 E2E 随各 domain WI 完成后接入。
-- wi_id: WI-005
+  goal: Web 工作台，覆盖简体中文高审美浅色主题、`全景 / 投资 / 财务 / 知识 / 治理` 一级主导航、治理下 Agent 团队工作区、全局命令层、Owner Decision View、Investment Dossier、Trace/Debug、任务中心、审批中心、能力配置草案治理和禁止入口；前端可先基于 frozen read model fixture 实现，真实后端 E2E 随各 domain WI 完成后接入。
+- slice_id: SLICE-005
+  work_item_id: WI-005
   requirement_refs: [REQ-023, REQ-024, REQ-025, REQ-026, REQ-027, REQ-028]
-  covered_acceptance_refs: [ACC-023, ACC-024, ACC-025, ACC-026, ACC-027, ACC-028]
+  acceptance_refs: [ACC-023, ACC-024, ACC-025, ACC-026, ACC-027, ACC-028]
   verification_refs: [VO-023, VO-024, VO-025, VO-026, VO-027, VO-028]
   test_case_refs: [TC-ACC-023-01, TC-ACC-024-01, TC-ACC-025-01, TC-ACC-026-01, TC-ACC-027-01, TC-ACC-028-01]
   design_refs: [finance-knowledge-reflection-design, agent-capability-profiles, api-read-models, domain-artifact-schemas, verification-report-schemas]
-  summary: 财务档案、归因评价、CFO 治理、Researcher、知识/Prompt/Skill 提案和反思学习闭环；实施按 finance boundary、researcher/knowledge proposal、attribution/CFO/reflection 三个切片推进，避免全部依赖投资执行链后置。
-- wi_id: WI-006
+  goal: 财务档案、归因评价、CFO 治理、Researcher、知识/Prompt/Skill 提案和反思学习闭环；实施按 finance boundary、researcher/knowledge proposal、attribution/CFO/reflection 三个切片推进，避免全部依赖投资执行链后置。
+- slice_id: SLICE-006
+  work_item_id: WI-006
   requirement_refs: [REQ-029]
-  covered_acceptance_refs: [ACC-029]
+  acceptance_refs: [ACC-029]
   verification_refs: [VO-029]
   test_case_refs: [TC-ACC-029-01]
   design_refs: [devops-observability-design, agent-capability-profiles, api-read-models, domain-artifact-schemas, verification-report-schemas]
-  summary: DevOps incident、health、degradation、recovery、Risk notification 和成本/Token 观测。
+  goal: DevOps incident、health、degradation、recovery、Risk notification 和成本/Token 观测。
 
-- wi_id: WI-011
+- slice_id: SLICE-011
+  work_item_id: WI-011
   requirement_refs: [REQ-006, REQ-007, REQ-023, REQ-027, REQ-028]
-  covered_acceptance_refs: [ACC-006, ACC-007, ACC-023, ACC-027, ACC-028]
+  acceptance_refs: [ACC-006, ACC-007, ACC-023, ACC-027, ACC-028]
   verification_refs: [VO-006, VO-007, VO-023, VO-027, VO-028]
   test_case_refs: [TC-ACC-006-01, TC-ACC-007-01, TC-ACC-023-01, TC-ACC-027-01, TC-ACC-028-01]
   design_refs: [frontend-workbench-design, api-read-models, domain-artifact-schemas, verification-report-schemas]
-  summary: Owner 工作台验收返工，修复全景真实审批入口、人工待办模块办理路径、投资/财务/知识/治理默认视图信息密度与老板可读性，排查修复默认页真实 API/DB/read model 数据链路，清理 Knowledge 历史脏数据，扩展 InvestmentDossierReadModel.debate 结构化 S3 字段。
+  goal: Owner 工作台验收返工，修复全景真实审批入口、人工待办模块办理路径、投资/财务/知识/治理默认视图信息密度与老板可读性，排查修复默认页真实 API/DB/read model 数据链路，清理 Knowledge 历史脏数据，扩展 InvestmentDossierReadModel.debate 结构化 S3 字段。
 
-每个 WI 必须明确 `allowed_paths`、`test_case_refs` 和 `required_verification`；若实现发现 WI 口径与本文或 `testing.md` 不一致，必须先回写 Design/WI。
+每个 slice 必须明确 `requirement_refs`、`acceptance_refs`、`verification_refs` 和 `test_case_refs`；若实现发现 WI 口径与本文或 `testing.md` 不一致，必须先回写 Design/WI。
 
 <!-- CODESPEC:DESIGN:SLICES_END -->
 

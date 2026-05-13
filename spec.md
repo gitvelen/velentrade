@@ -11,6 +11,11 @@
 - `spec-appendices/*` 只承载展开矩阵、索引、来源归一化和领域证据，不能替代本文正文或新增正式需求；若附件与本文冲突，必须停止并回到 Requirement 修补冲突。
 - 所有后续 `design.md`、`work-items/*.yaml`、实现与验证必须能追溯到本文 `REQ-* -> ACC-* -> VO-*`，并在 `testing.md` 中找到对应 `TC-*`。
 
+| 附件 | 读取触发 | 权威边界 | 冲突处理 |
+|---|---|---|---|
+| `spec-appendices/source-normalization.md` | 追溯来源、处理旧输入冲突、修复 source trace 或重开 Requirement 时 | 只解释来源归一化、旧口径裁剪和原始材料映射，不新增 `REQ/ACC/VO` | 与正文冲突时停止并回到 `spec.md` 修补 |
+| `spec-appendices/*` | 第 7 节 `appendix_reading_matrix` 命中对应领域时 | 只承载索引、矩阵和领域证据展开，不替代正文正式需求 | 与正文冲突时以 `spec.md` 为准并回补冲突 |
+
 <!-- CODESPEC:SPEC:OVERVIEW -->
 ## 1. 需求概览
 
@@ -158,6 +163,12 @@
 <!-- CODESPEC:SPEC:SCENARIOS -->
 ## 3. 场景与行为
 
+V1 的运行从 Owner 的 Web 工作台进入：全局命令、全景页、投资、财务、知识和治理视图都先生成可追踪的任务、审批、artifact 或治理草案。
+正式 A 股投资请求必须先标准化为 Request Brief，再进入 S0-S7 主链；数据、服务、四位 Analyst、CIO、Risk Officer、Owner 和纸面执行各自只承担本阶段职责。
+财务、知识、Prompt、SkillPackage 和 Agent 能力演进不复用投资审批链；它们进入财务规划、知识晋升或治理变更状态机，并按影响等级决定自动验证或 Owner 审批。
+非 A 股资产、系统外人工动作和真实资金动作不会被包装成投资执行任务；需要人处理时只进入 `manual_todo` 或 Owner 审批，不产生交易链授权。
+系统异常、数据降级、服务失败和越权风险由 DevOps、Risk Officer 和治理记录承接；正式业务事实始终以结构化 artifact、状态、reason code、审计事件和 RUN 证据为准。
+
 - scenario_id: SCN-001
   actor: Owner
   trigger: 打开 Web 全景页。
@@ -231,157 +242,157 @@
   priority: P0
 - req_id: REQ-002
   summary: V1 必须维护官方角色/服务注册表：Owner 为人类治理角色；正式 Agent 仅 CIO、CFO、四位 IC 分析师、Risk Officer、Investment Researcher、DevOps Engineer；策略经理、规则路径、Performance Analyst Agent 禁用。
-  source_ref: DEC-004, DEC-005
+  source_ref: spec-appendices/source-normalization.md
   rationale: 角色清单决定职责、记忆、产物、验收和后续设计边界。
   priority: P0
 - req_id: REQ-003
   summary: 每个正式 Agent 必须满足 Agent Capability Enablement Contract：角色定位、输入上下文、可调用工具/服务、判断标准、角色 SOP、rubric、记忆边界、标准产物、权限边界、失败处理、升级规则和评价回路齐全；治理下的 Agent 团队工作区必须让 Owner 以中文卡面查看这些画像、运行质量和配置草案入口。
-  source_ref: DEC-007
+  source_ref: spec-appendices/source-normalization.md
   rationale: 赋予 Agent 职责必须同时赋予足以胜任职责的系统能力。
   priority: P0
 - req_id: REQ-004
   summary: 系统必须采用组织透明读、网关受控写的记忆与上下文模型；正式 Agent 可读取业务文件、只读数据库视图、历史 artifact、过程档案、组织记忆、共享知识和其他 Agent 的正式产物/过程记录，但不得直接持有业务数据库写凭证；所有持久化写入必须通过 Authority Gateway 的 typed command/artifact API，按 owner_agent/producer 追加版本、评论、证据或 proposal。财务敏感原始字段是透明读例外，只向 CFO 和财务服务明文开放，其他 Agent 只读脱敏摘要、约束和派生 artifact。
-  source_ref: DEC-007, DEC-018, DEC-023
+  source_ref: spec-appendices/source-normalization.md
   rationale: Agent 必须具备足够读取能力才能胜任岗位，同时用写入网关、append-only 所有权、快照和敏感字段例外控制污染、越权与隐私风险。
   priority: P0
 - req_id: REQ-005
   summary: 所有关键协作必须以 workflow-native collaboration 承载：CollaborationSession 作为协作容器，AgentRun 作为受控岗位执行，CollaborationCommand 作为封闭协作请求，CollaborationEvent 作为 append-only 审计流，HandoffPacket 作为阶段/跨角色交接摘要；正式业务事实仍来自标准化 artifact、状态、reason code、Reopen Event 和审计记录，不得把原始长对话、runner transcript 或子 Agent summary 作为正式下游输入。S0-S7 核心 artifact 至少支持 Request Brief、Data Readiness Report、Analyst Memo、Debate Summary、CIO Decision Memo、Risk Review Report、Approval Record、Paper Execution Receipt、Attribution Report、Reflection Record；支撑 artifact 由所属 REQ/ACC/TC 覆盖，不要求逐一新增独立 ACC。
-  source_ref: workflow-architecture.md, DEC-007, DEC-019
+  source_ref: spec-appendices/source-normalization.md
   rationale: 多 Agent 协作必须可追溯、可恢复、可复盘。
   priority: P0
 - req_id: REQ-006
   summary: Web 工作台必须采用 `全景 / 投资 / 财务 / 知识 / 治理` 一级主导航，Agent 团队能力管理放在治理下；界面默认简体中文，采用漂亮优先、护眼其次、信息密度高的浅色高端卡面式投研工作台：主背景使用暖瓷/柔和中性色，卡片和控件用分层浅色表面、细边框、轻阴影和高质感语义强调色，主强调为玉绿，辅助使用靛蓝、暗金和胭脂红，避免纯白大底或深色大底造成疲劳；把结论、风险、审批、Agent 分歧、执行和团队能力放进可扫描中文卡片，而不是把后端表格、trace、非 A 股边界守卫、Prompt/Skill 版本或 ContextSnapshot 等过程材料原样摊给 Owner；全局自由对话是命令层，所有研究、审批、执行、规则、Prompt、Skill、Agent 能力配置或财务动作请求必须先转为 Request Brief、任务卡或治理变更草案；multi-agent 可视化必须按 Owner Decision View、Investment Dossier View、Trace/Debug View 分层呈现，默认不把长聊天作为老板视图。
-  source_ref: DEC-001
+  source_ref: spec-appendices/source-normalization.md
   rationale: Web 是 V1 唯一主交互面，自由对话不能绕过 workflow。
   priority: P0
 - req_id: REQ-007
   summary: 治理区必须包含任务中心、审批中心和 Agent 团队工作区；Agent 团队工作区产生的 Agent 能力、Prompt、SkillPackage、工具权限、模型路由或默认上下文配置草案必须转为 Governance Change，不得直接热改在途任务；任务中心使用统一 Task Envelope，投资主链绑定 S0-S7 与 reason code，高影响治理绑定治理状态机，系统异常绑定 incident 状态；非 A 股或系统外人工动作进入任务中心并标记 `manual_todo`，不得进入审批/执行/交易链。
-  source_ref: DEC-001, DEC-002, DEC-009
+  source_ref: spec-appendices/source-normalization.md
   rationale: 保留完整任务追踪，同时防止非投资动作误入交易治理链。
   priority: P0
 - req_id: REQ-008
   summary: V1 必须实现严格 S0-S7 投资主链：S0 请求受理、S1 数据就绪、S2 分析研判、S3 辩论收敛、S4 CIO 收口、S5 风控复核、S6 授权放行与纸面执行、S7 归因反思；每阶段使用最小节点状态集合，重开必须通过 Reopen Event 标记原因、目标阶段、作废产物和保留产物。
-  source_ref: workflow-architecture.md
+  source_ref: spec-appendices/source-normalization.md
   rationale: 这是投资任务的最小可审计生命周期。
   priority: P0
 - req_id: REQ-009
   summary: 数据权威来源为 `data-flow.md` 与 `data-collection-service.md`；所有正式数据访问必须经过 Data Domain Registry、Data Source Registry 和 Data Request Contract；`decision_core` 数据质量 `>=0.9` 正常，`0.7-0.9` 可研究但必须标记降级且 Risk Review 只能 `conditional_pass` 并需 Owner 例外，`<0.7` 必须自动切源/fallback 且仍不可恢复时阻断新决策和执行；`execution_core` 使用当前 workflow 配置快照中的生效阈值，默认 `0.9`，低于生效阈值时严格阻断纸面执行，阈值变更属于高影响治理且只对新任务生效。
-  source_ref: DEC-009, data-flow.md, data-collection-service.md
+  source_ref: spec-appendices/source-normalization.md
   rationale: 数据质量是投资决策链的硬前提，必须可降级但不能掩盖风险。
   priority: P0
 - req_id: REQ-010
   summary: 服务层必须自动提供数据质量、市场状态、因子、估值、组合优化、风险、纸面执行、绩效归因与评价能力；服务输出计算结果、约束和建议，不拥有投资判断、审批或否决权。
-  source_ref: DEC-006
+  source_ref: spec-appendices/source-normalization.md
   rationale: 避免把 CIO 或任何 Agent 做成服务操作瓶颈，同时保持治理权清晰。
   priority: P0
 - req_id: REQ-011
   summary: 市场状态评估引擎默认自动生效，并正式驱动协作模式、因子权重建议和 IC Context；Macro Analyst 可提出覆盖并留痕，但不作为市场状态生效前置门。
-  source_ref: market-state-evaluation-engine.md
+  source_ref: spec-appendices/source-normalization.md
   rationale: 市场状态是运行时服务能力，不应让宏观分析师成为常规瓶颈。
   priority: P0
 - req_id: REQ-012
   summary: 机会/议题来源必须开放注册，至少包括 Owner 请求、四位分析师发现、Investment Researcher 提案、自动行情/公告/持仓风险触发和服务层信号；新闻、舆情、资金流等 supporting evidence 只能触发候选机会、研究任务或资料包，注册不等于进入正式 IC。
-  source_ref: core-mechanisms.md, DEC-008
+  source_ref: spec-appendices/source-normalization.md
   rationale: 机会发现不能只依赖单一角色或单一入口。
   priority: P0
 - req_id: REQ-013
   summary: 正式 IC 队列必须由硬门槛和四维 0-5 优先级评分决定；硬门槛至少检查 A 股普通股范围、Request Brief 完整性、核心数据可用性、研究资料非空、合规/执行禁区、同主题去重和并发槽；四维为机会强度、数据/资料完备度、风险紧急度、组合/持仓相关性；正式 IC 最多 3 个并发，全局 workflow 最多 5 个并发；P0 可抢占但不能跳过 IC/风控/审计。
-  source_ref: DEC-008
+  source_ref: spec-appendices/source-normalization.md
   rationale: 管住并发和优先级，防止 CIO 或分析师被无限议题拖垮。
   priority: P0
 - req_id: REQ-014
   summary: 正式 IC 启动前必须生成 IC Context Package，并由 CIO 在 S1 后输出 IC Chair Brief；IC Context Package 包含共享事实包、服务计算结果、市场状态、组合上下文、风险约束、研究资料包、历史反思命中和四类分析师角色附件，IC Chair Brief 只能定义本次决策问题、关注边界、关键矛盾、必须回答的问题、时间预算和行动判定口径，不得预设买卖结论或替任何 Analyst 指定结论。
-  source_ref: workflow-architecture.md, DEC-020
+  source_ref: spec-appendices/source-normalization.md
   rationale: 四位分析师必须基于同一事实底座和同一议题目标工作，同时避免 CIO 前置协调污染岗位责任判断。
   priority: P0
 - req_id: REQ-015
   summary: Macro、Fundamental、Quant、Event 四位分析师必须作为四套独立 CapabilityProfile、SkillPackage、rubric 与权限默认域并行产出署名 Analyst Memo；每份 Memo 必含统一外壳字段 `direction_score(-5..+5)`、`confidence(0..1)`、`evidence_quality(0..1)`、`hard_dissent`、支持证据、反证/风险、适用条件、失效条件、对 IC 的行动含义和证据引用，并必须包含 role-specific payload。Macro payload 覆盖市场状态、政策传导、流动性和行业风格；Fundamental payload 覆盖商业质量、财务质量、盈利情景、估值和会计红旗；Quant payload 覆盖信号假设、因子、趋势、稳定性和择时含义；Event payload 覆盖事件类型、来源可靠性、验证状态、催化窗口、历史类比和反转风险。
-  source_ref: core-mechanisms.md, DEC-021
+  source_ref: spec-appendices/source-normalization.md
   rationale: 统一 Memo 外壳支撑共识计算、辩论、CIO 收口和归因评价；role payload 保证四个岗位不是同一模板换名。
   priority: P0
 - req_id: REQ-016
   summary: 系统必须自动计算 `consensus_score = 0.6*(1-std(direction_score/5)) + 0.4*dominant_direction_share` 与 `action_conviction = 0.35*abs(avg(direction_score/5)) + 0.25*avg(confidence) + 0.20*avg(evidence_quality) + 0.20*consensus_score`，默认行动阈值为 `0.65`；公式输入、`dominant_direction_share` 与 `std` 口径按第 6 节共识契约执行。`action_conviction < 0.65` 不得生成纸面执行授权，即使共识分较高也只能进入观察、补证、重开或不行动路径。
-  source_ref: core-mechanisms.md
+  source_ref: spec-appendices/source-normalization.md
   rationale: 投委会结论需要可观测的共识和行动强度，而不是自然语言汇总。
   priority: P0
 - req_id: REQ-017
   summary: IC 辩论规则必须区分高共识、需辩论和不可执行，并采用“CIO 语义主席 + Workflow/Debate Manager 过程权威”的双层模型：`consensus >=0.8` 且无 hard dissent、且 `action_conviction >=0.65` 可跳过辩论；`consensus >=0.8` 但存在 hard dissent 不得跳过 S3，必须最多 2 轮有界辩论，若辩论后仍保留 hard dissent 则进入 Risk Review；`0.7 <= consensus < 0.8` 触发最多 2 轮有界辩论，若辩论后仍保留 hard dissent 也必须进入 Risk Review；辩论参与者为四位分析师，输入为 IC Context Package、IC Chair Brief、四份 Analyst Memo 和可引用补证；Workflow/Debate Manager 控制派发、轮次、超时、状态、公式重算和审计，CIO 负责 agenda、追问、语义综合和保留分歧说明；输出 Debate Summary，辩论后重算共识与行动强度；`consensus <0.7` 或 `action_conviction <0.65` 不允许纸面执行；hard dissent 相关 Risk `rejected` 仍硬阻断。
-  source_ref: core-mechanisms.md, DEC-009, DEC-020
+  source_ref: spec-appendices/source-normalization.md
   rationale: 保留反证、异议和 CIO 主席能力，同时防止辩论无界、过程状态失控或绕过风控。
   priority: P0
 - req_id: REQ-018
   summary: CIO 必须承担 IC 语义主席和投资收口职责：S1 后生成 IC Chair Brief，S3 需要时形成 Debate agenda/synthesis，S4 消费由编排层生成的 CIO Decision Packet 并形成 CIO Decision Memo；组合优化器只提供硬约束内的建议目标组合，CIO 可语义偏离但必须说明原因；单股目标权重偏离 `5pp` 或组合主动偏离 `20%` 及以上触发 Owner 例外或由编排中心重开论证，组合主动偏离按 `0.5 * Σ|CIO目标权重 - 优化器建议权重|` 计算。CIO 不得直接创建 AgentRun、操作服务、修改状态、下单、审批例外或覆盖 Risk rejected。
-  source_ref: DEC-006, DEC-020
+  source_ref: spec-appendices/source-normalization.md
   rationale: 保持 CIO 的语义判断和团队协调价值，同时防止其成为服务、状态机或风控瓶颈。
   priority: P0
 - req_id: REQ-019
   summary: Risk Officer 必须独立输出 Risk Review Report，状态仅可为 `approved / conditional_pass / rejected`；`rejected` 硬阻断当前 attempt，Risk Officer 必须在报告中判定 `repairable / unrepairable`，可修复时只能附 `reopen_target` 和 reason code 并通过 Reopen Event 回上游重做，不可修复时当前 attempt 终止且不得进入 Owner 例外审批；`conditional_pass` 进入 Owner 例外审批，Owner 审批必须附详细对比分析、影响范围、替代方案和明确建议；Owner 未在默认超时策略内响应时不执行/不生效，记录 `owner_timeout`，并按审批类型 `expired`、S6 blocked、重开 S4 或关闭。
-  source_ref: DEC-009
+  source_ref: spec-appendices/source-normalization.md
   rationale: 风控独立性和 Owner 少量高质量审批是安全边界。
   priority: P0
 - req_id: REQ-020
   summary: 纸面账户默认以 `1,000,000 CNY`、空仓、现金 100% 初始化；可重置但所有验收默认使用该本金；纸面账户必须记录现金、持仓、成本、收益、回撤、风险预算与基准。
-  source_ref: DEC-003
+  source_ref: spec-appendices/source-normalization.md
   rationale: 纸面执行、绩效、风控和财务规划需要稳定基线。
   priority: P0
 - req_id: REQ-021
   summary: Trade Execution Service V1 仅做中等拟真纸面执行：默认下个交易日执行，urgent 30 分钟、normal 2 小时、low 全日窗口；优先 1 分钟 VWAP，缺失时 TWAP；价格区间未命中则 unfilled/expired；记录滑点、佣金、印花税、过户费、T+1。
-  source_ref: trade-execution-service.md, DEC-003
+  source_ref: spec-appendices/source-normalization.md
   rationale: 纸面执行必须足以支持归因，但不模拟复杂微观撮合。
   priority: P0
 - req_id: REQ-022
   summary: 持仓监控和处置必须覆盖 A 股持仓异常波动、重大公告、风险阈值、执行失败和止损/暂停建议；紧急任务可提高优先级但不得取消 S5 风控和审计。
-  source_ref: workflow-architecture.md
+  source_ref: spec-appendices/source-normalization.md
   rationale: 持仓风险处置是 V1 高优先级场景。
   priority: P0
 - req_id: REQ-023
   summary: 财务模块必须覆盖全资产档案、收入支出、债务、税务提醒/估算、资产规划、压力测试、风险预算、财务健康；基金/黄金可自动行情，房产默认手工或定期估值；非 A 股资产不得生成审批、执行或交易任务。
-  source_ref: DEC-002
+  source_ref: spec-appendices/source-normalization.md
   rationale: 完整财务模块与 A 股执行边界必须同时成立。
   priority: P0
 - req_id: REQ-024
   summary: Performance Attribution & Evaluation Service 必须自动发布日度归因和角色/服务评价，覆盖收益、风险、成本、滑点、因子贡献、IC 决策质量、证据质量、反证质量、适用/失效条件命中情况。
-  source_ref: DEC-005
+  source_ref: spec-appendices/source-normalization.md
   rationale: 归因评价是自动计算服务，不再由 Performance Analyst Agent 承担。
   priority: P0
 - req_id: REQ-025
   summary: CFO 必须承接归因结果中需要 LLM 的解释、治理签发和反思分派，产物为 CFO Interpretation、Governance Proposal、Reflection Assignment；财务规划建议不作为独立正式 artifact，归入 Governance Proposal 的财务规划/风险预算子类型；低影响仅观察/报告，中影响通知相关 Agent/上下文，高影响涉及因子权重、风险预算、规则、Prompt、审批规则、执行参数时必须 Owner 审批。
-  source_ref: DEC-005, DEC-007
+  source_ref: spec-appendices/source-normalization.md
   rationale: 取消 Performance Analyst 后，CFO 必须具备足够能力承担财务治理判断。
   priority: P0
 - req_id: REQ-026
   summary: 因子研究允许新增因子，但必须走研究准入、样本与适用市场状态说明、独立验证、上线登记、持续监控和失效诊断；V1 不实现回测能力，不能把回测作为验收条件。
-  source_ref: DEC-001, DEC-010
+  source_ref: spec-appendices/source-normalization.md
   rationale: 支持因子演进但避免把 V1 扩成回测平台。
   priority: P0
 - req_id: REQ-027
   summary: Investment Researcher 必须支持每日简报、P0/P1 分类、会前资料包、知识检索、议题提案、知识晋升提案、Prompt 更新提案和 SkillPackage 更新提案；研究员是研究/知识任务的 semantic lead，可准备 diff、适用范围、验证结果和回滚方案，但不能直接改 Agent 能力、默认上下文、Prompt 或 SkillPackage，也不能参与投资投票。低/中影响知识、Prompt、Skill 更新可在自动验证和审计后只对新任务或新 attempt 生效；高影响变更必须 Owner 审批。
-  source_ref: DEC-007, DEC-022
+  source_ref: spec-appendices/source-normalization.md
   rationale: 研究员是知识和议题入口，能力演进必须受控但不应把所有低/中影响优化都变成 Owner 审批负担。
   priority: P0
 - req_id: REQ-028
   summary: 反思和学习闭环必须由服务触发、CFO 确认范围、责任 Agent 撰写一稿、Researcher 提出知识/Prompt/Skill 晋升或更新提案；低/中影响提案经自动验证、影响评级、版本快照和审计后可对新任务或新 attempt 生效，高影响知识、Prompt、Skill 或配置变更必须 Owner 审批；反思不得直接改运行参数或热改在途任务。
-  source_ref: DEC-005, DEC-007, DEC-022
+  source_ref: spec-appendices/source-normalization.md
   rationale: 组织学习需要闭环，但不能绕过治理生效。
   priority: P0
 - req_id: REQ-029
   summary: DevOps Engineer 必须处理系统层异常、数据源故障、服务降级、执行环境异常、成本/Token 观测和恢复建议，并向 Risk Officer 汇报；成本与 Token 预算是运营观测指标，不作为 V1 验收目标。
-  source_ref: DEC-010
+  source_ref: spec-appendices/source-normalization.md
   rationale: 系统可靠性需要责任主体，但不能把成本预算做成需求验收硬条件。
   priority: P0
 - req_id: REQ-030
   summary: 配置治理必须覆盖阈值、风控参数、审批规则、Prompt、SkillPackage、默认上下文、知识生效策略、服务降级策略、数据源路由策略和执行参数；低/中影响变更可经过自动 triage、schema/fixture 验证、影响评估、版本快照和审计后 `effective`，高影响变更必须经过 `draft -> triage -> assessment -> owner_pending -> approved -> effective` 状态机并包含 Owner 审批、对比分析、版本快照和回滚信息；所有变更只对新任务或新 attempt 生效，在途任务必须绑定旧 ContextSnapshot/配置快照，不能被热改。
-  source_ref: DEC-007, DEC-009, DEC-022
+  source_ref: spec-appendices/source-normalization.md
   rationale: 运行规则变化会直接影响投资行为，必须可审计。
   priority: P0
 - req_id: REQ-031
   summary: V1 按单 Owner 假设处理安全：财务档案必须加密存储，普通日志不得写敏感明文；财务敏感原始字段只向 CFO 和财务服务明文开放，其他 Agent 只能读取脱敏约束摘要和派生 artifact；不要求多用户 RBAC，但必须区分 runner 无业务写凭证、只读 DB 账号、Authority Gateway 写入和敏感字段解密边界；若未来多用户或云端协作必须重开安全需求。
-  source_ref: DEC-001, DEC-018, DEC-023
+  source_ref: spec-appendices/source-normalization.md
   rationale: 在单用户 V1 控制复杂度，同时保留 Agent 足够读取能力、写入治理和财务隐私底线。
   priority: P0
 - req_id: REQ-032
   summary: Requirement 正文必须保持自足，并通过 appendix 索引拆分详细矩阵；Design 阶段不得在 appendix 中新增正式需求，只能承接本文 `REQ/ACC/VO/TC`。
-  source_ref: phase-review-policy.md
+  source_ref: spec-appendices/source-normalization.md
   rationale: 控制复杂项目上下文，同时保持需求主文档权威。
   priority: P0
 

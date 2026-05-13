@@ -126,3 +126,42 @@
 ## 7. 文件名说明
 
 当前落盘讨论记录文件名为 `../inputs/sessonlog.txt`。用户口头提到的 `sessionlog.txt` 在本仓库当前材料中不存在；后续引用应使用实际文件名，除非文件被用户重命名。
+
+## 8. Requirement Source Closure
+
+本节保留 `spec.md` 中各 `REQ-*` 的来源展开。`spec.md` 正文里的 `source_ref` 统一指向本附件，避免把已确认决策 ID、逗号组合项或仓库外旧输入文件误声明为可直接校验的 repo artifact。
+
+| REQ | normalized_source | original_source_basis |
+|---|---|---|
+| REQ-001 | `spec-appendices/source-normalization.md` | `spec-appendices/source-normalization.md` |
+| REQ-002 | `spec-appendices/source-normalization.md` | `DEC-004, DEC-005` |
+| REQ-003 | `spec-appendices/source-normalization.md` | `DEC-007` |
+| REQ-004 | `spec-appendices/source-normalization.md` | `DEC-007, DEC-018, DEC-023` |
+| REQ-005 | `spec-appendices/source-normalization.md` | `workflow-architecture.md, DEC-007, DEC-019` |
+| REQ-006 | `spec-appendices/source-normalization.md` | `DEC-001` |
+| REQ-007 | `spec-appendices/source-normalization.md` | `DEC-001, DEC-002, DEC-009` |
+| REQ-008 | `spec-appendices/source-normalization.md` | `workflow-architecture.md` |
+| REQ-009 | `spec-appendices/source-normalization.md` | `DEC-009, data-flow.md, data-collection-service.md` |
+| REQ-010 | `spec-appendices/source-normalization.md` | `DEC-006` |
+| REQ-011 | `spec-appendices/source-normalization.md` | `market-state-evaluation-engine.md` |
+| REQ-012 | `spec-appendices/source-normalization.md` | `core-mechanisms.md, DEC-008` |
+| REQ-013 | `spec-appendices/source-normalization.md` | `DEC-008` |
+| REQ-014 | `spec-appendices/source-normalization.md` | `workflow-architecture.md, DEC-020` |
+| REQ-015 | `spec-appendices/source-normalization.md` | `core-mechanisms.md, DEC-021` |
+| REQ-016 | `spec-appendices/source-normalization.md` | `core-mechanisms.md` |
+| REQ-017 | `spec-appendices/source-normalization.md` | `core-mechanisms.md, DEC-009, DEC-020` |
+| REQ-018 | `spec-appendices/source-normalization.md` | `DEC-006, DEC-020` |
+| REQ-019 | `spec-appendices/source-normalization.md` | `DEC-009` |
+| REQ-020 | `spec-appendices/source-normalization.md` | `DEC-003` |
+| REQ-021 | `spec-appendices/source-normalization.md` | `trade-execution-service.md, DEC-003` |
+| REQ-022 | `spec-appendices/source-normalization.md` | `workflow-architecture.md` |
+| REQ-023 | `spec-appendices/source-normalization.md` | `DEC-002` |
+| REQ-024 | `spec-appendices/source-normalization.md` | `DEC-005` |
+| REQ-025 | `spec-appendices/source-normalization.md` | `DEC-005, DEC-007` |
+| REQ-026 | `spec-appendices/source-normalization.md` | `DEC-001, DEC-010` |
+| REQ-027 | `spec-appendices/source-normalization.md` | `DEC-007, DEC-022` |
+| REQ-028 | `spec-appendices/source-normalization.md` | `DEC-005, DEC-007, DEC-022` |
+| REQ-029 | `spec-appendices/source-normalization.md` | `DEC-010` |
+| REQ-030 | `spec-appendices/source-normalization.md` | `DEC-007, DEC-009, DEC-022` |
+| REQ-031 | `spec-appendices/source-normalization.md` | `DEC-001, DEC-018, DEC-023` |
+| REQ-032 | `spec-appendices/source-normalization.md` | `phase-review-policy.md` |

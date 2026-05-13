@@ -1,14 +1,17 @@
 repair_id: REPAIR-20260512140939
-status: open
+kind: source-trace
+status: closed
 phase: Deployment
 gate: trace-consistency
-reason: Add missing CODESPEC:DESIGN:SLICES markers for trace-consistency gate
+reason: Fix frozen dossier quality and trace gaps (SLICES markers, acceptance_refs naming, source_refs declarations, appendix matrix, scenario narrative)
 allowed_paths:
   - design.md
+  - spec.md
+  - spec-appendices/source-normalization.md
 opened_at: 2026-05-12T14:09:39Z
 opened_revision: 410d125969dd482f7b3bd5d7d6ce73c3cb1e1a56
-closed_at: null
-closed_revision: null
-evidence: null
-gate_result: null
-smoke_result: null
+closed_at: 2026-05-13T03:34:39Z
+closed_revision: a6fb33d919cd635466eebd093b5ce080e6cd12a2
+evidence: Source trace repair normalized source_refs to spec-appendices/source-normalization.md, added appendix source closure, added non-formal AI reading/scenario structure, migrated design §7 to SLICE rows with acceptance_refs, and preserved requirement semantics.
+gate_result: pass
+smoke_result: not-run
